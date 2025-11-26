@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/image/logo_หน่วย8.png">
+
+    <title>ภาพกิจกรรม</title>
+
+    <!-- js -->
+    <script src="/assets/js/include.js" defer></script>
+    <script src="/assets/js/main.js" defer></script>
+    <script src="/assets/js/activity-detail.js" defer></script>
+
+</head>
+<body>
+    <!-- include header -->
+    <div id="header"></div>
+
+    <!-- ===== เมนูหลัก ===== -->
+    <div id="navbar"></div>
+    <main class="page-main">
+        <section class="activity-detail-page">
+            <div class="activity-detail-inner">
+
+                <!-- breadcrumb เล็ก ๆ -->
+                <nav class="activity-breadcrumb">
+                    <a href="home.html">หน้าหลัก</a>
+                    <span>/</span>
+                    <a href="activities.html">ภาพกิจกรรม</a>
+                    <span>/</span>
+                    <span id="activity-breadcrumb-title">รายละเอียดกิจกรรม</span>
+                </nav>
+
+                <!-- header -->
+                <header class="activity-detail-header">
+                    <span class="activity-detail-category" id="activity-category">หมวดหมู่</span>
+                    <h1 class="activity-detail-title" id="activity-title">ชื่อกิจกรรม</h1>
+                    <div class="activity-detail-meta">
+                        <span id="activity-date">–</span>
+                        <span class="meta-dot">·</span>
+                        <span id="activity-province">–</span>
+                        <span class="meta-dot">·</span>
+                        <span id="activity-writer">–</span>
+                    </div>
+                </header>
+
+                <!-- เนื้อหาหลัก -->
+                <div class="activity-detail-body">
+                    <article class="activity-detail-content" id="activity-content"></article>
+                    <div class="activity-detail-gallery">
+                        <div class="activity-detail-main-image">
+                            <img id="activity-main-image" src="" alt="กิจกรรม" />
+                        </div>
+
+                        <div class="activity-detail-thumbs" id="activity-thumbs">
+                            <!-- JS จะเติม thumbnail -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="footer"></div>
+
+</body>
+
+</html>

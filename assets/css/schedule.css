@@ -1,0 +1,1091 @@
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    background: #f5f5f5;
+    font-family: 'Inter', 'Noto Sans Thai', sans-serif;
+}
+
+main {
+    padding-top: 190px;
+}
+
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+/* ==========================
+   SCHEDULE NAV
+=========================== */
+
+.main-nav {
+    position: fixed;
+    top: 140px;
+    left: 0;
+    width: 100%;
+    z-index: 9998;
+    background: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+
+}
+
+.nav-schedule {
+    list-style: none;
+    margin: 0;
+    padding: 0 40px;
+    display: flex;
+    gap: 70px;
+    align-items: center;
+}
+
+.nav-schedule li {
+    white-space: nowrap;
+    position: relative;
+}
+
+.nav-schedule a {
+    text-decoration: none;
+    color: #111;
+    font-size: 22px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.nav-schedule a:hover,
+.nav-schedule a.active {
+    color: #532274;
+}
+
+.nav-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 26px;
+    cursor: pointer;
+    position: absolute;
+    right: 10px;
+    color: #532274;
+}
+
+/* ==========================
+   SCHEDULE LAYOUT
+=========================== */
+
+.schedule-main {
+    padding-top: 210px;
+    /* เผื่อพื้นที่ header + nav */
+    padding-bottom: 20px;
+    ;
+}
+
+.schedule-layout {
+    margin: 0 auto 0px;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 1fr 2.5fr;
+    /* ปฏิทิน : sidebar */
+    gap: 20px;
+}
+
+/* ปฏิทิน (ฝั่งซ้าย) */
+.schedule-calendar {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* SIDEBAR (ฝั่งขวา) */
+.schedule-sidebar {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 730px;
+    overflow-y: auto;
+}
+
+.sidebar-section {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 20px;
+    margin-bottom: 12px;
+}
+
+.sidebar-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.sidebar-title {
+    margin: 0 0 4px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #532274;
+}
+
+.sidebar-date {
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: #666;
+}
+
+.sidebar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* รายการงานใน sidebar */
+.sidebar-task {
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #faf5ff;
+    border: 1px solid #ead7ff;
+    cursor: default;
+}
+
+.sidebar-task.pending {
+    background: #fff9f0;
+    border-color: #ffd9a6;
+}
+
+.sidebar-task-time {
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 2px;
+}
+
+.sidebar-task-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #222;
+    margin-bottom: 2px;
+}
+
+.sidebar-task-between {
+    font-size: 14px;
+    font-weight: 600;
+    color: #222;
+    margin: 2px 0 4px;
+}
+
+
+.sidebar-task-meta {
+    font-size: 14px;
+    color: #777;
+}
+
+.schedule-calendar-header {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.add-task {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 15px 15px;
+    border: 2px solid #532274;
+    border-radius: 999px;
+    background: #532274;
+    color: #ffffff;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.add-task i {
+    font-size: 16px;
+}
+
+.schedule-search {
+    display: flex;
+    align-items: center;
+    border: 2px solid #532274;
+    border-radius: 999px;
+    padding: 12px 12px;
+    max-width: 280px;
+    width: 100%;
+    background: #ffffff;
+}
+
+.schedule-search input {
+    border: none;
+    outline: none;
+    flex: 1;
+    font-size: 16px;
+    font-family: inherit;
+}
+
+.schedule-search-clear {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.schedule-filter-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 2px solid #ffffff;
+    background: #ffffff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+}
+
+.schedule-filter-icon i {
+    color: #532274;
+}
+
+.schedule-filter-popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+}
+
+.schedule-filter-popup-overlay.open {
+    display: flex;
+}
+
+.schedule-filter-popup {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 24px 28px;
+    max-width: 670px;
+    width: 100%;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+    font-size: 14px;
+}
+
+.schedule-filter-clear,
+.schedule-filter-apply {
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid #532274;
+    cursor: pointer;
+    font-family: 'Inter', 'Noto Sans Thai', sans-serif;
+}
+
+.schedule-filter-clear {
+    background: #ffffff;
+    color: #532274;
+}
+
+.schedule-filter-apply {
+    background: #532274;
+    color: #ffffff;
+}
+
+.filter-row.filter-row-dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 16px;
+    row-gap: 4px;
+    align-items: center;
+}
+
+.filter-row.filter-row-dates label {
+    font-weight: 500;
+}
+
+.filter-row.filter-row-dates input[type="date"] {
+    width: 100%;
+}
+
+.filter-row.filter-row-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: 16px;
+    row-gap: 6px;
+}
+
+.filter-row.filter-row-grid>span {
+    grid-column: 1 / -1;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.filter-row.filter-row-grid label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 400;
+}
+
+#calendar {
+    margin-top: 8px;
+    min-height: 400px;
+}
+
+.calendar-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.calendar-btn {
+    border-radius: 999px;
+    padding: 15px 15px;
+    font-size: 18px;
+    border: 2px solid #532274;
+    background: #532274;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+}
+
+.calendar-btn:hover {
+    opacity: 0.9;
+}
+
+/* ซ่อน header เดิมของ FullCalendar เผื่อมันเผลอสร้าง */
+.fc-header-toolbar {
+    display: none !important;
+}
+
+
+.toolbar-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 20px;
+}
+
+.schedule-calendar-header.toolbar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.calendar-month {
+    flex: 0 0 250px;
+    font-size: 30px;
+    font-weight: 600;
+    padding-left: 12px;
+    margin: 0;
+    color: #532274;
+    margin-right: 12px;
+}
+
+/* ปุ่ม today / prev / next ที่ถูกย้ายมา */
+.toolbar-left .fc-button {
+    border-radius: 12px !important;
+    padding: 6px 14px !important;
+    font-size: 14px;
+    background: #2d3e50;
+    color: #ffffff;
+    border: none;
+}
+
+/* ฝั่งขวา = ปุ่ม fullcalendar */
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ปุ่มของ FullCalendar */
+.toolbar-right .fc-button {
+    border-radius: 12px !important;
+    padding: 6px 14px !important;
+    font-size: 14px;
+    background: #2d3e50;
+    color: #ffffff;
+    border: none;
+}
+
+/* ==========================
+   FULLCALENDAR BASE STYLE
+=========================== */
+
+.schedule-calendar .fc-theme-standard .fc-scrollgrid {
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+    overflow: hidden;
+}
+
+.schedule-calendar .fc-theme-standard td,
+.schedule-calendar .fc-theme-standard th {
+    border-color: #e0e0e0;
+
+}
+
+.schedule-calendar .fc-col-header {
+    background: #e0e0e096;
+    color: #000000;
+}
+
+.schedule-calendar .fc {
+    font-family: 'Inter', 'Noto Sans Thai', sans-serif;
+    font-size: 14px;
+}
+
+.schedule-calendar .fc-day-today {
+    background: #fff8f0;
+}
+
+.schedule-calendar .fc-day-today .fc-daygrid-day-frame {
+    box-shadow: inset 0 0 0 2px #f58f3a;
+}
+
+.schedule-calendar .fc-day-sat,
+.schedule-calendar .fc-day-sun {
+    background: #ead7ff42;
+}
+
+.schedule-calendar .fc-daygrid-event {
+    border-radius: 10px;
+    border: none;
+    padding: 2px 6px;
+    background: #532274;
+    color: #ffffff;
+    font-size: 13px;
+    text-align: center;
+}
+
+.schedule-calendar .fc-daygrid-event .fc-event-title {
+    font-weight: 500;
+    color: #000;
+}
+
+.schedule-calendar .fc-daygrid-event:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+.sidebar-task.event-type-network,
+.schedule-calendar .event-type-network {
+    border: 1px solid #1E3A8A;
+    background: #1e3b8a1c;
+    color: #111827;
+}
+
+.sidebar-task.event-type-database,
+.schedule-calendar .event-type-database {
+    border: 1px solid #2563EB;
+    background: #2563EB1c;
+    color: #111827;
+}
+
+.sidebar-task.event-type-guidance,
+.schedule-calendar .event-type-guidance {
+    border: 1px solid #0EA5E9;
+    background: #0EA5E91c;
+    color: #111827;
+}
+
+.sidebar-task.event-type-monitoring,
+.schedule-calendar .event-type-monitoring {
+    border: 1px solid #0D9488;
+    background: #0D94881c;
+    color: #111827;
+}
+
+.sidebar-task.event-type-support,
+.schedule-calendar .event-type-support {
+    border: 1px solid #059669;
+    background: #0596691c;
+    color: #111827;
+}
+
+.sidebar-task.event-type-security,
+.schedule-calendar .event-type-security {
+    border: 1px solid #22C55E;
+    background: #22C55E1c;
+    color: #111827;
+}
+
+.sidebar-task.event-type-administration,
+.schedule-calendar .event-type-administration {
+    border: 1px solid #84CC16;
+    background: #84CC161c;
+    color: #111827;
+}
+
+.sidebar-task.event-type-cybersecurity,
+.schedule-calendar .event-type-cybersecurity {
+    border: 1px solid #FACC15;
+    background: #FACC151c;
+    color: #111827;
+}
+
+.sidebar-task.event-type-videoconference,
+.schedule-calendar .event-type-videoconference {
+    border: 1px solid #D97706;
+    background: #D977061c;
+    color: #111827;
+}
+
+.sidebar-task.event-type-satellite,
+.schedule-calendar .event-type-satellite {
+    border: 1px solid #FB923C;
+    background: #FB923C1c;
+    color: #111827;
+}
+
+.sidebar-task.event-type-cctv,
+.schedule-calendar .event-type-cctv {
+    border: 1px solid #7C3AED;
+    background: #7C3AED1c;
+    color: #111827;
+}
+
+.sidebar-task.event-type-other,
+.schedule-calendar .event-type-other {
+    border: 1px solid #8B5CF6;
+    background: #8B5CF61c;
+    color: #111827;
+}
+
+.sidebar-task:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+/* ===== POPUP รายละเอียดงาน ===== */
+.task-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100000;
+}
+
+.task-modal-overlay.open {
+    display: flex;
+}
+
+.task-modal {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 20px 22px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+}
+
+.task-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 11px;
+}
+
+.task-modal-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    color: #532274;
+}
+
+.task-modal-close {
+    border: none;
+    background: transparent;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+.task-modal-body {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.task-detail-row {
+    display: inline-flex;
+    margin-bottom: 8px;
+    gap: 5px;
+}
+
+.task-detail-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #000000;
+    display: block;
+    width: 140px;
+}
+
+.task-detail-value {
+    margin: 0;
+    font-size: 14px;
+    color: #111827;
+    width: 240px;
+}
+
+/* ปุ่มด้านล่าง */
+.task-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.task-btn-delete,
+.task-btn-edit,
+.task-btn-close {
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid #532274;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.task-btn-delete {
+    background: #FEE2E2;
+    border-color: #EF4444;
+    color: #B91C1C;
+}
+
+.task-btn-edit {
+    background: #EEF2FF;
+    border-color: #4F46E5;
+    color: #3730A3;
+}
+
+.task-btn-close {
+    background: #ffffff;
+    color: #532274;
+}
+
+/* ===== STATUS PROCESS แนวตั้ง ===== */
+.task-status-block {
+    margin-top: 16px;
+    padding-top: 8px;
+    border-top: 1px solid #E5E7EB;
+}
+
+.task-status-title {
+    margin: 0 0 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.status-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.status-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    position: relative;
+    padding-left: 4px;
+}
+
+.status-step-indicator {
+    width: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 2px;
+}
+
+.status-step-circle {
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    border: 2px solid #D1D5DB;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.status-step-line {
+    flex: 1;
+    width: 2px;
+    background: #E5E7EB;
+    margin-top: 2px;
+}
+
+/* state */
+.status-step--done .status-step-circle {
+    border-color: #22C55E;
+    background: #22C55E;
+}
+
+.status-step--current .status-step-circle {
+    border-color: #4F46E5;
+    background: #EEF2FF;
+}
+
+.status-step--future .status-step-circle {
+    border-color: #D1D5DB;
+    background: #ffffff;
+}
+
+.status-step-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #111827;
+}
+
+.status-step-desc {
+    font-size: 12px;
+    color: #6B7280;
+}
+
+/* ===== POPUP เพิ่มงานใหม่ ===== */
+
+.task-add-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100000;
+}
+
+.task-add-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+}
+
+.task-add-overlay.open {
+    display: flex;
+}
+
+.task-add-modal {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 20px 24px;
+    max-width: 700px;
+    max-height: 600px;
+    width: 100%;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+    font-size: 14px;
+}
+
+.task-add-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.task-add-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #532274;
+}
+
+.task-add-close {
+    border: none;
+    background: transparent;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.task-add-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: auto;
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.task-add-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.task-add-row label {
+    font-weight: 500;
+}
+
+.task-add-row input[type="text"],
+.task-add-row input[type="url"],
+.task-add-row input[type="date"],
+.task-add-row input[type="time"],
+.task-add-row textarea {
+    width: auto;
+    padding: 6px 8px;
+    margin-right: 4px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.task-add-row select {
+    width: 100%;
+    padding: 6px 8px;
+    margin-right: 4px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.task-add-row-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 16px;
+}
+
+.participant-grid {
+    display: grid;
+    margin-right: 4px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    background: #fafafa;
+    font-size: 14px;
+}
+
+.start-date, .start-time,
+.end-date, .end-time, .location {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.province {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-right: 4px;
+}
+
+.participant-grid label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.task-add-hint {
+    margin: 0;
+    font-size: 12px;
+    color: #777;
+}
+
+.task-add-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.task-add-cancel,
+.task-add-save {
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid #532274;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.task-add-cancel {
+    background: #ffffff;
+    color: #532274;
+}
+
+.task-add-save {
+    background: #532274;
+    color: #ffffff;
+}
+
+
+.schedule-edit-main {
+    padding-top: 210px; /* ให้พอดีกับ header + nav ของระบบ */
+    padding-bottom: 40px;
+}
+
+.schedule-edit-container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px 24px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.schedule-edit-title {
+    margin: 0 0 4px;
+    font-size: 24px;
+    font-weight: 600;
+    color: #532274;
+}
+
+.schedule-edit-subtitle {
+    margin: 0 0 16px;
+    font-size: 14px;
+    color: #666;
+}
+
+.schedule-edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.edit-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.edit-row label {
+    font-weight: 500;
+}
+
+.edit-type, .edit-subtype, .edit-request-date, .edit-request-time, .edit-start-date, .edit-start-time,
+.edit-end-date, .edit-end-time, .edit-location, .edit-province {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.edit-row input[type="text"],
+.edit-row input[type="url"],
+.edit-row input[type="date"],
+.edit-row input[type="time"],
+.edit-row select,
+.edit-row textarea {
+    width: auto;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.edit-row textarea {
+    resize: vertical;
+}
+
+.edit-row-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 16px;
+}
+
+.edit-participant-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    background: #fafafa;
+    font-size: 14px;
+}
+
+.edit-participant-grid label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.edit-hint {
+    margin: 0;
+    font-size: 12px;
+    color: #777;
+}
+
+.edit-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.edit-btn-cancel,
+.edit-btn-save {
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid #532274;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.edit-btn-cancel {
+    background: #ffffff;
+    color: #532274;
+}
+
+.edit-btn-save {
+    background: #532274;
+    color: #ffffff;
+}
+
+
+
+
+/* responsive */
+@media (max-width: 900px) {
+    .schedule-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .schedule-sidebar {
+        max-height: none;
+    }
+
+    .filter-row.filter-row-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/image/logo_หน่วย8.png">
+
+    <title>รายละเอียดประชาสัมพันธ์</title>
+
+    <!-- js -->
+    <script src="/assets/js/include.js" defer></script>
+    <script src="/assets/js/main.js" defer></script>
+    <script src="/assets/js/news-detail.js" defer></script>
+</head>
+
+<body>
+    <!-- include header -->
+    <div id="header"></div>
+
+    <!-- ===== เมนูหลัก ===== -->
+    <div id="navbar"></div>
+
+    <main class="news-detail-page">
+        <section class="news-detail">
+            <div class="news-detail-inner">
+
+                <!-- breadcrumb -->
+                <nav class="breadcrumb">
+                    <a href="home.html">หน้าแรก</a>
+                    <span>/</span>
+                    <a href="news.html">ประชาสัมพันธ์</a>
+                    <span>/</span>
+                    <span id="news-breadcrumb-title">รายละเอียดประชาสัมพันธ์</span>
+                </nav>
+
+                <!-- header -->
+                <header class="news-detail-header">
+                    <h1 id="news-title">กำลังโหลด...</h1>
+                    <div class="news-detail-meta">
+                        <span id="news-date">-</span>
+                        <span class="meta-separator">·</span>
+                        <span id="news-writer">ผู้เขียน: -</span>
+                    </div>
+                </header>
+
+                <!-- body -->
+                <div class="news-detail-body">
+                    <article class="news-detail-content" id="news-content">
+                        <!-- JS จะใส่ content จาก JSON -->
+                    </article>
+
+                    <figure class="news-detail-image-wrap" id="news-image-wrap">
+                        <img id="news-image" src="" alt="ภาพประชาสัมพันธ์">
+                    </figure>
+
+
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="footer"></div>
+</body>
+
+</html>

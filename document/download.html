@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/img/logo_หน่วย8.png">
+
+    <title>ดาวน์โหลดเอกสาร</title>
+
+    <!-- js -->
+    <script src="/assets/js/include.js" defer></script>
+    <script src="/assets/js/main.js" defer></script>
+    <script src="/assets/js/download.js" defer></script>
+</head>
+
+<body>
+    <!-- include header -->
+    <div id="header"></div>
+
+    <!-- ===== เมนูหลัก ===== -->
+    <div id="navbar"></div>
+    <main class="download-main">
+        <div class="download-inner">
+            <h1 class="download-title">ดาวน์โหลดเอกสาร</h1>
+            <div class="download-divider"></div>
+
+            <div class="download-toolbar">
+                <form class="download-search" action="#" onsubmit="return false;">
+                    <input type="text" placeholder="ค้นหา" />
+                    <button type="button" class="download-search-clear">x</button>
+                </form>
+                <button type="button" class="download-filter-btn" aria-label="ตัวกรอง">
+                    <i class="fa-solid fa-filter"></i>
+                </button>
+            </div>
+
+            <div class="download-grid">
+                <!-- JS จะเติม .download-card เข้ามาเอง -->
+            </div>
+        </div>
+    </main>
+
+    <div class="download-filter-popup-overlay">
+        <div class="download-filter-popup">
+            <h3 class="filter-title">ตัวกรองเอกสาร</h3>
+
+            <div class="filter-row">
+                <label for="filter-start">วันที่เริ่มต้น</label>
+                <input type="date" id="filter-start">
+            </div>
+
+            <div class="filter-row">
+                <label for="filter-end">วันที่สิ้นสุด</label>
+                <input type="date" id="filter-end">
+            </div>
+
+            <div class="filter-row">
+                <span>หมวดหมู่เอกสาร</span>
+
+                <label class="filter-checkbox">
+                    <input type="checkbox" id="filter-cat-all" checked>
+                    ทั้งหมด
+                </label>
+
+                <label class="filter-checkbox">
+                    <input type="checkbox" class="filter-cat" value="แบบฟอร์มราชการ">
+                    แบบฟอร์มราชการ
+                </label>
+
+                <label class="filter-checkbox">
+                    <input type="checkbox" class="filter-cat" value="eBook">
+                    eBook
+                </label>
+
+                <label class="filter-checkbox">
+                    <input type="checkbox" class="filter-cat" value="รายงาน">
+                    รายงาน
+                </label>
+
+                <label class="filter-checkbox">
+                    <input type="checkbox" class="filter-cat" value="ระเบียบ/ประกาศ">
+                    ระเบียบ/ประกาศ
+                </label>
+
+                <label class="filter-checkbox">
+                    <input type="checkbox" class="filter-cat" value="เอกสารประชาสัมพันธ์">
+                    เอกสารประชาสัมพันธ์
+                </label>
+            </div>
+
+            <div class="filter-row">
+                <span>เรียงลำดับวันที่</span>
+                <label class="filter-radio">
+                    <input type="radio" name="dateOrder" value="desc" checked>
+                    วันที่ล่าสุด → วันที่เก่าสุด
+                </label>
+                <label class="filter-radio">
+                    <input type="radio" name="dateOrder" value="asc">
+                    วันที่เก่าสุด → วันที่ล่าสุด
+                </label>
+            </div>
+
+            <div class="filter-actions">
+                <button type="button" class="filter-clear">ล้างตัวกรอง</button>
+                <button type="button" class="filter-apply">ใช้ตัวกรอง</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="footer"></div>

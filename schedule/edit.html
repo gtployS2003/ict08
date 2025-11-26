@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/image/logo_หน่วย8.png">
+    <title>ระบบงานสารสนเทศ</title>
+
+    <!-- include head -->
+    <script src="/assets/js/include.js" defer></script>
+    <script src="/assets/js/auth.js" defer></script>
+    <script src="/assets/js/main.js" defer></script>
+
+    <!-- edit event-->
+    <script src="/assets/js/schedule-edit.js" defer></script>
+
+</head>
+
+<body>
+
+    <div id="header-index"></div>
+
+    <div id="schedule-nav"></div>
+
+    <!-- Main content -->
+    <main class="main schedule-edit-main">
+        <div class="schedule-edit-container">
+            <h1 class="schedule-edit-title">แก้ไขงานในระบบ</h1>
+
+            <!-- ฟอร์มแก้ไขงาน -->
+            <form id="schedule-edit-form" class="schedule-edit-form">
+                <!-- แถว: ชื่องาน -->
+                <div class="edit-row">
+                    <label for="edit-title">ชื่องาน</label>
+                    <input type="text" id="edit-title" name="ชื่อ" required>
+                </div>
+
+                <!-- แถว: รายละเอียด -->
+                <div class="edit-row">
+                    <label for="edit-desc">รายละเอียดงาน</label>
+                    <textarea id="edit-desc" name="รายละเอียด" rows="3"></textarea>
+                </div>
+
+                <!-- แถว: ประเภท / ประเภทย่อย -->
+                <div class="edit-row edit-row-2col">
+                    <div class="edit-type">
+                        <label for="edit-type">ประเภทงาน</label>
+                        <select id="edit-type" name="ประเภท" required>
+                            <option value="">-- เลือกประเภท --</option>
+                            <option value="เชื่อมโยงเครือข่าย">เชื่อมโยงเครือข่าย</option>
+                            <option value="ประสานข้อมูล">ประสานข้อมูล</option>
+                            <option value="แนะแนวด้านเทคโนโลยี">แนะแนวด้านเทคโนโลยี</option>
+                            <option value="ติดตามและประเมินผล">ติดตามและประเมินผล</option>
+                            <option value="สนับสนุนอุปกรณ์">สนับสนุนอุปกรณ์</option>
+                            <option value="ถวายความปลอดภัย">ถวายความปลอดภัย</option>
+                            <option value="ธุรการ/พัสดุ">ธุรการ/พัสดุ</option>
+                            <option value="ความปลอดภัยเครือข่าย">ความปลอดภัยเครือข่าย</option>
+                            <option value="วิดีทัศน์ทางไกล">วิดีทัศน์ทางไกล</option>
+                            <option value="ดาวเทียมวิทยุ">ดาวเทียมวิทยุ</option>
+                            <option value="CCTV">CCTV</option>
+                            <option value="งานอื่นๆ">งานอื่นๆ</option>
+                        </select>
+                    </div>
+
+                    <div class="edit-subtype">
+                        <label for="edit-subtype">ประเภทย่อย</label>
+                        <select id="edit-subtype" name="ประเภทย่อย">
+                            <option value="-">-</option>
+                            <option value="ติดตั้ง">ติดตั้ง</option>
+                            <option value="ตรวจซ่อม">ตรวจซ่อม</option>
+                            <option value="บำรุงรักษา">บำรุงรักษา</option>
+                            <option value="vcs">vcs</option>
+                            <option value="webex">webex</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- แถว: ผู้ร้องขอ -->
+                <div class="edit-row">
+                    <label for="edit-requester">ผู้ร้องขอ</label>
+                    <select id="edit-requester" name="ผู้ร้องขอ">
+                        <option value="">-- เลือกผู้ร้องขอ --</option>
+                        <option value="เจ้าหน้าที่ศูนย์เขต 8 (admin)">เจ้าหน้าที่ศูนย์เขต 8 (admin)</option>
+                        <option value="เจ้าหน้าที่ A">เจ้าหน้าที่ A</option>
+                        <option value="เจ้าหน้าที่ B">เจ้าหน้าที่ B</option>
+                        <option value="หน่วยงาน A">หน่วยงาน A</option>
+                        <option value="หน่วยงาน B">หน่วยงาน B</option>
+                    </select>
+                </div>
+
+                <!-- แถว: คนเข้าร่วม -->
+                <div class="edit-row">
+                    <label>คนเข้าร่วม (เลือกได้หลายคน)</label>
+                    <div class="edit-participant-grid">
+                        <label><input type="checkbox" class="edit-participant" value="นาย a"> นาย a</label>
+                        <label><input type="checkbox" class="edit-participant" value="นาย b"> นาย b</label>
+                        <label><input type="checkbox" class="edit-participant" value="นาย c"> นาย c</label>
+                        <label><input type="checkbox" class="edit-participant" value="นาย d"> นาย d</label>
+                        <label><input type="checkbox" class="edit-participant" value="ศูนย์เขต 8"> ศูนย์เขต 8</label>
+                        <label><input type="checkbox" class="edit-participant" value="พิษณุโลก"> พิษณุโลก</label>
+                        <label><input type="checkbox" class="edit-participant" value="ตาก"> ตาก</label>
+                        <label><input type="checkbox" class="edit-participant" value="สุโขทัย"> สุโขทัย</label>
+                        <label><input type="checkbox" class="edit-participant" value="อุตรดิตถ์"> อุตรดิตถ์</label>
+                        <label><input type="checkbox" class="edit-participant" value="แพร่"> แพร่</label>
+                        <label><input type="checkbox" class="edit-participant" value="น่าน"> น่าน</label>
+                    </div>
+                </div>
+
+                <!-- แถว: วันที่ร้องขอ -->
+                <div class="edit-row edit-row-2col">
+                    <div class="edit-request-date">
+                        <label for="edit-request-date">วันที่ร้องขอ</label>
+                        <input type="date" id="edit-request-date" name="วันที่ร้องขอ">
+                    </div>
+                    <div class="edit-request-time">
+                        <label for="edit-request-time">เวลาเข้ารับคำร้อง</label>
+                        <input type="time" id="edit-request-time" name="เวลาเข้ารับคำร้อง">
+                    </div>
+                </div>
+
+                <!-- แถว: วันที่เริ่ม / สิ้นสุด -->
+                <div class="edit-row edit-row-2col">
+                    <div class="edit-start-date">
+                        <label for="edit-start-date">วันที่เริ่มทำงาน</label>
+                        <input type="date" id="edit-start-date" name="วันที่เริ่มต้น">
+                    </div>
+                    <div class="edit-start-time">
+                        <label for="edit-start-time">เวลาเริ่มทำงาน</label>
+                        <input type="time" id="edit-start-time" name="เวลาเริ่มต้น">
+                    </div>
+
+                </div>
+
+                <!-- แถว: เวลาเริ่ม / สิ้นสุด -->
+                <div class="edit-row edit-row-2col">
+                    <div class="edit-end-date">
+                        <label for="edit-end-date">วันที่สิ้นสุดการทำงาน</label>
+                        <input type="date" id="edit-end-date" name="วันที่สิ้นสุด">
+                    </div>
+                    <div class="edit-end-time">
+                        <label for="edit-end-time">เวลาสิ้นสุดการทำงาน</label>
+                        <input type="time" id="edit-end-time" name="เวลาสิ้นสุด">
+                    </div>
+                </div>
+
+                <!-- แถว: จังหวัด -->
+                <div class="edit-row edit-row-2col">
+                    <div class="edit-location">
+                        <label for="edit-province">จังหวัด</label>
+                        <select id="edit-province" name="จังหวัด">
+                            <option value="">-- เลือกจังหวัด --</option>
+                            <option value="พิษณุโลก">พิษณุโลก</option>
+                            <option value="ตาก">ตาก</option>
+                            <option value="สุโขทัย">สุโขทัย</option>
+                            <option value="อุตรดิตถ์">อุตรดิตถ์</option>
+                            <option value="แพร่">แพร่</option>
+                            <option value="น่าน">น่าน</option>
+                        </select>
+                    </div>
+                    <div class="edit-province">
+                        <label for="edit-location">สถานที่</label>
+                        <input type="text" id="edit-location" name="สถานที่">
+                    </div>
+                </div>
+
+                <!-- แถว: link / เอกสาร -->
+                <div class="edit-row">
+                    <label for="edit-link">ลิงก์แนบ</label>
+                    <input type="url" id="edit-link" name="ลิงก์แนบ" placeholder="https://...">
+                </div>
+
+                <div class="edit-row">
+                    <label for="edit-file">เอกสารแนบ (อัปโหลดใหม่)</label>
+                    <input type="file" id="edit-file" name="เอกสารแนบ">
+                    <p class="edit-hint" id="edit-current-file"></p>
+                </div>
+
+                <!-- แถว: สถานะ -->
+                <div class="edit-row">
+                    <label for="edit-status">สถานะ</label>
+                    <select id="edit-status" name="สถานะ">
+                        <option value="รอการตรวจสอบ">รอการตรวจสอบ</option>
+                        <option value="กำลังดำเนินการ">กำลังดำเนินการ</option>
+                        <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+                        <option value="ยกเลิก">ยกเลิก</option>
+                    </select>
+                    <p class="edit-hint">
+                        * สำหรับงานวิดีทัศน์ทางไกล สามารถใช้สถานะเฉพาะเพิ่มเติมในภายหลัง (เช่น อนุมัติ,
+                        ได้รับลิงก์ประชุม ฯลฯ)
+                    </p>
+                </div>
+
+                <!-- ปุ่ม -->
+                <div class="edit-footer">
+                    <button type="button" class="edit-btn-cancel" id="edit-cancel-btn">
+                        ย้อนกลับ
+                    </button>
+                    <button type="submit" class="edit-btn-save">
+                        บันทึกการแก้ไข
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+
+    <div id="footer-index"></div>
+
+</body>
+
+</html>
