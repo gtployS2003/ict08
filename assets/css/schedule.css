@@ -253,8 +253,8 @@ main {
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    border: 2px solid #ffffff;
-    background: #ffffff;
+    border: 2px solid #ffffff00;
+    background: #ffffff00;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -775,6 +775,8 @@ main {
     color: #6B7280;
 }
 
+
+
 /* ===== POPUP เพิ่มงานใหม่ ===== */
 
 .task-add-overlay {
@@ -895,8 +897,11 @@ main {
     font-size: 14px;
 }
 
-.start-date, .start-time,
-.end-date, .end-time, .location {
+.start-date,
+.start-time,
+.end-date,
+.end-time,
+.location {
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -950,7 +955,8 @@ main {
 
 
 .schedule-edit-main {
-    padding-top: 210px; /* ให้พอดีกับ header + nav ของระบบ */
+    padding-top: 210px;
+    /* ให้พอดีกับ header + nav ของระบบ */
     padding-bottom: 40px;
 }
 
@@ -960,7 +966,7 @@ main {
     background: #ffffff;
     border-radius: 12px;
     padding: 20px 24px 24px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .schedule-edit-title {
@@ -992,12 +998,21 @@ main {
     font-weight: 500;
 }
 
-.edit-type, .edit-subtype, .edit-request-date, .edit-request-time, .edit-start-date, .edit-start-time,
-.edit-end-date, .edit-end-time, .edit-location, .edit-province {
+.edit-type,
+.edit-subtype,
+.edit-request-date,
+.edit-request-time,
+.edit-start-date,
+.edit-start-time,
+.edit-end-date,
+.edit-end-time,
+.edit-location,
+.edit-province {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
+
 .edit-row input[type="text"],
 .edit-row input[type="url"],
 .edit-row input[type="date"],
@@ -1070,6 +1085,293 @@ main {
 .edit-btn-save {
     background: #532274;
     color: #ffffff;
+}
+
+
+/* ==========================
+   Schedule - รายการกิจกรรม
+=========================== */
+
+.evnt-list-main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 20px 40px;
+}
+
+.evnt-list-title {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #532274;
+}
+
+.event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 20px;
+}
+
+.schedule-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.evnt-list-table-wrapper {
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    padding: 12px;
+    overflow-x: auto;
+}
+
+.evnt-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+    table-layout: fixed;
+    font-size: 14px;
+}
+
+.evnt-list-table thead th {
+    background: #f3f4f6;
+    font-size: 16px;
+    padding: 10px 12px;
+    text-align: center;
+    border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
+
+}
+
+.evnt-list-table tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f1f1f1;
+    vertical-align: top;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.evnt-list-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+/* คอลัมน์เล็กๆ เช่น ลำดับ / วันที่ */
+.evnt-list-table td:nth-child(1),
+.evnt-list-table td:nth-child(6),
+.evnt-list-table td:nth-child(7) {
+    white-space: nowrap;
+}
+
+/* ลำดับ */
+.evnt-list-table th:nth-child(1),
+.evnt-list-table td:nth-child(1) {
+    width: 20px;
+    text-align: center;
+}
+
+/* ชื่องาน */
+.evnt-list-table th:nth-child(2),
+.evnt-list-table td:nth-child(2) {
+    width: 180px;
+}
+
+/* ประเภทหลัก / ย่อย */
+.evnt-list-table th:nth-child(3),
+.evnt-list-table td:nth-child(3) {
+    width: 130px;
+}
+
+/* ผู้ร้องขอ */
+.evnt-list-table th:nth-child(4),
+.evnt-list-table td:nth-child(4) {
+    width: 90px;
+}
+
+/* ผู้เข้าร่วม */
+.evnt-list-table th:nth-child(5),
+.evnt-list-table td:nth-child(5) {
+    width: 120px;
+}
+
+/* จังหวัด */
+.evnt-list-table th:nth-child(6),
+.evnt-list-table td:nth-child(6) {
+    width: 70px;
+}
+
+/* เริ่มต้น / สิ้นสุด (วันที่+เวลา) */
+.evnt-list-table th:nth-child(7),
+.evnt-list-table td:nth-child(7),
+.evnt-list-table th:nth-child(8),
+.evnt-list-table td:nth-child(8) {
+    width: 80px;
+    white-space: pre-line;
+}
+
+/* สถานะ */
+.evnt-list-table th:nth-child(9),
+.evnt-list-table td:nth-child(9) {
+    width: 120px;
+    white-space: nowrap;
+}
+
+
+/* ชื่องานให้เด่นหน่อย */
+.evnt-list-table .job-title-link {
+    color: #1f2937;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.evnt-list-table .job-title-link:hover {
+    text-decoration: underline;
+}
+
+.status-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.status-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #6b7280; /* เทา = pending */
+}
+
+.status-step::before {
+    content: "";
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #d1d5db;
+    background: #fff;
+}
+
+/* ===============================
+   ACTIVE (สถานะปัจจุบัน)
+================================*/
+.status-step.active {
+    color: #22c55e; /* 💚 สีเขียว */
+    font-weight: 600;
+}
+
+.status-step.active::before {
+    border-color: #22c55e;
+    background: #22c55e;
+}
+
+/* ===============================
+   COMPLETED (ก่อนสถานะปัจจุบัน)
+================================*/
+.status-step.completed {
+    color: #22c55e; /* 💚 สีเขียว */
+    font-weight: 600;
+}
+
+.status-step.completed::before {
+    border-color: #22c55e;
+    background: #22c55e;
+}
+
+
+.task-type-pill,
+.task-type-sub {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 110px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    border-radius: 999px;
+    /* pill shape */
+    white-space: nowrap;
+    margin-bottom: 6px;
+}
+
+.task-type-sub {
+    color: #9298a0;
+    border: 1px solid #9298a0;
+    background: #9298a01c;
+}
+
+
+.event-list-type-network {
+    color: #1E3A8A;
+    border: 1px solid #1E3A8A;
+    background: #1e3b8a1c;
+}
+
+.event-list-type-database {
+    color: #2563EB;
+    border: 1px solid #2563EB;
+    background: #2563EB1c;
+}
+
+.event-list-type-guidance {
+    color: #0EA5E9;
+    border: 1px solid #0EA5E9;
+    background: #0EA5E91c;
+}
+
+.event-list-type-monitoring {
+    color: #0D9488;
+    border: 1px solid #0D9488;
+    background: #0D94881c;
+}
+
+.event-list-type-support {
+    color: #059669;
+    border: 1px solid #059669;
+    background: #0596691c;
+}
+
+.event-list-type-security {
+    color: #22C55E;
+    border: 1px solid #22C55E;
+    background: #22C55E1c;
+}
+
+.event-list-type-administration {
+    color: #84CC16;
+    border: 1px solid #84CC16;
+    background: #84CC161c;
+}
+
+.event-list-type-cybersecurity {
+    color: #FACC15;
+    border: 1px solid #FACC15;
+    background: #FACC151c;
+}
+
+.event-list-type-videoconference {
+    color: #D97706;
+    border: 1px solid #D97706;
+    background: #D977061c;
+}
+
+.event-list-type-satellite {
+    color: #FB923C;
+    border: 1px solid #FB923C;
+    background: #FB923C1c;
+}
+
+.event-list-type-cctv {
+    color: #7C3AED;
+    border: 1px solid #7C3AED;
+    background: #7C3AED1c;
+}
+
+.event-list-type-other {
+    color: #8B5CF6;
+    border: 1px solid #8B5CF6;
+    background: #8B5CF61c;
 }
 
 

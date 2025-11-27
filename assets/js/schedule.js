@@ -516,37 +516,53 @@ function getStatusStepsForTask(task) {
     ];
 }
 
-function renderStatusSteps(container, task) {
-    const allSteps = getStatusStepsForTask(task);
-    const currentStatus = task['สถานะ'] || '';
-    container.innerHTML = '';
+function renderStatusFlow(item) {
+    const type = item['ประเภท'];
+    const nowStatus = item['สถานะ'];
 
-    // หาตำแหน่ง step ปัจจุบัน
-    let currentIndex = allSteps.findIndex(s => currentStatus.includes(s.key));
-    if (currentIndex === -1) currentIndex = 0;
+    let steps = [];
 
-    allSteps.forEach((step, index) => {
-        const stepEl = document.createElement('div');
-        stepEl.className = 'status-step';
+    // วิดีทัศน์ทางไกล
+    if (type === 'วิดีทัศน์ทางไกล') {
+        steps = [
+            'รอการตรวจสอบ',
+            'อนุมัติโดยเจ้าหน้าที่',
+            'ได้รับลิงก์การประชุม',
+            'กำลังดำเนินการ',
+            'เสร็จสิ้น',
+            'ยกเลิก'
+        ];
+    } else {
+        // งานทั่วไป
+        steps = [
+            'รอการตรวจสอบ',
+            'กำลังดำเนินการ',
+            'เสร็จสิ้น',
+            'ยกเลิก'
+        ];
+    }
 
-        let stateClass = 'status-step--future';
-        if (index < currentIndex) stateClass = 'status-step--done';
-        else if (index === currentIndex) stateClass = 'status-step--current';
+    let html = `<div class="status-flow">`;
+    const nowIndex = steps.indexOf(nowStatus);
 
-        stepEl.classList.add(stateClass);
+    steps.forEach((step, i) => {
+        if (nowIndex === -1) {
+            // ถ้าไม่รู้จักสถานะ → ให้เป็น pending หมด
+            html += `<div class="status-step">${step}</div>`;
+            return;
+        }
 
-        stepEl.innerHTML = `
-          <div class="status-step-indicator">
-            <div class="status-step-circle"></div>
-            ${index < allSteps.length - 1 ? '<div class="status-step-line"></div>' : ''}
-          </div>
-          <div class="status-step-text">
-            <div class="status-step-label">${step.label}</div>
-          </div>
-        `;
-
-        container.appendChild(stepEl);
+        if (i < nowIndex) {
+            html += `<div class="status-step completed">${step}</div>`;
+        } else if (i === nowIndex) {
+            html += `<div class="status-step active">${step}</div>`;
+        } else {
+            html += `<div class="status-step">${step}</div>`;
+        }
     });
+
+    html += `</div>`;
+    return html;
 }
 
 function openTaskModal(task) {
@@ -615,9 +631,11 @@ function openTaskModal(task) {
     document.getElementById('task-modal-status').textContent =
         task['สถานะ'] || '-';
 
-    // สถานะแบบขั้นตอน
     const statusContainer = document.getElementById('task-status-steps');
-    renderStatusSteps(statusContainer, task);
+    if (statusContainer) {
+        statusContainer.innerHTML = renderStatusFlow(task);
+    }
+
 
     // เก็บ id เผื่อใช้ตอน edit/delete (ตอนนี้ prototype: ยังไม่เชื่อม backend)
     overlay.dataset.taskId = task.id;
@@ -633,81 +651,81 @@ function closeTaskModal() {
 }
 
 function setupAddTaskModal() {
-  const overlay   = document.getElementById('task-add-overlay');
-  const openBtn   = document.getElementById('schedule-add-task-toggle');
-  const closeBtns = overlay ? overlay.querySelectorAll('.task-add-close') : [];
+    const overlay = document.getElementById('task-add-overlay');
+    const openBtn = document.getElementById('schedule-add-task-toggle');
+    const closeBtns = overlay ? overlay.querySelectorAll('.task-add-close') : [];
 
-  if (!overlay || !openBtn) return;
+    if (!overlay || !openBtn) return;
 
-  // เปิด popup
-  openBtn.addEventListener('click', () => {
-    // default: สร้างโดย = user ปัจจุบัน (ถ้ามีจาก auth.js)
-    const createdByInput = document.getElementById('add-created-by');
-    if (createdByInput) {
-      if (window.currentUserName) {
-        createdByInput.value = window.currentUserName;
-      }
-    }
+    // เปิด popup
+    openBtn.addEventListener('click', () => {
+        // default: สร้างโดย = user ปัจจุบัน (ถ้ามีจาก auth.js)
+        const createdByInput = document.getElementById('add-created-by');
+        if (createdByInput) {
+            if (window.currentUserName) {
+                createdByInput.value = window.currentUserName;
+            }
+        }
 
-    overlay.classList.add('open');
-  });
-
-  // ปิด popup
-  closeBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      overlay.classList.remove('open');
+        overlay.classList.add('open');
     });
-  });
 
-  // ปิดเมื่อคลิกนอกกล่อง
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) {
-      overlay.classList.remove('open');
-    }
-  });
+    // ปิด popup
+    closeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            overlay.classList.remove('open');
+        });
+    });
 
-  const form = document.getElementById('task-add-form');
-  if (!form) return;
+    // ปิดเมื่อคลิกนอกกล่อง
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            overlay.classList.remove('open');
+        }
+    });
 
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
+    const form = document.getElementById('task-add-form');
+    if (!form) return;
 
-    const fd = new FormData(form);
-    const data = Object.fromEntries(fd.entries());
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
 
-    // ผู้เข้าร่วม (checkbox หลายตัว)
-    const participantBoxes = document.querySelectorAll('.add-participant:checked');
-    data['คนเข้าร่วม'] = Array.from(participantBoxes).map(cb => cb.value);
+        const fd = new FormData(form);
+        const data = Object.fromEntries(fd.entries());
 
-    // สถานะเริ่มต้นบังคับ = รอการตรวจสอบ
-    data['สถานะ'] = 'รอการตรวจสอบ';
+        // ผู้เข้าร่วม (checkbox หลายตัว)
+        const participantBoxes = document.querySelectorAll('.add-participant:checked');
+        data['คนเข้าร่วม'] = Array.from(participantBoxes).map(cb => cb.value);
 
-    // id ชั่วคราว (Prototype)
-    data.id = Date.now();
+        // สถานะเริ่มต้นบังคับ = รอการตรวจสอบ
+        data['สถานะ'] = 'รอการตรวจสอบ';
 
-    // แปลงไฟล์แนบเป็นชื่อไฟล์ (prototype)
-    const fileInput = document.getElementById('add-file');
-    if (fileInput && fileInput.files[0]) {
-      data['เอกสารแนบ'] = fileInput.files[0].name;
-    }
+        // id ชั่วคราว (Prototype)
+        data.id = Date.now();
 
-    // เพิ่มเข้า allTasks / filteredTasks แล้ว refresh UI
-    allTasks.push(data);
-    filteredTasks = allTasks.slice();
+        // แปลงไฟล์แนบเป็นชื่อไฟล์ (prototype)
+        const fileInput = document.getElementById('add-file');
+        if (fileInput && fileInput.files[0]) {
+            data['เอกสารแนบ'] = fileInput.files[0].name;
+        }
 
-    // รีเฟรช sidebar + calendar
-    const today = new Date();
-    renderTodayTasks(allTasks, document.getElementById('today-task-list'), today);
-    renderPendingTasks(allTasks, document.getElementById('pending-task-list'));
-    initCalendar(filteredTasks);
+        // เพิ่มเข้า allTasks / filteredTasks แล้ว refresh UI
+        allTasks.push(data);
+        filteredTasks = allTasks.slice();
 
-    // ปิด popup + ล้างฟอร์ม
-    form.reset();
-    participantBoxes.forEach(cb => (cb.checked = false));
-    overlay.classList.remove('open');
+        // รีเฟรช sidebar + calendar
+        const today = new Date();
+        renderTodayTasks(allTasks, document.getElementById('today-task-list'), today);
+        renderPendingTasks(allTasks, document.getElementById('pending-task-list'));
+        initCalendar(filteredTasks);
 
-    alert('บันทึกงานสำหรับบุคคลในหน่วยงาน (ตัวอย่าง prototype)');
-  });
+        // ปิด popup + ล้างฟอร์ม
+        form.reset();
+        participantBoxes.forEach(cb => (cb.checked = false));
+        overlay.classList.remove('open');
+
+        alert('บันทึกงานสำหรับบุคคลในหน่วยงาน (ตัวอย่าง prototype)');
+    });
 }
 
 function resetAddTaskForm() {
