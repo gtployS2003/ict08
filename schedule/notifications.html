@@ -1,33 +1,76 @@
 <!DOCTYPE html>
 <html lang="th">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="/assets/image/logo_หน่วย8.png">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/assets/image/logo_หน่วย8.png" />
     <title>ระบบงานสารสนเทศ</title>
 
     <!-- include head -->
     <script src="/assets/js/include.js" defer></script>
     <script src="/assets/js/auth.js" defer></script>
     <script src="/assets/js/main.js" defer></script>
+    <!-- JS สำหรับหน้าแจ้งเตือน -->
+    <script src="/assets/js/notifications.js" defer></script>
+  </head>
 
-</head>
-
-<body>
-
+  <body>
     <div id="header-index"></div>
 
     <div id="schedule-nav"></div>
 
     <!-- Main content -->
-    <main class="main">
+    <main class="main-notifications">
+      <section class="notification-main">
+        <div class="notifications-inner">
+          <header class="notifications-header">
+            <h1>การแจ้งเตือน</h1>
 
+            <div class="notifications-controls">
+              <!-- ค้นหา -->
+              <div class="notifications-search">
+                <input
+                  type="text"
+                  id="notif-search"
+                  placeholder="ค้นหาจากหัวข้อหรือข้อความแจ้งเตือน..."
+                />
+                <button id="notif-search-clear" type="button">ล้าง</button>
+              </div>
+
+              <!-- ตัวกรอง -->
+              <div class="notifications-filters">
+                <select id="notif-read-filter">
+                  <option value="all">ทั้งหมด</option>
+                  <option value="unread">ยังไม่อ่าน</option>
+                  <option value="read">อ่านแล้ว</option>
+                </select>
+
+                <select id="notif-type-filter">
+                  <option value="all">ทุกประเภท</option>
+                  <option value="คำร้องใหม่">คำร้องใหม่</option>
+                  <option value="คำร้องแก้ไข">คำร้องแก้ไข</option>
+                  <option value="สร้างงานใหม่ที่เกี่ยวข้องกับผู้ใช้">
+                    งานใหม่ที่เกี่ยวข้อง
+                  </option>
+                  <option value="เตือนล่วงหน้า">เตือนล่วงหน้า</option>
+                </select>
+              </div>
+            </div>
+          </header>
+
+          <!-- ตรงนี้จะให้ JS สร้างรายการแจ้งเตือน -->
+          <div class="notifications-list">
+            <!-- JS จะใส่ .notification-card มาตรงนี้ -->
+          </div>
+
+          <!-- กรณีไม่มีข้อมูล -->
+          <div class="notifications-empty" style="display: none">
+            <p>ไม่มีการแจ้งเตือนตามเงื่อนไขที่เลือก</p>
+          </div>
+        </div>
+      </section>
     </main>
 
-
     <div id="footer-index"></div>
-
-</body>
-
+  </body>
 </html>

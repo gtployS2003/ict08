@@ -1374,9 +1374,6 @@ main {
     background: #8B5CF61c;
 }
 
-
-
-
 /* responsive */
 @media (max-width: 900px) {
     .schedule-layout {
@@ -1389,5 +1386,320 @@ main {
 
     .filter-row.filter-row-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* ==========================
+   NOTIFICATIONS PAGE
+=========================== */
+
+/* พื้นหลัง + ระยะห่างจาก header + nav */
+.notifications-main {
+    padding-top: 190px;          /* ให้เผื่อส่วน header + schedule-nav */
+    padding-bottom: 40px;
+    padding-left: 16px;
+    padding-right: 16px;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+/* กล่องด้านในจัดกึ่งกลาง */
+.notifications-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+/* ส่วนบน: หัวข้อ + ตัวค้นหา/ฟิลเตอร์ */
+.notifications-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-end;
+    margin-bottom: 20px;
+}
+
+.notifications-header h1 {
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #222;
+}
+
+/* โซน control (search + filters) */
+.notifications-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 260px;
+}
+
+/* แถวค้นหา */
+.notifications-search {
+    display: flex;
+    gap: 8px;
+}
+
+.notifications-search input {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 0.95rem;
+    font-family: inherit;
+}
+
+.notifications-search input:focus {
+    outline: none;
+    border-color: #532274;
+    box-shadow: 0 0 0 2px rgba(83, 34, 116, 0.15);
+}
+
+.notifications-search button {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    background: #e0e0e0;
+    font-size: 0.9rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.notifications-search button:hover {
+    background: #d0d0d0;
+}
+
+/* แถว filter */
+.notifications-filters {
+    display: flex;
+    gap: 8px;
+}
+
+.notifications-filters select {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: #fff;
+}
+
+.notifications-filters select:focus {
+    outline: none;
+    border-color: #532274;
+    box-shadow: 0 0 0 2px rgba(83, 34, 116, 0.15);
+}
+
+/* รายการแจ้งเตือน */
+.notifications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* กรณีไม่มีข้อมูล */
+.notifications-empty {
+    margin-top: 20px;
+    text-align: center;
+    color: #777;
+    font-size: 0.95rem;
+}
+
+/* การ์ดแจ้งเตือนแต่ละอัน */
+.notification-card {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 14px 16px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.notification-card:hover {
+    border-color: #532274;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+}
+
+/* highlight สำหรับยังไม่อ่าน */
+.notification-card.unread {
+    border-left: 4px solid #532274;
+    padding-left: 12px;  /* ชดเชย border-left */
+    background: #faf5ff; /* เบา ๆ โทนม่วงอ่อน */
+}
+
+/* ส่วนหัวของการ์ด (หัวข้อ + badges + เวลา) */
+.notification-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.notification-title {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #222;
+}
+
+/* meta (badges) */
+.notification-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 0.8rem;
+}
+
+/* badge พื้นฐาน */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    border: 1px solid transparent;
+    background: #eee;
+    color: #444;
+}
+
+/* badge ประเภทแจ้งเตือน */
+.badge-type {
+    background: #ede7f6;
+    color: #4527a0;
+    border-color: #d1c4e9;
+}
+
+/* badge สถานะอ่าน/ยังไม่อ่าน */
+.badge-read {
+    background: #eeeeee;
+    color: #555;
+    border-color: #e0e0e0;
+}
+
+.notification-card.unread .badge-read {
+    background: #ffebee;
+    color: #c62828;
+    border-color: #ffcdd2;
+}
+
+/* badge ชนิดการเตือน (1 สัปดาห์ / 1 วัน / 1 ชั่วโมง) */
+.badge-subtype {
+    background: #e3f2fd;
+    color: #1565c0;
+    border-color: #bbdefb;
+}
+
+/* เวลาต่างๆ */
+.notification-time {
+    text-align: right;
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.notification-time p {
+    margin: 0;
+}
+
+/* ข้อความหลักของการแจ้งเตือน */
+.notification-message {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #444;
+}
+
+/* footer ของการ์ด: เป้าหมาย/บทบาท + ปุ่ม */
+.notification-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
+    margin-top: 4px;
+    font-size: 0.85rem;
+    color: #555;
+    flex-wrap: wrap;
+}
+
+.notification-role {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* ปุ่มลิงก์ไปดูรายละเอียดงาน */
+.notification-actions .btn-link {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid #532274;
+    color: #532274;
+    font-size: 0.85rem;
+    text-decoration: none;
+    background: #fff;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.notification-actions .btn-link:hover {
+    background: #532274;
+    color: #fff;
+}
+
+/* ==========================
+   RESPONSIVE
+=========================== */
+
+@media (max-width: 768px) {
+    .notifications-header {
+        align-items: flex-start;
+    }
+
+    .notifications-controls {
+        width: 100%;
+    }
+
+    .notifications-filters {
+        flex-direction: row;
+    }
+
+    .notification-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .notification-time {
+        text-align: left;
+        margin-top: 4px;
+    }
+
+    .notification-footer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .notification-actions {
+        width: 100%;
+    }
+
+    .notification-actions .btn-link {
+        width: fit-content;
+    }
+}
+
+@media (max-width: 480px) {
+    .notifications-search {
+        flex-direction: column;
+    }
+
+    .notifications-search button {
+        width: 100%;
+        text-align: center;
+    }
+
+    .notifications-filters {
+        flex-direction: column;
     }
 }
