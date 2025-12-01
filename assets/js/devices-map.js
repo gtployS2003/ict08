@@ -1,3 +1,44 @@
+// ===== เลือกชื่อ base icon ตามประเภทอุปกรณ์ =====
+function getDeviceBaseName(deviceType) {
+  switch (deviceType) {
+    case "Switch":
+      return "Switch";
+    case "Router":
+      return "Router";
+    case "CCTV":
+      return "Cctv"; // ให้ตรงกับ "Cctv online/offline.png"
+    case "Firewall":
+      return "firewall"; // ให้ตรงกับ "firewall online/offline.png"
+    case "Access Point":
+      return "Access point"; // ให้ตรงกับ "Access point online/offline.png"
+    case "Server":
+      return "Server"; // ให้ตรงกับ "Server online/offline.png"
+    case "วิทยุสื่อสาร":
+      return "walkie talkie"; // ให้ตรงกับ "walkie talkie online/offline.png"
+    case "UPS":
+      // ถ้าไม่มี icon UPS แยก ใช้ Server หรือ Switch แทนก็ได้
+      return "Server";
+    default:
+      return "Unknown device";
+  }
+}
+
+// ===== สร้าง path รูป icon ตามประเภท + สถานะ =====
+function getDeviceIconUrl(device) {
+  const baseName = getDeviceBaseName(device.ประเภท);
+  const status = (device.สถานะ || "").toLowerCase(); // "online" | "offline" | "maintenance" ฯลฯ
+
+  if (baseName === "Unknown device") {
+    return "/assets/image/status-device/Unknown device.png";
+  }
+
+  // ถ้าไม่ได้ online ให้ถือเป็น offline (รวมถึง maintenance)
+  const statusSuffix = status === "online" ? "online" : "offline";
+
+  return `/assets/image/status-device/${baseName} ${statusSuffix}.png`;
+}
+
+// ===== Leaflet map =====
 document.addEventListener("DOMContentLoaded", () => {
   const mapEl = document.getElementById("device-map");
   if (!mapEl) return;
@@ -6,18 +47,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (mapEl._leaflet_id) {
     mapEl._leaflet_id = null;
   }
-
-  // ตั้งค่า default icon ของ Marker ให้ใช้ไฟล์จาก CDN (กัน 404)
-  L.Marker.prototype.options.icon = L.icon({
-    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    iconRetinaUrl:
-      "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
-  });
 
   // 1) สร้างแผนที่ (ค่าเริ่มต้นโฟกัสกลางเขต 8)
   const map = L.map("device-map").setView([16.8, 100.0], 7);
@@ -38,18 +67,36 @@ document.addEventListener("DOMContentLoaded", () => {
   fetch("/assets/js/data-ex/devices.json")
     .then((res) => {
       if (!res.ok) {
-        throw new Error("โหลด devices.json ไม่สำเร็จ (status " + res.status + ")");
+        throw new Error(
+          "โหลด devices.json ไม่สำเร็จ (status " + res.status + ")"
+        );
       }
       return res.json();
     })
     .then((devices) => {
       const bounds = [];
+      const total = devices.length;
+      const onlineCount = devices.filter((d) => d.สถานะ === "online").length;
+      const offlineCount = devices.filter((d) => d.สถานะ !== "online").length;
+
+      document.getElementById("summary-total").textContent = total;
+      document.getElementById("summary-online").textContent = onlineCount;
+      document.getElementById("summary-offline").textContent = offlineCount;
 
       devices.forEach((d) => {
         // เช็ก lat/lng ก่อนกันข้อมูลเสีย
         if (typeof d.lat !== "number" || typeof d.lng !== "number") return;
 
-        const marker = L.marker([d.lat, d.lng]).addTo(map);
+        const iconUrl = getDeviceIconUrl(d);
+
+        const icon = L.icon({
+          iconUrl: iconUrl,
+          iconSize: [32, 32], // ปรับให้พอดีกับไฟล์จริงได้
+          iconAnchor: [16, 32],
+          popupAnchor: [1, -28],
+        });
+
+        const marker = L.marker([d.lat, d.lng], { icon }).addTo(map);
 
         marker.bindPopup(`
           <b>${d.ประเภท} #${d.id}</b><br>
