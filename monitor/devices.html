@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/assets/image/logo_หน่วย8.png" />
+    <title>ระบบงานสารสนเทศ</title>
+
+    <!-- include head -->
+    <script src="/assets/js/include.js" defer></script>
+    <script src="/assets/js/auth.js" defer></script>
+    <script src="/assets/js/main.js" defer></script>
+
+    <!--device list-->
+    <script src="/assets/js/devices-list.js" defer></script>
+  </head>
+
+  <body>
+    <div id="header-device"></div>
+    <div id="device-nav"></div>
+
+    <main class="main">
+      <section class="device-list">
+        <div class="device-list-header">
+          <h1 class="device-list-title">รายการอุปกรณ์</h1>
+
+          <div class="device-toolbar">
+            <!--เพิ่มงาน-->
+            <button id="add-device-toggle" class="add-device">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+
+            <div class="device-list-search">
+              <input
+                type="text"
+                id="device-list-search-input"
+                placeholder="ค้นหา"
+              />
+              <button id="device-list-search-clear" class="device-list-search-clear">
+                x
+              </button>
+            </div>
+
+            <div id="device-filter-toggle" class="device-filter-icon">
+              <i class="fa-solid fa-filter"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="device-list-table-container">
+          <table class="device-list-table">
+            <thead>
+              <tr>
+                <th>ลำดับ</th>
+                <th>ชื่ออุปกรณ์</th>
+                <th>ประเภท</th>
+                <th>IP Address</th>
+                <th>สถานะ</th>
+                <th>สถานที่</th>
+                <th>จังหวัด</th>
+              </tr>
+            </thead>
+            <tbody id="device-list-tbody">
+              <!-- รายการอุปกรณ์จะถูกเพิ่มที่นี่โดย JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <div id="footer-index"></div>
+  </body>
+</html>
