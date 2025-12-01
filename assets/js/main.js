@@ -402,7 +402,15 @@ function initActivelink() {
         }
     });
 
-    ocument.querySelectorAll('.nav-menu a').forEach(link => {
+    document.querySelectorAll('.nav-menu a').forEach(link => {
+        const linkPath = new URL(link.href).pathname.replace(/\/index\.html$/, '/');
+
+        if (linkPath === currentPath) {
+            link.classList.add('active');
+        }
+    });
+
+    document.querySelectorAll('.nav-device a').forEach(link => {
         const linkPath = new URL(link.href).pathname.replace(/\/index\.html$/, '/');
 
         if (linkPath === currentPath) {

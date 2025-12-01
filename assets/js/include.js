@@ -59,3 +59,18 @@ fetch("/assets/include/schedule_nav.html")
     const el = document.getElementById("schedule-nav");
     if (el) el.innerHTML = html;
   });
+
+// ========== LOAD DEVICE NAVIGATION ==========
+fetch("/assets/include/device-nav.html")
+  .then(res => res.text())
+  .then(html => {
+    const el = document.getElementById("device-nav");
+    if (el) el.innerHTML = html;
+  });
+
+fetch("/assets/include/header-device.html")
+  .then(res => res.text())
+  .then(html => {
+    const el = document.getElementById("header-device");
+    if (el) el.innerHTML = html;
+  });
