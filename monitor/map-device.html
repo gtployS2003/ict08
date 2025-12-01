@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="th">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="/assets/image/logo_หน่วย8.png">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/assets/image/logo_หน่วย8.png" />
     <title>ระบบงานสารสนเทศ</title>
 
     <!-- include head -->
@@ -12,19 +11,24 @@
     <script src="/assets/js/auth.js" defer></script>
     <script src="/assets/js/main.js" defer></script>
 
-    <!-- edit event-->
-    <script src="/assets/js/schedule-edit.js" defer></script>
+    <!-- Leaflet JS -->
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    defer ></script>
+    <script src="/assets/js/devices-map.js" defer></script>
+  </head>
 
-</head>
+  <body>
+    <div id="header-device"></div>
 
-<body>
-
-    <div id="header-index"></div>
-
-    <div id="schedule-nav"></div>
+    <div id="device-nav"></div>
+    <main class="main">
+      <h1>แผนที่อุปกรณ์ ICT Center เขต 8</h1>
+      <div id="device-map"></div>
+    </main>
 
     <div id="footer-index"></div>
-
-</body>
-
+  </body>
 </html>
