@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/assets/image/logo_หน่วย8.png" />
+    <title>ระบบศูนย์ควบคุมและรายงานผล</title>
+
+    <!-- include head -->
+    <script src="/assets/js/include.js" defer></script>
+    <script src="/assets/js/auth.js" defer></script>
+    <script src="/assets/js/main.js" defer></script>
+    <script src="/assets/js/gcms-dashboard.js" defer></script>
+
+  </head>
+
+  <body>
+    <header id="header-gcms"></header>
+    <nav id="gcms-nav"></nav>
+
+    <main class="main">
+      <div class="dashboard-layout">
+        <aside class="sidebar">
+          <div
+            class="sidebar__menu"
+            role="navigation"
+            aria-label="Dashboard menu"
+          >
+            <button
+              class="sidebar__item"
+              type="button"
+              data-dashboard="network"
+            >
+              เครือข่ายและอุปกรณ์
+            </button>
+            <button
+              class="sidebar__item"
+              type="button"
+              data-dashboard="requests"
+            >
+              คำขอรับการสนับสนุน
+            </button>
+            <button
+              class="sidebar__item"
+              type="button"
+              data-dashboard="meetings"
+            >
+              การประชุมและปฏิทินงาน
+            </button>
+            <button
+              class="sidebar__item"
+              type="button"
+              data-dashboard="publicity"
+            >
+              ข่าวประชาสัมพันธ์
+            </button>
+          </div>
+        </aside>
+
+        <section class="dashboard-area">
+          <div class="dashboard-content">
+            <h2 id="dashboard-title" class="dashboard-title">
+              เครือข่ายและอุปกรณ์
+            </h2>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer id="footer-index"></footer>
+  </body>
+</html>

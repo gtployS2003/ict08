@@ -37,7 +37,7 @@ fetch("/assets/include/footer.html")
   });
 
 // ========== LOAD HEADER INDEX ==========
-fetch("/assets/include/header_index.html")
+fetch("/assets/include/header-schedule.html")
   .then(res => res.text())
   .then(html => {
     const el = document.getElementById("header-index");
@@ -53,7 +53,7 @@ fetch("/assets/include/footer_index.html")
   });
 
 // ========== LOAD SCHEDULE NAVIGATION ==========
-fetch("/assets/include/schedule_nav.html")
+fetch("/assets/include/nav-schedule.html")
   .then(res => res.text())
   .then(html => {
     const el = document.getElementById("schedule-nav");
@@ -61,7 +61,7 @@ fetch("/assets/include/schedule_nav.html")
   });
 
 // ========== LOAD DEVICE NAVIGATION ==========
-fetch("/assets/include/device-nav.html")
+fetch("/assets/include/nav-device.html")
   .then(res => res.text())
   .then(html => {
     const el = document.getElementById("device-nav");
@@ -72,5 +72,20 @@ fetch("/assets/include/header-device.html")
   .then(res => res.text())
   .then(html => {
     const el = document.getElementById("header-device");
+    if (el) el.innerHTML = html;
+  });
+
+// ========== LOAD GCMS NAVIGATION ==========
+fetch("/assets/include/nav-gcms.html")
+  .then(res => res.text())
+  .then(html => {
+    const el = document.getElementById("gcms-nav");
+    if (el) el.innerHTML = html;
+  });
+
+fetch("/assets/include/header-gcms.html")
+  .then(res => res.text())
+  .then(html => {
+    const el = document.getElementById("header-gcms");
     if (el) el.innerHTML = html;
   });
