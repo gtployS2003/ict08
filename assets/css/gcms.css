@@ -122,3 +122,209 @@ background: #efe9ff;
   color: #532274; /* ม่วง ICT8 */
 }
 
+/* =========================
+   settings data gcms (UI improved)
+   ========================= */
+
+.setting-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+  padding: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Sidebar container */
+.setting-data-sidebar {
+  position: sticky;
+  top: 88px; /* เผื่อ header/nav */
+  align-self: start;
+  height: calc(100vh - 110px);
+  overflow: auto;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+.setting-sidebar__menu {
+  padding: 14px;
+}
+
+.menu-group{
+  margin: 8px 0;
+  position: relative;
+}
+
+.menu-group .testing-dropdown-menu{
+  margin-top: 8px;
+}
+
+
+/* Section toggle button */
+.menu-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 12px 12px;
+  margin: 6px 0;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  color: #111;
+  border-radius: 12px;
+
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+
+  transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.menu-toggle:hover {
+   background: #efe9ff;
+  border-color: rgba(83, 34, 116, 0.35);
+}
+
+.menu-toggle:active {
+  transform: scale(0.99);
+}
+
+/* Arrow rotate when expanded */
+.menu-toggle[aria-expanded="true"] .arrow {
+  transform: rotate(180deg);
+}
+.arrow {
+  display: inline-block;
+  transition: transform 0.15s ease;
+  opacity: 0.8;
+}
+
+/* Dropdown list */
+.testing-dropdown-menu {
+  list-style: none;
+  padding: 6px 10px 10px 10px;
+  margin: 0 0 10px 0;
+  border-left: 3px solid rgba(0,0,0,0.06);
+}
+
+/* Dropdown items */
+.testing-dropdown-menu li {
+  margin: 6px 0;
+}
+
+.testing-dropdown-menu a {
+  display: block;
+  text-decoration: none;
+
+  padding: 10px 10px;
+  border-radius: 10px;
+
+  font-size: 15px;
+  color: #222;
+  background: transparent;
+
+  transition: background 0.15s ease, transform 0.08s ease;
+}
+
+.testing-dropdown-menu a:hover {
+     background: #efe9ff;
+  border-color: rgba(83, 34, 116, 0.35);
+}
+
+.testing-dropdown-menu a:active {
+  transform: scale(0.99);
+}
+
+/* Main content area */
+.setting-area {
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  min-height: 520px;
+}
+
+.setting-content {
+  padding: 18px;
+}
+
+/* Title */
+.setting-title {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+/* Optional: content placeholder look */
+.setting-content .content-card {
+  margin-top: 14px;
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px dashed rgba(0,0,0,0.18);
+  background: #fcfcfc;
+}
+
+/* กันโดน global css ซ่อนเมนู */
+.testing-dropdown-menu[hidden] { display: none !important; }
+.testing-dropdown-menu:not([hidden]) { display: block !important; }
+
+/* ===== Make dropdown inline (NOT popup) ===== */
+.setting-data-sidebar .testing-dropdown-menu{
+  position: static !important;     /* ตัด absolute/fixed จาก global */
+  inset: auto !important;          /* กัน top/left/right/bottom ที่ global ใส่ไว้ */
+  float: none !important;
+  transform: none !important;
+  z-index: auto !important;
+
+  width: 100% !important;
+  margin: 8px 0 12px 17px !important; /* เยื้องให้เป็นเมนูย่อยใน sidebar */
+  padding: 8px 10px !important;
+
+  background: transparent !important; /* ไม่ให้เป็นกล่องลอย */
+  box-shadow: none !important;
+  border: none !important;
+  border-left: 3px solid rgba(83, 34, 116, 0.25) !important;
+  border-radius: 0 !important;
+}
+
+/* hide/show ตาม hidden */
+.setting-data-sidebar .testing-dropdown-menu[hidden]{
+  display: none !important;
+}
+.setting-data-sidebar .testing-dropdown-menu:not([hidden]){
+  display: block !important;
+}
+
+/* ปรับลิงก์ให้ดูเป็นเมนูย่อย */
+.setting-data-sidebar .testing-dropdown-menu a{
+  padding: 10px 10px !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+}
+.setting-data-sidebar .testing-dropdown-menu a:hover{
+  background: #efe9ff !important;
+}
+
+
+
+/* =========================
+   Responsive
+   ========================= */
+
+@media (max-width: 992px) {
+  .setting-layout { grid-template-columns: 1fr; }
+
+  .setting-data-sidebar {
+    position: relative;
+    top: 0;
+    height: auto;
+  }
+}
+

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/assets/image/logo_หน่วย8.png" />
+    <title>ระบบศูนย์ควบคุมและรายงานผล</title>
+
+    <!-- include head -->
+    <script src="/assets/js/include.js" defer></script>
+    <script src="/assets/js/auth.js" defer></script>
+    <script src="/assets/js/main.js" defer></script>
+    <script src="/assets/js/gcms-dashboard.js" defer></script>
+    <script src="/assets/js/gcms-settings-data.js" defer></script>
+</head>
+
+<body>
+    <header id="header-gcms"></header>
+    <nav id="gcms-nav"></nav>
+
+    <main class="main">
+        <div class="setting-layout">
+            <aside class="setting-data-sidebar">
+                <div class="setting-sidebar__menu" role="navigation" aria-label="setting data menu">
+                    <!-- 1) ผู้ใช้และสิทธิ์ -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-user">
+                            <i class="fa-solid fa-user"></i> การตั้งค่าผู้ใช้และสิทธิ์
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-user" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">รายการผู้ใช้งาน</a></li>
+                            <li><a href="#">บทบาทผู้ใช้</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- 2) หน่วยงานและพื้นที่ -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-org">
+                            <i class="fa-solid fa-building"></i>
+                            การตั้งค่าหน่วยงานและพื้นที่ <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-org" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">รายชื่อหน่วยงาน</a></li>
+                            <li><a href="#">ประเภทหน่วยงาน</a></li>
+                            <li><a href="#">รายชื่อจังหวัด</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- 3) คำขอ (Master Data) -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-request">
+                            <i class="fa-solid fa-comment-dots"></i> การตั้งค่าคำขอ
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-request" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">ประเภทคำขอ</a></li>
+                            <li><a href="#">ประเภทย่อยคำขอ</a></li>
+                            <li><a href="#">สถานะคำขอ</a></li>
+                            <li><a href="#">ช่องทางอนุมัติ/ช่องทาง</a></li>
+                            <li><a href="#">ผู้รับผิดชอบตามประเภทย่อย</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- 4) กิจกรรม/ประชุม -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-event">
+                            <i class="fa-solid fa-calendar"></i> การตั้งค่ากิจกรรม/ประชุม
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-event" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">รายการกิจกรรม</a></li>
+                            <li><a href="#">สถานะกิจกรรม</a></li>
+                            <li><a href="#">ผู้เข้าร่วมกิจกรรม</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- 5) รายงานกิจกรรม -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-report">
+                            <i class="fa-solid fa-list"></i> รายงานกิจกรรม
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-report" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">รายงานผลกิจกรรม</a></li>
+                            <li><a href="#">รูปภาพรายงาน</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- 6) ประชาสัมพันธ์/โซเชียล -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-publicity">
+                            <i class="fa-solid fa-hashtag"></i> ประชาสัมพันธ์/โซเชียล
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-publicity" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">เทมเพลตโพสต์</a></li>
+                            <li><a href="#">โพสต์ประชาสัมพันธ์</a></li>
+                            <li>
+                                <a href="#">รูปภาพโพสต์ประชาสัมพันธ์</a>
+                            </li>
+                            <li><a href="#">โพสต์ลงโซเชียล</a></li>
+                            <li><a href="#">รูปภาพโพสต์โซเชียล</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- 7) การแจ้งเตือน -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false"
+                            aria-controls="menu-notification">
+                            <i class="fa-solid fa-bell"></i> การตั้งค่าการแจ้งเตือน
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-notification" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">รายการแจ้งเตือน</a></li>
+                            <li><a href="#">ประเภทแจ้งเตือน</a></li>
+                            <li><a href="#">สถานะแจ้งเตือน</a></li>
+                            <li>
+                                <a href="#">สถานะการส่งถึงผู้รับ</a>
+                            </li>
+                            <li>
+                                <a href="#">ช่องทางแจ้งเตือนผู้ใช้</a>
+                            </li>
+                            <li>
+                                <a href="#">ผู้รับแจ้งเตือน</a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- 8) ไฟล์/ประเภทไฟล์ -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-file">
+                            <i class="fa-solid fa-file"></i> การตั้งค่าไฟล์/ประเภทไฟล์
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-file" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">MIME Type</a></li>
+                            <li><a href="#">นามสกุลไฟล์</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="setting-area">
+                <div class="setting-content">
+                    <h2 id="setting-title" class="setting-title">
+                        เครือข่ายและอุปกรณ์
+                    </h2>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer id="footer-index"></footer>
+</body>
+
+</html>
