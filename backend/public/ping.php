@@ -1,30 +1,18 @@
 <?php
-// api/public/ping.php
-
+// backend/public/ping.php
 declare(strict_types=1);
 
-header("Content-Type: application/json; charset=utf-8");
-// ถ้าจะให้หน้าเว็บเรียกได้ (ช่วง dev) เปิด CORS ไว้ก่อน
-header("Access-Control-Allow-Origin: *");
+require_once __DIR__ . '/../config/cors.php';
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../helpers/response.php';
 
-require_once __DIR__ . "/../config/db.php";
+cors_apply();
+cors_handle_preflight();
 
 try {
     $pdo = db();
-    $stmt = $pdo->query("SELECT NOW() AS server_time, DATABASE() AS dbname");
-    $row = $stmt->fetch();
-
-    echo json_encode([
-        "ok" => true,
-        "message" => "Database connected",
-        "data" => $row
-    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-
+    $row = $pdo->query("SELECT NOW() AS server_time, DATABASE() AS dbname")->fetch();
+    ok($row, "Database connected");
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode([
-        "ok" => false,
-        "message" => "Database connection failed",
-        "error" => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    fail("Database connection failed", 500, $e->getMessage());
 }

@@ -1,1 +1,4 @@
 .vscode/
+
+# ignore backend
+backend/.env

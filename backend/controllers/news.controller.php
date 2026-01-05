@@ -1,0 +1,57 @@
+<?php
+// backend/controllers/news.controller.php
+declare(strict_types=1);
+
+require_once __DIR__ . '/../helpers/response.php';
+require_once __DIR__ . '/../helpers/validator.php';
+require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../models/NewsModel.php';
+
+class NewsController {
+    public function __construct(private PDO $pdo) {}
+
+    public function list(): void {
+        $limit = (int)($_GET['limit'] ?? 20);
+        $model = new NewsModel($this->pdo);
+        ok($model->list($limit));
+    }
+
+    public function get(int $id): void {
+        $model = new NewsModel($this->pdo);
+        $row = $model->get($id);
+        if (!$row) fail("News not found", 404);
+        ok($row);
+    }
+
+    public function create(): void {
+        $body = read_json_body();
+        $missing = require_fields($body, ['title', 'content']);
+        if ($missing) fail("Missing fields", 422, $missing);
+
+        $model = new NewsModel($this->pdo);
+        $id = $model->create($body);
+        ok(["news_id" => $id], "Created", 201);
+    }
+
+    public function update(int $id): void {
+        $body = read_json_body();
+        $missing = require_fields($body, ['title', 'content']);
+        if ($missing) fail("Missing fields", 422, $missing);
+
+        $model = new NewsModel($this->pdo);
+        $found = $model->get($id);
+        if (!$found) fail("News not found", 404);
+
+        $model->update($id, $body);
+        ok(["news_id" => $id], "Updated");
+    }
+
+    public function delete(int $id): void {
+        $model = new NewsModel($this->pdo);
+        $found = $model->get($id);
+        if (!$found) fail("News not found", 404);
+
+        $model->delete($id);
+        ok(["news_id" => $id], "Deleted");
+    }
+}

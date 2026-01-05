@@ -1,15 +1,17 @@
 <?php
-// api/config/db.php
-
+// backend/config/db.php
 declare(strict_types=1);
 
+require_once __DIR__ . '/env.php';
+
+env_load(__DIR__ . '/../.env');
+
 function db(): PDO {
-    // ✅ แก้ค่าตาม MySQL/phpMyAdmin ของคุณ
-    $host = "127.0.0.1";
-    $dbname = "ITC8_db";      // <-- ชื่อฐานข้อมูลใน phpMyAdmin
-    $user = "root";          // ปกติ XAMPP ใช้ root
-    $pass = "";              // ปกติ XAMPP รหัสว่าง (ถ้าคุณตั้งไว้ให้ใส่)
-    $charset = "utf8mb4";
+    $host = env('DB_HOST', '127.0.0.1');
+    $dbname = env('DB_NAME', 'ITC8_db');
+    $user = env('DB_USER', 'root');
+    $pass = env('DB_PASS', '');
+    $charset = env('DB_CHARSET', 'utf8mb4');
 
     $dsn = "mysql:host={$host};dbname={$dbname};charset={$charset}";
     $options = [
