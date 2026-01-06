@@ -1,91 +1,72 @@
-// ========== LOAD <head> ==========
-fetch("/assets/include/head.html")
-  .then(res => res.text())
-  .then(html => {
+function detectBasePath() {
+  const script =
+    document.currentScript ||
+    Array.from(document.scripts).find((s) => (s.src || "").includes("/assets/js/include.js"));
+
+  if (!script || !script.src) return "";
+
+  const u = new URL(script.src);
+  const p = u.pathname; // เช่น /ict/assets/js/include.js
+  const marker = "/assets/js/";
+  const idx = p.indexOf(marker);
+
+  return idx >= 0 ? p.slice(0, idx) : "";
+}
+
+const BASE_PATH =
+  (window.__APP_CONFIG__ && window.__APP_CONFIG__.BASE_PATH) || detectBasePath() || ""; // "" หรือ "/ict"
+
+async function loadHtml(targetId, filePath) {
+  const url = `${BASE_PATH}${filePath}`; // filePath ต้องขึ้นต้นด้วย /assets/...
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    console.error("Include failed:", url, res.status);
+    return;
+  }
+
+  const htmlRaw = await res.text();
+  const html = patchAssetPaths(htmlRaw);
+
+  if (targetId === "head") {
     document.head.insertAdjacentHTML("beforeend", html);
-  });
+    return;
+  }
 
-// ========== LOAD HEADER ==========
-fetch("/assets/include/header.html")
-  .then(res => res.text())
-  .then(html => {
-    const el = document.getElementById("header");
-    if (el) el.innerHTML = html;
-  });
+  const el = document.getElementById(targetId);
+  if (el) el.innerHTML = html;
+}
 
-// ========== LOAD NAVBAR ==========
-fetch("/assets/include/navbar.html")
-  .then(res => res.text())
-  .then(html => {
-    const el = document.getElementById("navbar");
-    if (el) {
-      el.innerHTML = html;
+function patchAssetPaths(html) {
+  // แปลง href/src="/assets/..." -> href="/ict/assets/..." (ถ้า BASE_PATH="/ict")
+  if (!BASE_PATH) return html;
+  return html
+    .replaceAll('href="/assets/', `href="${BASE_PATH}/assets/`)
+    .replaceAll("href='/assets/", `href='${BASE_PATH}/assets/`)
+    .replaceAll('src="/assets/', `src="${BASE_PATH}/assets/`)
+    .replaceAll("src='/assets/", `src='${BASE_PATH}/assets/`);
+}
 
-      // เรียก initNavbar ถ้ามีใน main.js
-      if (typeof initNavbar === "function") {
-        initNavbar();
-      }
-    }
-  });
 
-// ========== LOAD FOOTER ==========
-fetch("/assets/include/footer.html")
-  .then(res => res.text())
-  .then(html => {
-    const el = document.getElementById("footer");
-    if (el) el.innerHTML = html;
-  });
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadHtml("head", "/assets/include/head.html");
 
-// ========== LOAD HEADER INDEX ==========
-fetch("/assets/include/header-schedule.html")
-  .then(res => res.text())
-  .then(html => {
-    const el = document.getElementById("header-index");
-    if (el) el.innerHTML = html;
-  });
-  
-// ========== LOAD FOOTER INDEX ==========
-fetch("/assets/include/footer_index.html")
-  .then(res => res.text())
-  .then(html => {
-    const el = document.getElementById("footer-index");
-    if (el) el.innerHTML = html;
-  });
+  await loadHtml("header", "/assets/include/header.html");
+  await loadHtml("navbar", "/assets/include/navbar.html");
 
-// ========== LOAD SCHEDULE NAVIGATION ==========
-fetch("/assets/include/nav-schedule.html")
-  .then(res => res.text())
-  .then(html => {
-    const el = document.getElementById("schedule-nav");
-    if (el) el.innerHTML = html;
-  });
+  // initNavbar ถ้ามี
+  if (typeof window.initNavbar === "function") window.initNavbar();
 
-// ========== LOAD DEVICE NAVIGATION ==========
-fetch("/assets/include/nav-device.html")
-  .then(res => res.text())
-  .then(html => {
-    const el = document.getElementById("device-nav");
-    if (el) el.innerHTML = html;
-  });
+  await loadHtml("footer", "/assets/include/footer.html");
 
-fetch("/assets/include/header-device.html")
-  .then(res => res.text())
-  .then(html => {
-    const el = document.getElementById("header-device");
-    if (el) el.innerHTML = html;
-  });
+  await loadHtml("header-index", "/assets/include/header-schedule.html");
+  await loadHtml("footer-index", "/assets/include/footer_index.html");
 
-// ========== LOAD GCMS NAVIGATION ==========
-fetch("/assets/include/nav-gcms.html")
-  .then(res => res.text())
-  .then(html => {
-    const el = document.getElementById("gcms-nav");
-    if (el) el.innerHTML = html;
-  });
+  await loadHtml("schedule-nav", "/assets/include/nav-schedule.html");
 
-fetch("/assets/include/header-gcms.html")
-  .then(res => res.text())
-  .then(html => {
-    const el = document.getElementById("header-gcms");
-    if (el) el.innerHTML = html;
-  });
+  await loadHtml("device-nav", "/assets/include/nav-device.html");
+  await loadHtml("header-device", "/assets/include/header-device.html");
+
+  await loadHtml("gcms-nav", "/assets/include/nav-gcms.html");
+  await loadHtml("header-gcms", "/assets/include/header-gcms.html");
+});
