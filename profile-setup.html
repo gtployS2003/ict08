@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>กรอกข้อมูลผู้ใช้งาน</title>
+
+  <!-- include head ของคุณ (ถ้ามี) -->
+  <!-- <script src="/assets/js/include.js" defer></script> -->
+
+
+  <script src="/backend/public/config.js.php"></script>
+
+  <!-- LIFF SDK -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <script src="/assets/js/api/http.js" defer></script>
+  <script src="/assets/js/api/user.api.js" defer></script>
+  <script src="/assets/js/profile-setup.js" defer></script>
+</head>
+
+<body>
+  <main class="ps-layout">
+    <!-- LEFT (Desktop) / TOP (Mobile) -->
+    <section class="ps-left">
+      <div class="ps-left__bg"></div>
+
+      <div class="ps-left__content">
+        <div class="ps-avatar-wrap">
+          <img id="psAvatar" class="ps-avatar" src="" alt="avatar" />
+        </div>
+        <h1 id="psName" class="ps-name">Username</h1>
+        <p class="ps-sub">กรอกข้อมูลเพื่อเริ่มใช้งานระบบ</p>
+      </div>
+    </section>
+
+    <!-- RIGHT -->
+    <section class="ps-right">
+      <div class="ps-card">
+        <form id="profileForm" class="ps-form">
+          <!-- ตำแหน่งงาน -->
+          <label class="ps-field">
+            <span class="ps-label">ตำแหน่งงาน</span>
+            <select id="position" class="ps-input" required>
+              <option value="" selected disabled>เลือกตำแหน่งงาน</option>
+              <option value="ผู้ร้องขอ">ผู้ร้องขอ</option>
+              <option value="เจ้าหน้าที่ ICT8">เจ้าหน้าที่ ICT8</option>
+              <option value="หัวหน้าผู้รับผิดชอบ">หัวหน้าผู้รับผิดชอบ</option>
+              <option value="ผู้ช่วยเพิ่มเติม">ผู้ช่วยเพิ่มเติม</option>
+              <option value="ผู้เข้าร่วม">ผู้เข้าร่วม</option>
+              <option value="อื่น ๆ">อื่น ๆ</option>
+            </select>
+          </label>
+
+          <!-- หน่วยงาน -->
+          <label class="ps-field">
+            <span class="ps-label">หน่วยงาน (Organization)</span>
+            <select id="organization" class="ps-input" required>
+              <option value="" selected disabled>เลือกหน่วยงาน</option>
+              <!-- เติมจาก JS หรือใส่คงที่ก็ได้ -->
+            </select>
+          </label>
+
+          <!-- จังหวัด -->
+          <label class="ps-field">
+            <span class="ps-label">จังหวัด (Province)</span>
+            <select id="province" class="ps-input" required>
+              <option value="" selected disabled>เลือกจังหวัด</option>
+              <!-- เติมจาก JS -->
+            </select>
+          </label>
+
+          <button id="btnSave" type="submit" class="ps-btn">
+            บันทึก
+          </button>
+
+          <p id="psMsg" class="ps-msg" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,306 @@
+/* /ict/assets/css/login.css */
+
+/* Base */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  background: #f5f5f5;
+  font-family: 'Inter', 'Noto Sans Thai', sans-serif;
+  color: #111;
+}
+
+/* ==========================
+   HEADER (fixed)
+========================== */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 9999;
+  background: #532274;
+  color: #fff;
+
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.brand { display: inline-flex; }
+
+.logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  object-fit: contain;
+  background: rgba(255,255,255,0.06);
+  padding: 6px;
+}
+
+.brand-text {
+  min-width: 0;
+}
+
+.title-main {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 76vw;
+}
+
+.title-sub {
+  font-size: 12px;
+  opacity: 0.9;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 76vw;
+}
+
+/* ==========================
+   MAIN
+========================== */
+.login-main {
+  flex: 1;
+  padding-top: 92px; /* ปรับตามความสูง header */
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 64px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 620px;
+  text-align: center;
+}
+
+.login-main-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #532274;
+  margin: 24px 0 10px;
+}
+
+.login-divider {
+  width: min(260px, 80%);
+  height: 4px;
+  background: #532274;
+  margin: 0 auto 22px;
+  border-radius: 999px;
+}
+
+/* ==========================
+   Login Card
+========================== */
+.login-card {
+  width: 100%;
+  background: #fff;
+  border-radius: 24px;
+  border: 2px solid #532274;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+.login-card-header {
+  background: #532274;
+  color: #fff;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.login-card-logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background: #fff;
+  object-fit: contain;
+  padding: 6px;
+}
+
+.login-card-header-text {
+  min-width: 0;
+}
+
+.login-card-title-main {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.login-card-title-sub {
+  font-size: 11px;
+  opacity: 0.9;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.login-card-body {
+  padding: 20px 16px 18px;
+}
+
+/* Buttons */
+.btn-login {
+  width: 100%;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 16px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.08s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+
+.btn-login:active { transform: translateY(1px); }
+
+.btn-line {
+  background: #06c755;
+  color: #fff;
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: #532274;
+  border: 2px solid rgba(83,34,116,0.25);
+  box-shadow: none;
+}
+
+.btn-secondary:hover { opacity: 0.95; }
+
+.login-or {
+  margin: 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(0,0,0,0.55);
+  font-size: 12px;
+}
+
+.login-or::before,
+.login-or::after {
+  content: "";
+  height: 1px;
+  background: rgba(0,0,0,0.12);
+  flex: 1;
+}
+
+.login-register-text {
+  margin-top: 16px;
+  font-size: 14px;
+  color: #333;
+}
+
+.login-register-link {
+  font-weight: 800;
+  color: #532274;
+  text-decoration: none;
+}
+
+.login-register-link:hover { text-decoration: underline; }
+
+.login-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(0,0,0,0.6);
+}
+
+/* ==========================
+   Tablet+ (>= 768px)
+========================== */
+@media (min-width: 768px) {
+  .header {
+    padding: 18px 40px;
+  }
+
+  .logo {
+    width: 74px;
+    height: 74px;
+    border-radius: 18px;
+  }
+
+  .title-main {
+    font-size: 22px;
+    max-width: 900px;
+  }
+
+  .title-sub {
+    font-size: 14px;
+    max-width: 900px;
+  }
+
+  .login-main {
+    padding-top: 112px;
+  }
+
+  .login-main-title {
+    font-size: 34px;
+  }
+
+  .login-card {
+    border-radius: 32px;
+  }
+
+  .login-card-header {
+    padding: 18px 24px;
+    gap: 14px;
+  }
+
+  .login-card-logo {
+    width: 56px;
+    height: 56px;
+  }
+
+  .login-card-title-main { font-size: 16px; }
+  .login-card-title-sub  { font-size: 13px; }
+
+  .login-card-body {
+    padding: 28px 24px 24px;
+  }
+
+  .btn-login {
+    font-size: 16px;
+    padding: 14px 18px;
+  }
+}
+
+/* ==========================
+   Small phones (<= 360px)
+========================== */
+@media (max-width: 360px) {
+  .title-main, .title-sub { max-width: 68vw; }
+  .login-main-title { font-size: 24px; }
+}

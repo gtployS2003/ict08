@@ -3,75 +3,60 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="/assets/image/logo_หน่วย8.png">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <link rel="icon" type="image/png" href="/ict/assets/image/logo_หน่วย8.png">
+
     <title>ระบบงานสารสนเทศ</title>
 
     <!-- include head -->
-    <script src="assets/js/include.js" defer></script>
-    <script src="assets/js/auth.js" defer></script>
-    <script src="assets/js/main.js" defer></script>
+    <script src="/ict/assets/js/include.js" defer></script>
+    <script src="/ict/assets/js/auth.js" defer></script>
+    <script src="/ict/assets/js/main.js" defer></script>
+
 </head>
 
 <body>
-
     <header class="header">
         <div class="header-left">
-            <a href="index.html"><img class="logo" src="/assets/image/logo_หน่วย8.png" alt="โลโก้ศูนย์"></a>
-            <div>
-                <div class="title-main">
-                    ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)
-                </div>
-                <div class="title-sub">
-                    Information And Communication Technology Center 8 (Phitsanulok)
-                </div>
+            <a href="/ict/site/home.html" class="brand">
+                <img class="logo" src="/ict/assets/image/logo_หน่วย8.png" alt="โลโก้ศูนย์" />
+            </a>
+
+            <div class="brand-text">
+                <div class="title-main">ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)</div>
+                <div class="title-sub">Information And Communication Technology Center 8 (Phitsanulok)</div>
             </div>
         </div>
     </header>
 
-
-    <!-- Main content -->
     <main class="login-main">
-        <h1 class="login-main-title">เข้าสู่ระบบ</h1>
-        <div class="login-divider"></div>
+        <div class="login-container">
+            <h1 class="login-main-title">เข้าสู่ระบบ</h1>
+            <div class="login-divider"></div>
 
-        <section class="login-card">
-            <!-- แถบหัวบนสีม่วง -->
-            <div class="login-card-header">
-                <img src="/assets/image/logo_หน่วย8.png" alt="โลโก้ศูนย์" class="login-card-logo">
-                <div>
-                    <div class="login-card-title-main">
-                        ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)
-                    </div>
-                    <div class="login-card-title-sub">
-                        Information And Communication Technology Center 8 (Phitsanulok)
+            <section class="login-card">
+                <div class="login-card-header">
+                    <img src="/ict/assets/image/logo_หน่วย8.png" alt="โลโก้ศูนย์" class="login-card-logo" />
+                    <div class="login-card-header-text">
+                        <div class="login-card-title-main">ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)</div>
+                        <div class="login-card-title-sub">Information And Communication Technology Center 8
+                            (Phitsanulok)</div>
                     </div>
                 </div>
-            </div>
 
-            <!-- เนื้อหาใน card -->
-            <div class="login-card-body">
-                <!-- ปุ่ม login ด้วย Google -->
-                <button type="button" class="btn-google-login" onclick="loginMock()">
-                    เข้าสู่ระบบด้วย Google
-                </button>
-
-                <!-- ข้อความสมัครสมาชิก (ไม่ต้องเป็นปุ่ม) -->
-                <p class="login-register-text">
-                    ยังไม่มีบัญชี? <a href="#" class="login-register-link">สมัครสมาชิก</a>
-                </p>
-            </div>
-        </section>
+                <div class="login-card-body">
+                    <button type="button" class="btn-login btn-line" id="btn-line-login">
+                        เข้าสู่ระบบด้วย LINE
+                    </button>
+                </div>
+            </section>
+        </div>
 
     </main>
+    <script>
+        console.log("innerWidth=", window.innerWidth, "screenWidth=", screen.width);
+    </script>
 
-    <footer class="footer-index">
-        <div>
-            &copy; 2025 ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)
-        </div>
-    </footer>
-
-</body>
+    <footer id="footer-index"></footer>
 
 </html>
