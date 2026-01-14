@@ -1,355 +1,362 @@
 <!DOCTYPE html>
 <html lang="th">
-  <head>
+
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      rel="icon"
-      type="image/png"
-      href="/ict/assets/image/logo_หน่วย8.png"
-    />
+    <link rel="icon" type="image/png" href="/ict/assets/image/logo_หน่วย8.png" />
     <title>ระบบศูนย์ควบคุมและรายงานผล</title>
 
     <!-- include head -->
     <script src="/ict/backend/public/config.js.php"></script>
     <script src="/ict/assets/js/api/http.js"></script>
-
     <script src="/ict/assets/js/api/news.api.js"></script>
+    <script src="/ict/assets/js/api/organization-types.api.js"></script>
+
     <script src="/ict/assets/js/include.js" defer></script>
     <script src="/ict/assets/js/auth.js" defer></script>
     <script src="/ict/assets/js/main.js" defer></script>
     <script src="/ict/assets/js/gcms-dashboard.js" defer></script>
     <script src="/ict/assets/js/gcms-settings-data.js" defer></script>
     <script defer src="/ict/assets/js/gcms-nav.js"></script>
-  </head>
+</head>
 
-  <body>
+<body>
     <header id="header-gcms"></header>
     <nav id="gcms-nav"></nav>
 
     <main class="main">
-      <div class="setting-layout">
-        <aside class="setting-data-sidebar">
-          <div
-            class="setting-sidebar__menu"
-            role="navigation"
-            aria-label="setting data menu"
-          >
-            <!-- 1) ผู้ใช้และสิทธิ์ -->
-            <div class="menu-group">
-              <button
-                class="menu-toggle"
-                type="button"
-                aria-expanded="false"
-                aria-controls="menu-user"
-              >
-                <i class="fa-solid fa-user"></i> การตั้งค่าผู้ใช้และสิทธิ์
-                <span class="arrow">▾</span>
-              </button>
-              <ul id="menu-user" class="testing-dropdown-menu" hidden>
-                <li><a href="#">รายการผู้ใช้งาน</a></li>
-                <li><a href="#">บทบาทผู้ใช้</a></li>
-              </ul>
-            </div>
+        <div class="setting-layout">
+            <aside class="setting-data-sidebar">
+                <div class="setting-sidebar__menu" role="navigation" aria-label="setting data menu">
+                    <!-- 1) ผู้ใช้และสิทธิ์ -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-user">
+                            <i class="fa-solid fa-user"></i> การตั้งค่าผู้ใช้และสิทธิ์
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-user" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">รายการผู้ใช้งาน</a></li>
+                            <li><a href="#">บทบาทผู้ใช้</a></li>
+                        </ul>
+                    </div>
 
-            <!-- 2) หน่วยงานและพื้นที่ -->
-            <div class="menu-group">
-              <button
-                class="menu-toggle"
-                type="button"
-                aria-expanded="false"
-                aria-controls="menu-org"
-              >
-                <i class="fa-solid fa-building"></i>
-                การตั้งค่าหน่วยงานและพื้นที่ <span class="arrow">▾</span>
-              </button>
-              <ul id="menu-org" class="testing-dropdown-menu" hidden>
-                <li><a href="#" data-section="org-list">รายชื่อหน่วยงาน</a></li>
-                <li><a href="#" data-section="org-types">ประเภทหน่วยงาน</a></li>
-                <li><a href="#" data-section="provinces">รายชื่อจังหวัด</a></li>
-              </ul>
-            </div>
+                    <!-- 2) หน่วยงานและพื้นที่ -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-org">
+                            <i class="fa-solid fa-building"></i>
+                            การตั้งค่าหน่วยงานและพื้นที่ <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-org" class="testing-dropdown-menu" hidden>
+                            <li><a href="#" data-section="org-list">รายชื่อหน่วยงาน</a></li>
+                            <li><a href="#" data-section="organization-types">ประเภทหน่วยงาน</a></li>
+                            <li><a href="#" data-section="provinces">รายชื่อจังหวัด</a></li>
+                        </ul>
+                    </div>
 
-            <!-- 3) คำขอ (Master Data) -->
-            <div class="menu-group">
-              <button
-                class="menu-toggle"
-                type="button"
-                aria-expanded="false"
-                aria-controls="menu-request"
-              >
-                <i class="fa-solid fa-comment-dots"></i> การตั้งค่าคำขอ
-                <span class="arrow">▾</span>
-              </button>
-              <ul id="menu-request" class="testing-dropdown-menu" hidden>
-                <li><a href="#">ประเภทคำขอ</a></li>
-                <li><a href="#">ประเภทย่อยคำขอ</a></li>
-                <li><a href="#">สถานะคำขอ</a></li>
-                <li><a href="#">ช่องทางอนุมัติ/ช่องทาง</a></li>
-                <li><a href="#">ผู้รับผิดชอบตามประเภทย่อย</a></li>
-              </ul>
-            </div>
+                    <!-- 3) คำขอ (Master Data) -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-request">
+                            <i class="fa-solid fa-comment-dots"></i> การตั้งค่าคำขอ
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-request" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">ประเภทคำขอ</a></li>
+                            <li><a href="#">ประเภทย่อยคำขอ</a></li>
+                            <li><a href="#">สถานะคำขอ</a></li>
+                            <li><a href="#">ช่องทางอนุมัติ/ช่องทาง</a></li>
+                            <li><a href="#">ผู้รับผิดชอบตามประเภทย่อย</a></li>
+                        </ul>
+                    </div>
 
-            <!-- 4) กิจกรรม/ประชุม -->
-            <div class="menu-group">
-              <button
-                class="menu-toggle"
-                type="button"
-                aria-expanded="false"
-                aria-controls="menu-event"
-              >
-                <i class="fa-solid fa-calendar"></i> การตั้งค่ากิจกรรม/ประชุม
-                <span class="arrow">▾</span>
-              </button>
-              <ul id="menu-event" class="testing-dropdown-menu" hidden>
-                <li><a href="#">รายการกิจกรรม</a></li>
-                <li><a href="#">สถานะกิจกรรม</a></li>
-                <li><a href="#">ผู้เข้าร่วมกิจกรรม</a></li>
-              </ul>
-            </div>
+                    <!-- 4) กิจกรรม/ประชุม -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-event">
+                            <i class="fa-solid fa-calendar"></i> การตั้งค่ากิจกรรม/ประชุม
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-event" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">รายการกิจกรรม</a></li>
+                            <li><a href="#">สถานะกิจกรรม</a></li>
+                            <li><a href="#">ผู้เข้าร่วมกิจกรรม</a></li>
+                        </ul>
+                    </div>
 
-            <!-- 5) รายงานกิจกรรม -->
-            <div class="menu-group">
-              <button
-                class="menu-toggle"
-                type="button"
-                aria-expanded="false"
-                aria-controls="menu-report"
-              >
-                <i class="fa-solid fa-list"></i> รายงานกิจกรรม
-                <span class="arrow">▾</span>
-              </button>
-              <ul id="menu-report" class="testing-dropdown-menu" hidden>
-                <li><a href="#">รายงานผลกิจกรรม</a></li>
-                <li><a href="#">รูปภาพรายงาน</a></li>
-              </ul>
-            </div>
+                    <!-- 5) รายงานกิจกรรม -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-report">
+                            <i class="fa-solid fa-list"></i> รายงานกิจกรรม
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-report" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">รายงานผลกิจกรรม</a></li>
+                            <li><a href="#">รูปภาพรายงาน</a></li>
+                        </ul>
+                    </div>
 
-            <!-- 6) ประชาสัมพันธ์/โซเชียล -->
-            <div class="menu-group">
-              <button
-                class="menu-toggle"
-                type="button"
-                aria-expanded="false"
-                aria-controls="menu-publicity"
-              >
-                <i class="fa-solid fa-hashtag"></i> ประชาสัมพันธ์/โซเชียล
-                <span class="arrow">▾</span>
-              </button>
-              <ul id="menu-publicity" class="testing-dropdown-menu" hidden>
-                <li><a href="#">เทมเพลตโพสต์</a></li>
-                <li><a href="#">โพสต์ประชาสัมพันธ์</a></li>
-                <li>
-                  <a href="#">รูปภาพโพสต์ประชาสัมพันธ์</a>
-                </li>
-                <li><a href="#">โพสต์ลงโซเชียล</a></li>
-                <li><a href="#">รูปภาพโพสต์โซเชียล</a></li>
-              </ul>
-            </div>
+                    <!-- 6) ประชาสัมพันธ์/โซเชียล -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-publicity">
+                            <i class="fa-solid fa-hashtag"></i> ประชาสัมพันธ์/โซเชียล
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-publicity" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">เทมเพลตโพสต์</a></li>
+                            <li><a href="#">โพสต์ประชาสัมพันธ์</a></li>
+                            <li>
+                                <a href="#">รูปภาพโพสต์ประชาสัมพันธ์</a>
+                            </li>
+                            <li><a href="#">โพสต์ลงโซเชียล</a></li>
+                            <li><a href="#">รูปภาพโพสต์โซเชียล</a></li>
+                        </ul>
+                    </div>
 
-            <!-- 7) การแจ้งเตือน -->
-            <div class="menu-group">
-              <button
-                class="menu-toggle"
-                type="button"
-                aria-expanded="false"
-                aria-controls="menu-notification"
-              >
-                <i class="fa-solid fa-bell"></i> การตั้งค่าการแจ้งเตือน
-                <span class="arrow">▾</span>
-              </button>
-              <ul id="menu-notification" class="testing-dropdown-menu" hidden>
-                <li><a href="#">รายการแจ้งเตือน</a></li>
-                <li><a href="#">ประเภทแจ้งเตือน</a></li>
-                <li><a href="#">สถานะแจ้งเตือน</a></li>
-                <li>
-                  <a href="#">สถานะการส่งถึงผู้รับ</a>
-                </li>
-                <li>
-                  <a href="#">ช่องทางแจ้งเตือนผู้ใช้</a>
-                </li>
-                <li>
-                  <a href="#">ผู้รับแจ้งเตือน</a>
-                </li>
-              </ul>
-            </div>
+                    <!-- 7) การแจ้งเตือน -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false"
+                            aria-controls="menu-notification">
+                            <i class="fa-solid fa-bell"></i> การตั้งค่าการแจ้งเตือน
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-notification" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">รายการแจ้งเตือน</a></li>
+                            <li><a href="#">ประเภทแจ้งเตือน</a></li>
+                            <li><a href="#">สถานะแจ้งเตือน</a></li>
+                            <li>
+                                <a href="#">สถานะการส่งถึงผู้รับ</a>
+                            </li>
+                            <li>
+                                <a href="#">ช่องทางแจ้งเตือนผู้ใช้</a>
+                            </li>
+                            <li>
+                                <a href="#">ผู้รับแจ้งเตือน</a>
+                            </li>
+                        </ul>
+                    </div>
 
-            <!-- 8) ไฟล์/ประเภทไฟล์ -->
-            <div class="menu-group">
-              <button
-                class="menu-toggle"
-                type="button"
-                aria-expanded="false"
-                aria-controls="menu-file"
-              >
-                <i class="fa-solid fa-file"></i> การตั้งค่าไฟล์/ประเภทไฟล์
-                <span class="arrow">▾</span>
-              </button>
-              <ul id="menu-file" class="testing-dropdown-menu" hidden>
-                <li><a href="#">MIME Type</a></li>
-                <li><a href="#">นามสกุลไฟล์</a></li>
-              </ul>
-            </div>
-          </div>
-        </aside>
+                    <!-- 8) ไฟล์/ประเภทไฟล์ -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-file">
+                            <i class="fa-solid fa-file"></i> การตั้งค่าไฟล์/ประเภทไฟล์
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-file" class="testing-dropdown-menu" hidden>
+                            <li><a href="#">MIME Type</a></li>
+                            <li><a href="#">นามสกุลไฟล์</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </aside>
 
-        <section class="setting-area">
-          <div class="setting-content">
-            <!-- หัวข้อเปลี่ยนตามเมนู -->
-            <div class="setting-head">
-              <h2 id="setting-title" class="setting-title">
-                การตั้งค่าข้อมูล
-              </h2>
-              <!-- ฝั่งขวาบน: ปุ่ม action ของ section (ซ่อน/โชว์ด้วย JS) -->
-              <div class="setting-actions">
-                <button
-                  id="btn-add-province"
-                  class="btn btn-primary"
-                  type="button"
-                  hidden
-                >
-                  <i class="fa-solid fa-plus"></i> เพิ่มจังหวัด
-                </button>
-              </div>
-            </div>
+            <section class="setting-area">
+                <div class="setting-content">
+                    <!-- หัวข้อเปลี่ยนตามเมนู -->
+                    <div class="setting-head">
+                        <h2 id="setting-title" class="setting-title">
+                            การตั้งค่าข้อมูล
+                        </h2>
 
-            <!-- =========================
-                        SECTION: DEFAULT (placeholder)
-                    ========================== -->
-            <section id="section-default" class="setting-section">
-              <div class="empty-state">
-                <p>เลือกเมนูทางซ้ายเพื่อจัดการข้อมูล</p>
-              </div>
+                        <!-- ปุ่ม action -->
+                        <div class="setting-actions">
+                            <button id="btn-add-org-type" class="btn btn-primary" type="button" hidden>
+                                <i class="fa-solid fa-plus"></i> เพิ่มประเภทหน่วยงาน
+                            </button>
+
+                            <button id="btn-add-province" class="btn btn-primary" type="button" hidden>
+                                <i class="fa-solid fa-plus"></i> เพิ่มจังหวัด
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <section id="section-default" class="setting-section">
+                        <div class="empty-state">
+                            <p>เลือกเมนูทางซ้ายเพื่อจัดการข้อมูล</p>
+                        </div>
+                    </section>
+
+                    <!-- SECTION: ORGANIZATION TYPES  -->
+                    <section id="section-org-types" class="setting-section" hidden>
+                        <div class="table-toolbar">
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input id="org-type-search" type="search" placeholder="ค้นหาประเภทหน่วยงาน..." />
+                            </div>
+
+                            <div class="toolbar-right">
+                                <select id="org-type-limit">
+                                    <option value="20">20/หน้า</option>
+                                    <option value="50" selected>50/หน้า</option>
+                                    <option value="100">100/หน้า</option>
+                                </select>
+
+                                <button id="org-type-refresh" class="btn btn-ghost" type="button">
+                                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table class="data-table" aria-label="Organization Types table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 90px">ID</th>
+                                        <th>ชื่อประเภท (EN)</th>
+                                        <th>ชื่อประเภท (TH)</th>
+                                        <th style="width: 170px">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="org-type-tbody">
+                                    <tr>
+                                        <td colspan="4" class="muted">
+                                            ยังไม่มีข้อมูล (หรือยังไม่ได้โหลด)
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="table-footer">
+                            <div id="org-type-pagination" class="pagination"></div>
+                            <div id="org-type-total" class="muted"></div>
+                        </div>
+                    </section>
+
+                    <!-- SECTION: PROVINCES  -->
+                    <section id="section-provinces" class="setting-section" hidden>
+                        <div class="table-toolbar">
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input id="province-search" type="search" placeholder="ค้นหาจังหวัด (TH/EN)..." />
+                            </div>
+
+                            <div class="toolbar-right">
+                                <select id="province-limit">
+                                    <option value="20">20/หน้า</option>
+                                    <option value="50" selected>50/หน้า</option>
+                                    <option value="100">100/หน้า</option>
+                                </select>
+
+                                <button id="province-refresh" class="btn btn-ghost" type="button">
+                                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table class="data-table" aria-label="Provinces table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 90px">ID</th>
+                                        <th>ชื่อ (EN)</th>
+                                        <th>ชื่อ (TH)</th>
+                                        <th style="width: 170px">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="province-tbody">
+                                    <!-- JS render rows -->
+                                    <tr>
+                                        <td colspan="4" class="muted">
+                                            ยังไม่มีข้อมูล (หรือยังไม่ได้โหลด)
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="table-footer">
+                            <div id="province-pagination" class="pagination">
+                                <!-- JS render pagination -->
+                            </div>
+                            <div id="province-total" class="muted"></div>
+                        </div>
+                    </section>
             </section>
 
-            <!-- ========================= SECTION: PROVINCES ========================== -->
-            <section id="section-provinces" class="setting-section" hidden>
-              <div class="table-toolbar">
-                <div class="search-box">
-                  <i class="fa-solid fa-magnifying-glass"></i>
-                  <input
-                    id="province-search"
-                    type="search"
-                    placeholder="ค้นหาจังหวัด (TH/EN)..."
-                  />
-                </div>
-
-                <div class="toolbar-right">
-                  <select id="province-limit">
-                    <option value="20">20/หน้า</option>
-                    <option value="50" selected>50/หน้า</option>
-                    <option value="100">100/หน้า</option>
-                  </select>
-
-                  <button
-                    id="province-refresh"
-                    class="btn btn-ghost"
-                    type="button"
-                  >
-                    <i class="fa-solid fa-rotate"></i> รีเฟรช
-                  </button>
-                </div>
-              </div>
-
-              <div class="table-wrap">
-                <table class="data-table" aria-label="Provinces table">
-                  <thead>
-                    <tr>
-                      <th style="width: 90px">ID</th>
-                      <th>ชื่อ (EN)</th>
-                      <th>ชื่อ (TH)</th>
-                      <th style="width: 170px">จัดการ</th>
-                    </tr>
-                  </thead>
-                  <tbody id="province-tbody">
-                    <!-- JS render rows -->
-                    <tr>
-                      <td colspan="4" class="muted">
-                        ยังไม่มีข้อมูล (หรือยังไม่ได้โหลด)
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div class="table-footer">
-                <div id="province-pagination" class="pagination">
-                  <!-- JS render pagination -->
-                </div>
-                <div id="province-total" class="muted"></div>
-              </div>
-            </section>
-          </div>
-        </section>
-      </div>
+        </div>
     </main>
 
-    <div id="province-modal" class="modal" hidden>
-      <div class="modal__overlay" data-close="province-modal"></div>
 
-      <div
-        class="modal__dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="province-modal-title"
-      >
-        <div class="modal__header">
-          <h3 id="province-modal-title">เพิ่มจังหวัด</h3>
-          <button
-            class="modal__close"
-            type="button"
-            aria-label="Close"
-            data-close="province-modal"
-          >
-            ✕
-          </button>
+    <!-- MODAL: ORG TYPE FORM -->
+    <div id="org-type-modal" class="modal" hidden>
+        <div class="modal__overlay" data-close="org-type-modal"></div>
+
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="org-type-modal-title">
+            <div class="modal__header">
+                <h3 id="org-type-modal-title">เพิ่มประเภทหน่วยงาน</h3>
+                <button class="modal__close" type="button" aria-label="Close" data-close="org-type-modal">✕</button>
+            </div>
+
+            <form id="org-type-form" class="modal__body">
+                <input type="hidden" id="org-type-id" name="organization_type_id" />
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label for="org-type-name-en">ชื่อประเภท (EN)</label>
+                        <input id="org-type-name-en" name="type_name" type="text" required />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="org-type-name-th">ชื่อประเภท (TH)</label>
+                        <input id="org-type-name-th" name="type_name_th" type="text" required />
+                    </div>
+                </div>
+
+                <div id="org-type-form-error" class="form-error" hidden></div>
+
+                <div class="modal__footer">
+                    <button type="button" class="btn btn-ghost" data-close="org-type-modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span id="org-type-submit-text">บันทึก</span>
+                    </button>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <form id="province-form" class="modal__body">
-          <input type="hidden" id="province-id" name="province_id" />
+    <!-- MODAL: PROVINCE FORM -->
+    <div id="province-modal" class="modal" hidden>
+        <div class="modal__overlay" data-close="province-modal"></div>
 
-          <div class="form-grid">
-            <div class="form-field">
-              <label for="province-nameEN">ชื่อ (EN)</label>
-              <input
-                id="province-nameEN"
-                name="nameEN"
-                type="text"
-                placeholder="เช่น Phitsanulok"
-                required
-              />
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="province-modal-title">
+            <div class="modal__header">
+                <h3 id="province-modal-title">เพิ่มจังหวัด</h3>
+                <button class="modal__close" type="button" aria-label="Close" data-close="province-modal">
+                    ✕
+                </button>
             </div>
 
-            <div class="form-field">
-              <label for="province-nameTH">ชื่อ (TH)</label>
-              <input
-                id="province-nameTH"
-                name="nameTH"
-                type="text"
-                placeholder="เช่น พิษณุโลก"
-                required
-              />
-            </div>
-          </div>
+            <form id="province-form" class="modal__body">
+                <input type="hidden" id="province-id" name="province_id" />
 
-          <div id="province-form-error" class="form-error" hidden></div>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label for="province-nameEN">ชื่อ (EN)</label>
+                        <input id="province-nameEN" name="nameEN" type="text" placeholder="เช่น Phitsanulok" required />
+                    </div>
 
-          <div class="modal__footer">
-            <button
-              type="button"
-              class="btn btn-ghost"
-              data-close="province-modal"
-            >
-              ยกเลิก
-            </button>
-            <button type="submit" class="btn btn-primary">
-              <span id="province-submit-text">บันทึก</span>
-            </button>
-          </div>
-        </form>
-      </div>
+                    <div class="form-field">
+                        <label for="province-nameTH">ชื่อ (TH)</label>
+                        <input id="province-nameTH" name="nameTH" type="text" placeholder="เช่น พิษณุโลก" required />
+                    </div>
+                </div>
+
+                <div id="province-form-error" class="form-error" hidden></div>
+
+                <div class="modal__footer">
+                    <button type="button" class="btn btn-ghost" data-close="province-modal">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <span id="province-submit-text">บันทึก</span>
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <footer id="footer-index"></footer>
-  </body>
+</body>
+
 </html>

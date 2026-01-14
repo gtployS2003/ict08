@@ -1,5 +1,4 @@
 // assets/js/api/provinces.api.js
-
 import * as http from "./http.js";
 
 /**
