@@ -12,6 +12,7 @@
     <script src="/ict/assets/js/api/http.js"></script>
     <script src="/ict/assets/js/api/news.api.js"></script>
     <script src="/ict/assets/js/api/organization-types.api.js"></script>
+    <script src="/ict/assets/js/api/organizations.api.js"></script>
 
     <script src="/ict/assets/js/include.js" defer></script>
     <script src="/ict/assets/js/auth.js" defer></script>
@@ -166,6 +167,11 @@
                                 <i class="fa-solid fa-plus"></i> เพิ่มจังหวัด
                             </button>
 
+                            <button id="btn-add-organization" class="btn btn-primary" type="button" hidden>
+                                <i class="fa-solid fa-plus"></i> เพิ่มหน่วยงาน
+                            </button>
+
+
                         </div>
 
                     </div>
@@ -272,6 +278,69 @@
                             <div id="province-total" class="muted"></div>
                         </div>
                     </section>
+
+                    <!-- SECTION: ORGANIZATIONS -->
+                    <section id="section-org-list" class="setting-section" hidden>
+
+                        <div class="table-toolbar">
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input id="org-search" type="search"
+                                    placeholder="ค้นหาหน่วยงาน (รหัส / ชื่อ / ที่ตั้ง)..." />
+                            </div>
+
+                            <div class="toolbar-right">
+                                <select id="org-filter-province">
+                                    <option value="">ทุกจังหวัด</option>
+                                </select>
+
+                                <select id="org-filter-type">
+                                    <option value="">ทุกประเภท</option>
+                                </select>
+
+                                <select id="org-limit">
+                                    <option value="20">20/หน้า</option>
+                                    <option value="50" selected>50/หน้า</option>
+                                    <option value="100">100/หน้า</option>
+                                </select>
+
+                                <button id="org-refresh" class="btn btn-ghost" type="button">
+                                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table class="data-table" aria-label="Organizations table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 90px">ID</th>
+                                        <th style="width: 120px">รหัส</th>
+                                        <th>ชื่อหน่วยงาน</th>
+                                        <th>จังหวัด</th>
+                                        <th>ประเภท</th>
+                                        <th>ที่ตั้ง</th>
+                                        <th style="width: 170px">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="org-tbody">
+                                    <tr>
+                                        <td colspan="7" class="muted">
+                                            ยังไม่มีข้อมูล (หรือยังไม่ได้โหลด)
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="table-footer">
+                            <div id="org-pagination" class="pagination"></div>
+                            <div id="org-total" class="muted"></div>
+                        </div>
+
+                    </section>
+                </div>
+
             </section>
 
         </div>
@@ -355,6 +424,62 @@
             </form>
         </div>
     </div>
+
+<!-- MODAL: ORGANIZATION FORM -->
+<div id="organization-modal" class="modal" hidden>
+    <div class="modal__overlay" data-close="organization-modal"></div>
+
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="organization-modal-title">
+        <div class="modal__header">
+            <h3 id="organization-modal-title">เพิ่มหน่วยงาน</h3>
+            <button class="modal__close" type="button" aria-label="Close"
+                data-close="organization-modal">✕</button>
+        </div>
+
+        <form id="organization-form" class="modal__body">
+            <input type="hidden" id="organization-id" name="organization_id" />
+
+            <div class="form-grid">
+                <div class="form-field">
+                    <label for="org-code">รหัสหน่วยงาน</label>
+                    <input id="org-code" name="code" type="text" required />
+                </div>
+
+                <div class="form-field">
+                    <label for="org-name">ชื่อหน่วยงาน</label>
+                    <input id="org-name" name="name" type="text" required />
+                </div>
+
+                <div class="form-field">
+                    <label for="org-province">จังหวัด</label>
+                    <select id="org-province" name="province_id" required></select>
+                </div>
+
+                <div class="form-field">
+                    <label for="org-type">ประเภทหน่วยงาน</label>
+                    <select id="org-type" name="organization_type_id" required></select>
+                </div>
+
+                <div class="form-field full">
+                    <label for="org-location">ที่ตั้ง</label>
+                    <input id="org-location" name="location" type="text" required />
+                </div>
+            </div>
+
+            <div id="organization-form-error" class="form-error" hidden></div>
+
+            <div class="modal__footer">
+                <button type="button" class="btn btn-ghost" data-close="organization-modal">
+                    ยกเลิก
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <span id="organization-submit-text">บันทึก</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 
     <footer id="footer-index"></footer>
 </body>
