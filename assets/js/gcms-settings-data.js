@@ -80,6 +80,7 @@
     hide($("#btn-add-province"));
     hide($("#btn-add-org-type"));
     hide($("#btn-add-organization"));
+    hide($("#btn-add-person-prefix"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -99,6 +100,12 @@
         show($("#section-org-list"));
         show($("#btn-add-organization"));
         setTitle("รายชื่อหน่วยงาน");
+        break;
+
+      case "person-prefixes":
+        show($("#section-person-prefixes"));
+        show($("#btn-add-person-prefix"));
+        setTitle("คำนำหน้าชื่อ");
         break;
 
       default:
@@ -645,7 +652,146 @@
     }
   }
 
-  /* ===== Modal open/close ===== */
+
+  /* =========================
+     Person Prefixes UI
+  ========================= */
+  const personPrefixEls = {
+    section: $("#section-person-prefixes"),
+    tbody: $("#person-prefix-tbody"),
+    search: $("#person-prefix-search"),
+    limit: $("#person-prefix-limit"),
+    refresh: $("#person-prefix-refresh"),
+    pagination: $("#person-prefix-pagination"),
+    total: $("#person-prefix-total"),
+
+    btnAdd: $("#btn-add-person-prefix"),
+
+    modal: $("#person-prefix-modal"),
+    form: $("#person-prefix-form"),
+    modalTitle: $("#person-prefix-modal-title"),
+    submitText: $("#person-prefix-submit-text"),
+    inputId: $("#person-prefix-id"),
+    inputEN: $("#person-prefix-name-en"),
+    inputTH: $("#person-prefix-name-th"),
+    formError: $("#person-prefix-form-error"),
+  };
+
+  const personPrefixState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    total: 0,
+    totalPages: 1,
+    loading: false,
+  };
+
+  function renderPersonPrefixRows(items = []) { 
+    if (!personPrefixEls.tbody) return;
+
+    if (!items.length) {
+      personPrefixEls.tbody.innerHTML = `
+      <tr><td colspan="4" class="muted">ไม่พบข้อมูล</td></tr>
+    `;
+      return;
+    }
+
+    personPrefixEls.tbody.innerHTML = items.map((row) => {
+      const id = row.person_prefix_id;
+      return `
+      <tr data-id="${escapeHtml(id)}">
+        <td>${escapeHtml(id)}</td>
+        <td>${escapeHtml(row.prefix_en)}</td>
+        <td>${escapeHtml(row.prefix_th)}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm"
+            data-action="edit"
+            data-id="${id}"
+            data-en="${escapeHtml(row.prefix_en)}"
+            data-th="${escapeHtml(row.prefix_th)}">
+            แก้ไข
+          </button>
+          <button class="btn btn-danger btn-sm"
+            data-action="delete"
+            data-id="${id}">
+            ลบ
+          </button>
+        </td>
+      </tr>
+    `;
+    }).join("");
+  }
+
+  function renderPersonPrefixPagination() {
+    if (!personPrefixEls.pagination) return;
+
+    const { page, totalPages } = personPrefixState;
+
+    if (totalPages <= 1) {
+      personPrefixEls.pagination.innerHTML = "";
+      return;
+    }
+
+    const pages = [];
+    const push = (p) => pages.push(p);
+
+    push(1);
+    if (page - 2 > 2) push("…");
+    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) {
+      push(p);
+    }
+    if (page + 2 < totalPages - 1) push("…");
+    if (totalPages > 1) push(totalPages);
+
+    personPrefixEls.pagination.innerHTML = `
+    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
+    ${pages.map((p) => {
+      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
+      const active = p === page ? "is-active" : "";
+      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
+    }).join("")}
+    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
+  `;
+  }
+
+  function renderPersonPrefixTotal() {
+    if (!personPrefixEls.total) return;
+    personPrefixEls.total.textContent = `ทั้งหมด ${personPrefixState.total} รายการ`;
+  }
+
+  async function loadPersonPrefixes() {
+    if (personPrefixState.loading) return;
+    personPrefixState.loading = true;
+
+    try {
+      personPrefixEls.tbody.innerHTML =
+        `<tr><td colspan="4" class="muted">กำลังโหลด...</td></tr>`;
+
+      const qs = new URLSearchParams();
+      if (personPrefixState.q) qs.set("q", personPrefixState.q);
+      qs.set("page", String(personPrefixState.page));
+      qs.set("limit", String(personPrefixState.limit));
+
+      const json = await apiFetch(`/person-prefixes?${qs.toString()}`, { method: "GET" });
+      const { items = [], pagination = {} } = json.data || {};
+
+      personPrefixState.total = pagination.total || items.length;
+      personPrefixState.totalPages = pagination.total_pages || 1;
+
+      renderPersonPrefixRows(items);
+      renderPersonPrefixPagination();
+      renderPersonPrefixTotal();
+      personPrefixEls.total.textContent = `ทั้งหมด ${personPrefixState.total} รายการ`;
+    } catch (err) {
+      personPrefixEls.tbody.innerHTML =
+        `<tr><td colspan="4" class="muted">${err.message}</td></tr>`;
+    } finally {
+      personPrefixState.loading = false;
+    }
+  }
+  /* =========================
+    Modal (open/close)
+  ========================= */
   function openOrganizationModal({ mode, row = null } = {}) {
     if (!orgEls.modal) return;
 
@@ -677,9 +823,6 @@
     document.body.style.overflow = "";
   }
 
-  /* =========================
-    Modal (open/close)
-  ========================= */
   function openOrgTypeModal({ mode, id = "", en = "", th = "" }) {
     orgTypeEls.modalTitle.textContent =
       mode === "edit" ? "แก้ไขประเภทหน่วยงาน" : "เพิ่มประเภทหน่วยงาน";
@@ -726,6 +869,25 @@
     document.body.style.overflow = "";
   }
 
+  function openPersonPrefixModal({ mode, id = "", en = "", th = "" }) {
+    personPrefixEls.modalTitle.textContent =
+      mode === "edit" ? "แก้ไขคำนำหน้าชื่อ" : "เพิ่มคำนำหน้าชื่อ";
+    personPrefixEls.submitText.textContent =
+      mode === "edit" ? "บันทึกการแก้ไข" : "บันทึก";
+
+    personPrefixEls.inputId.value = id;
+    personPrefixEls.inputEN.value = en;
+    personPrefixEls.inputTH.value = th;
+
+    show(personPrefixEls.modal);
+  }
+
+  function closePersonPrefixModal() {
+    if (!personPrefixEls.modal) return;
+    hide(personPrefixEls.modal);
+    document.body.style.overflow = "";
+  }
+
   // ปิด modal เมื่อคลิกที่ overlay 
   document.addEventListener("click", (e) => {
     const closeId = e.target?.getAttribute?.("data-close");
@@ -740,9 +902,14 @@
   });
 
   document.addEventListener("click", (e) => {
-  const closeId = e.target?.getAttribute?.("data-close");
-  if (closeId === "organization-modal") closeOrganizationModal();
-});
+    const closeId = e.target?.getAttribute?.("data-close");
+    if (closeId === "organization-modal") closeOrganizationModal();
+  });
+
+  document.addEventListener("click", (e) => {
+    const closeId = e.target?.getAttribute?.("data-close");
+    if (closeId === "person-prefix-modal") closePersonPrefixModal();
+  });
 
   // กด ESC ปิด
   document.addEventListener("keydown", (e) => {
@@ -751,7 +918,6 @@
     }
   });
 
-
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && provinceEls.modal && !provinceEls.modal.hidden) {
       closeProvinceModal();
@@ -759,10 +925,16 @@
   });
 
   document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && orgEls.modal && !orgEls.modal.hidden) {
-    closeOrganizationModal();
-  }
-});
+    if (e.key === "Escape" && orgEls.modal && !orgEls.modal.hidden) {
+      closeOrganizationModal();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && personPrefixEls.modal && !personPrefixEls.modal.hidden) {
+      closePersonPrefixModal();
+    }
+  });
 
   // คลิกเมนูซ้ายที่มี data-section
   document.addEventListener("click", async (e) => {
@@ -801,6 +973,13 @@
       await loadOrganizations();
     }
 
+    if (sectionKey === "person-prefixes") {
+      personPrefixState.page = 1;
+      personPrefixState.q = (personPrefixEls.search?.value || "").trim();
+      personPrefixState.limit = Number(personPrefixEls.limit?.value || 50);
+      loadPersonPrefixes();
+    }
+
   });
 
   // ปุ่มเพิ่มประเภทหน่วยงาน
@@ -818,7 +997,10 @@
     openOrganizationModal({ mode: "create" });
   });
 
-  
+  personPrefixEls.btnAdd?.addEventListener("click", () => {
+    openPersonPrefixModal({ mode: "create" });
+  });
+
   // ค้นหา
   orgTypeEls.search?.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
@@ -841,6 +1023,13 @@
     loadOrganizations();
   });
 
+  personPrefixEls.search?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    personPrefixState.page = 1;
+    personPrefixState.q = (personPrefixEls.search.value || "").trim();
+    loadPersonPrefixes();
+  });
+
   // เปลี่ยน limit
   orgTypeEls.limit?.addEventListener("change", () => {
     orgTypeState.page = 1;
@@ -860,6 +1049,12 @@
     loadOrganizations();
   });
 
+  personPrefixEls.limit?.addEventListener("change", () => {
+    personPrefixState.page = 1;
+    personPrefixState.limit = Number(personPrefixEls.limit.value || 50);
+    loadPersonPrefixes();
+  });
+
   // รีเฟรช
   orgTypeEls.refresh?.addEventListener("click", () => {
     loadOrgTypes();
@@ -871,6 +1066,10 @@
 
   orgEls.refresh?.addEventListener("click", () => {
     loadOrganizations();
+  });
+
+  personPrefixEls.refresh?.addEventListener("click", () => {
+    loadPersonPrefixes();
   });
 
   // คลิก pagination
@@ -905,6 +1104,17 @@
 
     orgState.page = next;
     loadOrganizations();
+  });
+
+  personPrefixEls.pagination?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-page]");
+    if (!btn || btn.disabled) return;
+
+    const next = Number(btn.getAttribute("data-page"));
+    if (!next || next < 1 || next > personPrefixState.totalPages) return;
+
+    personPrefixState.page = next;
+    loadPersonPrefixes();
   });
 
   // คลิก edit/delete ในตาราง
@@ -1010,7 +1220,7 @@
 
       try {
         await apiFetch(`/organizations/${encodeURIComponent(id)}`, { method: "DELETE" });
-        
+
         // ถ้าหน้าสุดท้ายลบจนหมด ให้ถอยหน้ากลับ
         if (orgState.page > 1) {
           // reload แล้วเช็คว่ามีรายการเหลือไหมด้วยการลด page แบบปลอดภัย
@@ -1022,6 +1232,45 @@
           }
         } else {
           await loadOrganizations();
+        }
+      } catch (err) {
+        alert(`ลบไม่สำเร็จ: ${err.message}`);
+      }
+    }
+  });
+
+  personPrefixEls.tbody?.addEventListener("click", async (e) => {
+    const actionBtn = e.target.closest("button[data-action]");
+    if (!actionBtn) return;
+
+    const action = actionBtn.getAttribute("data-action");
+    const id = actionBtn.getAttribute("data-id");
+
+    if (action === "edit") {
+      const en = actionBtn.getAttribute("data-en") || "";
+      const th = actionBtn.getAttribute("data-th") || "";
+      openPersonPrefixModal({ mode: "edit", id, en, th });
+      return;
+    }
+
+    if (action === "delete") {
+      const ok = confirm(`ต้องการลบคำนำหน้าชื่อ ID ${id} ใช่ไหม?`);
+      if (!ok) return;
+
+      try {
+        await apiFetch(`/person-prefixes/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+        // ถ้าหน้าสุดท้ายลบจนหมด ให้ถอยหน้ากลับ
+        if (personPrefixState.page > 1) {
+          // reload แล้วเช็คว่ามีรายการเหลือไหมด้วยการลด page แบบปลอดภัย
+          // (ง่ายสุด: reload ปัจจุบันก่อน ถ้า totalPages ลด ให้ปรับ )
+          await loadPersonPrefixes();
+          if (personPrefixState.page > personPrefixState.totalPages) {
+            personPrefixState.page = personPrefixState.totalPages;
+            await loadPersonPrefixes();
+          }
+        } else {
+          await loadPersonPrefixes();
         }
       } catch (err) {
         alert(`ลบไม่สำเร็จ: ${err.message}`);
@@ -1167,19 +1416,61 @@
     }
   });
 
-  // FILTER: จังหวัด
-orgEls.filterProvince?.addEventListener("change", async () => {
-  orgState.page = 1;
-  orgState.province_id = orgEls.filterProvince.value || "";
-  await loadOrganizations();
-});
+  personPrefixEls.form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-// FILTER: ประเภทหน่วยงาน
-orgEls.filterType?.addEventListener("change", async () => {
-  orgState.page = 1;
-  orgState.organization_type_id = orgEls.filterType.value || "";
-  await loadOrganizations();
-});
+    const id = (personPrefixEls.inputId?.value || "").trim();
+    const prefix_en = (personPrefixEls.inputEN?.value || "").trim();
+    const prefix_th = (personPrefixEls.inputTH?.value || "").trim();
+
+    if (!prefix_en || !prefix_th) {
+      if (personPrefixEls.formError) {
+        personPrefixEls.formError.textContent = "กรุณากรอกคำนำหน้าชื่อทั้ง EN และ TH";
+        show(personPrefixEls.formError);
+      }
+      return;
+    }
+
+    try {
+      if (personPrefixEls.formError) hide(personPrefixEls.formError);
+
+      if (id) {
+        await apiFetch(`/person-prefixes/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          body: { prefix_en, prefix_th },
+        });
+      } else {
+        await apiFetch(`/person-prefixes`, {
+          method: "POST",
+          body: { prefix_en, prefix_th },
+        });
+      }
+
+      closePersonPrefixModal();
+      await loadPersonPrefixes();
+    } catch (err) {
+      if (personPrefixEls.formError) {
+        personPrefixEls.formError.textContent = err.message || "บันทึกไม่สำเร็จ";
+        show(personPrefixEls.formError);
+      } else {
+        alert(err.message || "บันทึกไม่สำเร็จ");
+      }
+    }
+  });
+
+  // FILTER: จังหวัด
+  orgEls.filterProvince?.addEventListener("change", async () => {
+    orgState.page = 1;
+    orgState.province_id = orgEls.filterProvince.value || "";
+    await loadOrganizations();
+  });
+
+  // FILTER: ประเภทหน่วยงาน
+  orgEls.filterType?.addEventListener("change", async () => {
+    orgState.page = 1;
+    orgState.organization_type_id = orgEls.filterType.value || "";
+    await loadOrganizations();
+  });
 
 
   /* =========================
@@ -1190,6 +1481,7 @@ orgEls.filterType?.addEventListener("change", async () => {
   hide(document.getElementById("btn-add-org-type"));
   hide(document.getElementById("btn-add-province"));
   hide(document.getElementById("btn-add-organization"));
+  hide(document.getElementById("btn-add-person-prefix"));
 
   activateSection("default");
 
