@@ -82,6 +82,7 @@
     hide($("#btn-add-organization"));
     hide($("#btn-add-person-prefix"));
     hide($("#btn-add-department"));
+    hide($("#btn-add-position-title"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -113,6 +114,12 @@
         show($("#section-departments"));
         show($("#btn-add-department"));
         setTitle("รายการฝ่ายผู้ใช้งาน");
+        break;
+
+      case "position-titles":
+        show($("#section-position-titles"));
+        show($("#btn-add-position-title"));
+        setTitle("รายการตำแหน่งผู้ใช้งาน");
         break;
 
       default:
@@ -849,7 +856,7 @@
     }
 
     const startNo =
-    ((departmentState.page || 1) - 1) * (departmentState.limit || 50);
+      ((departmentState.page || 1) - 1) * (departmentState.limit || 50);
 
     departmentEls.tbody.innerHTML = items.map((row, idx) => {
       const id = row.department_id;
@@ -857,7 +864,7 @@
       // ถ้า backend ยังไม่ส่งชื่อองค์กรมา ก็แสดงแค่ id ไปก่อน
       const orgText = row.organization_name || row.organization_title || row.organization_id || "";
       const no = startNo + idx + 1;
-      
+
 
       return `
       <tr data-id="${escapeHtml(id)}">
@@ -1011,6 +1018,284 @@
     }
   }
 
+  /* =========================
+  Position Titles UI
+========================= */
+  const positionTitleEls = {
+    section: $("#section-position-titles"),
+    tbody: $("#position-title-tbody"),
+    search: $("#position-title-search"),
+    limit: $("#position-title-limit"),
+    refresh: $("#position-title-refresh"),
+    pagination: $("#position-title-pagination"),
+    total: $("#position-title-total"),
+
+    filterDepartment: $("#position-title-filter-department"),
+    filterOrganization: $("#position-title-filter-organization"),
+
+    btnAdd: $("#btn-add-position-title"),
+
+    modal: $("#position-title-modal"),
+    form: $("#position-title-form"),
+    modalTitle: $("#position-title-modal-title"),
+    submitText: $("#position-title-submit-text"),
+    inputId: $("#position-title-id"),
+    inputCode: $("#position-title-code"),
+    inputTitle: $("#position-title-name"),
+
+    selectOrg: $("#position-title-organization"),
+    selectDept: $("#position-title-department"),
+
+    formError: $("#position-title-form-error"),
+  };
+
+  const positionTitleState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    organization_id: "",
+    department_id: "",
+    total: 0,
+    totalPages: 1,
+    loading: false,
+    refsLoaded: false,
+  };
+
+
+
+  function renderPositionTitleRows(items = []) {
+    if (!positionTitleEls.tbody) return;
+
+    if (!items.length) {
+      positionTitleEls.tbody.innerHTML = `
+      <tr><td colspan="6" class="muted">ไม่พบข้อมูล</td></tr>
+    `;
+      return;
+    }
+
+    positionTitleEls.tbody.innerHTML = items
+      .map((row) => {
+        const id = row.position_title_id;
+
+        const deptName =
+          row.department_title ||
+          row.department_name ||
+          row.department_code ||
+          row.department_id ||
+          "";
+
+        const orgName =
+          row.organization_name ||
+          row.organization_title ||
+          row.organization_code ||
+          row.organization_id ||
+          "";
+
+        return `
+        <tr data-id="${escapeHtml(id)}">
+          <td>${escapeHtml(id)}</td>
+          <td>${escapeHtml(row.position_code ?? "")}</td>
+          <td>${escapeHtml(row.position_title ?? "")}</td>
+          <td>${escapeHtml(deptName)}</td>
+          <td>${escapeHtml(orgName)}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm"
+              data-action="edit"
+              data-id="${escapeHtml(id)}"
+              data-code="${escapeHtml(row.position_code ?? "")}"
+              data-title="${escapeHtml(row.position_title ?? "")}"
+              data-department_id="${escapeHtml(row.department_id ?? "")}"
+              data-organization_id="${escapeHtml(row.organization_id ?? "")}">
+              แก้ไข
+            </button>
+            <button class="btn btn-danger btn-sm"
+              data-action="delete"
+              data-id="${escapeHtml(id)}">
+              ลบ
+            </button>
+          </td>
+        </tr>
+      `;
+      })
+      .join("");
+  }
+
+  function renderPositionTitlePagination() {
+    if (!positionTitleEls.pagination) return;
+
+    const { page, totalPages } = positionTitleState;
+
+    if (totalPages <= 1) {
+      positionTitleEls.pagination.innerHTML = "";
+      return;
+    }
+
+    const pages = [];
+    const push = (p) => pages.push(p);
+
+    push(1);
+    if (page - 2 > 2) push("…");
+    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) {
+      push(p);
+    }
+    if (page + 2 < totalPages - 1) push("…");
+    if (totalPages > 1) push(totalPages);
+
+    positionTitleEls.pagination.innerHTML = `
+    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
+    ${pages
+        .map((p) => {
+          if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
+          const active = p === page ? "is-active" : "";
+          return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
+        })
+        .join("")}
+    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
+  `;
+  }
+
+  function renderPositionTitleTotal() {
+    if (!positionTitleEls.total) return;
+    positionTitleEls.total.textContent = `ทั้งหมด ${positionTitleState.total} รายการ`;
+  }
+
+  async function loadPositionTitles() {
+    if (positionTitleState.loading) return;
+    positionTitleState.loading = true;
+
+    try {
+      if (positionTitleEls.tbody) {
+        positionTitleEls.tbody.innerHTML = `
+        <tr><td colspan="6" class="muted">กำลังโหลด...</td></tr>
+      `;
+      }
+
+      const json = await window.PositionTitlesAPI.list({
+        q: positionTitleState.q,
+        page: positionTitleState.page,
+        limit: positionTitleState.limit,
+        organization_id: positionTitleState.organization_id,
+        department_id: positionTitleState.department_id,
+      });
+
+      const data = json.data || {};
+      const items = data.items || [];
+      const pagination = data.pagination || {};
+
+      positionTitleState.total = Number(pagination.total || items.length || 0);
+      positionTitleState.totalPages = Number(pagination.total_pages || 1);
+
+      renderPositionTitleRows(items);
+      renderPositionTitlePagination();
+      renderPositionTitleTotal();
+    } catch (err) {
+      console.error(err);
+      if (positionTitleEls.tbody) {
+        positionTitleEls.tbody.innerHTML = `
+        <tr><td colspan="6" class="muted">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</td></tr>
+      `;
+      }
+    } finally {
+      positionTitleState.loading = false;
+    }
+  }
+
+  /**
+   * โหลด dropdown refs:
+   * - organization list -> filter + modal org
+   * - department list -> filter + modal dept (ตาม org ถ้าเลือก)
+   */
+  async function loadPositionTitleRefs() {
+    if (positionTitleState.refsLoaded) return;
+    positionTitleState.refsLoaded = true;
+
+    // organizations
+    try {
+      const orgJson = await apiFetch(`/organizations?page=1&limit=500`, { method: "GET" });
+      const orgItems = orgJson?.data?.items || [];
+
+      if (positionTitleEls.filterOrganization) {
+        const opts = [
+          `<option value="">ทุกหน่วยงาน</option>`,
+          ...orgItems.map(
+            (o) => `<option value="${escapeHtml(o.organization_id)}">${escapeHtml(o.name)} (${escapeHtml(o.code)})</option>`
+          ),
+        ];
+        positionTitleEls.filterOrganization.innerHTML = opts.join("");
+      }
+
+      if (positionTitleEls.selectOrg) {
+        const opts = [
+          `<option value="">เลือกหน่วยงาน</option>`,
+          ...orgItems.map(
+            (o) => `<option value="${escapeHtml(o.organization_id)}">${escapeHtml(o.name)} (${escapeHtml(o.code)})</option>`
+          ),
+        ];
+        positionTitleEls.selectOrg.innerHTML = opts.join("");
+      }
+    } catch (e) {
+      console.warn("load organizations for position titles failed:", e);
+    }
+
+    // departments (initial = all)
+    await loadPositionTitleDepartmentsByOrg("", { target: "both" });
+  }
+
+  /** โหลด departments ตาม org (ถ้า org ว่าง = เอาทั้งหมด) */
+  async function loadPositionTitleDepartmentsByOrg(orgId = "", { target = "both" } = {}) {
+    const targets = [];
+    if (target === "filter" || target === "both") targets.push(positionTitleEls.filterDepartment);
+    if (target === "modal" || target === "both") targets.push(positionTitleEls.selectDept);
+
+    const targetEls = targets.filter(Boolean);
+
+    targetEls.forEach((el) => {
+      const isFilter = el === positionTitleEls.filterDepartment;
+      el.innerHTML = isFilter
+        ? `<option value="">ทุกฝ่าย</option>`
+        : `<option value="">เลือกฝ่าย</option>`;
+    });
+
+    // ถ้า orgId ว่าง และ target เป็น modal -> ไม่ต้องโหลดอะไร (ให้คงแค่ "เลือกฝ่าย")
+    if (!orgId && target === "modal") return;
+
+
+    try {
+      const qs = new URLSearchParams();
+      qs.set("page", "1");
+      qs.set("limit", "500");
+      if (orgId) qs.set("organization_id", String(orgId));
+
+      const depJson = await apiFetch(`/departments?${qs.toString()}`, { method: "GET" });
+      const depItems = depJson?.data?.items || [];
+
+      if (positionTitleEls.filterDepartment && (target === "filter" || target === "both")) {
+        const opts = [
+          `<option value="">ทุกฝ่าย</option>`,
+          ...depItems.map(
+            (d) => `<option value="${escapeHtml(d.department_id)}">${escapeHtml(d.department_title)} (${escapeHtml(d.department_code)})</option>`
+          ),
+        ];
+        positionTitleEls.filterDepartment.innerHTML = opts.join("");
+      }
+
+      if (positionTitleEls.selectDept && (target === "modal" || target === "both")) {
+        const opts = [
+          `<option value="">เลือกฝ่าย</option>`,
+          ...depItems.map(
+            (d) => `<option value="${escapeHtml(d.department_id)}">${escapeHtml(d.department_title)} (${escapeHtml(d.department_code)})</option>`
+          ),
+        ];
+        positionTitleEls.selectDept.innerHTML = opts.join("");
+      }
+
+    } catch (e) {
+      console.warn("load departments for position titles failed:", e);
+      targetEls.forEach((el) => {
+        el.innerHTML = `<option value="">โหลดฝ่ายไม่สำเร็จ</option>`;
+      });
+    }
+  }
 
 
   /* =========================
@@ -1138,10 +1423,47 @@
     document.body.style.overflow = "hidden";
   }
 
-
   function closeDepartmentModal() {
     if (!departmentEls.modal) return;
     hide(departmentEls.modal);
+    document.body.style.overflow = "";
+  }
+
+  function openPositionTitleModal({ mode, row = null } = {}) {
+    if (!positionTitleEls.modal) return;
+
+    if (positionTitleEls.formError) {
+      positionTitleEls.formError.textContent = "";
+      hide(positionTitleEls.formError);
+    }
+
+    const isEdit = mode === "edit";
+    if (positionTitleEls.modalTitle) positionTitleEls.modalTitle.textContent = isEdit ? "แก้ไขตำแหน่ง" : "เพิ่มตำแหน่ง";
+    if (positionTitleEls.submitText) positionTitleEls.submitText.textContent = isEdit ? "บันทึกการแก้ไข" : "บันทึก";
+
+    if (positionTitleEls.inputId) positionTitleEls.inputId.value = isEdit ? String(row?.position_title_id ?? "") : "";
+    if (positionTitleEls.inputCode) positionTitleEls.inputCode.value = isEdit ? String(row?.position_code ?? "") : "";
+    if (positionTitleEls.inputTitle) positionTitleEls.inputTitle.value = isEdit ? String(row?.position_title ?? "") : "";
+
+    // set select (org -> dept)
+    const orgId = isEdit ? String(row?.organization_id ?? "") : "";
+    const deptId = isEdit ? String(row?.department_id ?? "") : "";
+
+    if (positionTitleEls.selectOrg) positionTitleEls.selectOrg.value = orgId;
+
+    // โหลด dept ตาม org แล้วค่อย set ค่า
+    loadPositionTitleDepartmentsByOrg(orgId, { target: "modal" }).then(() => {
+      if (positionTitleEls.selectDept) positionTitleEls.selectDept.value = deptId;
+    });
+
+
+    show(positionTitleEls.modal);
+    document.body.style.overflow = "hidden";
+  }
+
+  function closePositionTitleModal() {
+    if (!positionTitleEls.modal) return;
+    hide(positionTitleEls.modal);
     document.body.style.overflow = "";
   }
 
@@ -1173,6 +1495,11 @@
     if (closeId === "department-modal") closeDepartmentModal();
   });
 
+  document.addEventListener("click", (e) => {
+    const closeId = e.target?.getAttribute?.("data-close");
+    if (closeId === "position-title-modal") closePositionTitleModal();
+  });
+
   // กด ESC ปิด
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && orgTypeEls.modal && !orgTypeEls.modal.hidden) {
@@ -1201,6 +1528,12 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && departmentEls.modal && !departmentEls.modal.hidden) {
       closeDepartmentModal();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && positionTitleEls.modal && !positionTitleEls.modal.hidden) {
+      closePositionTitleModal();
     }
   });
 
@@ -1258,6 +1591,17 @@
       await loadDepartments();
     }
 
+    if (sectionKey === "position-titles") {
+      positionTitleState.page = 1;
+      positionTitleState.q = (positionTitleEls.search?.value || "").trim();
+      positionTitleState.limit = Number(positionTitleEls.limit?.value || 50);
+      positionTitleState.organization_id = positionTitleEls.filterOrganization?.value || "";
+      positionTitleState.department_id = positionTitleEls.filterDepartment?.value || "";
+
+      await loadPositionTitleRefs();
+      await loadPositionTitles();
+    }
+
 
   });
 
@@ -1276,12 +1620,19 @@
     openOrganizationModal({ mode: "create" });
   });
 
+  // ปุ่มเพิ่มคำนำหน้าชื่อ
   personPrefixEls.btnAdd?.addEventListener("click", () => {
     openPersonPrefixModal({ mode: "create" });
   });
 
+  // ปุ่มเพิ่มฝ่ายผู้ใช้งาน
   departmentEls.btnAdd?.addEventListener("click", async () => {
     await openDepartmentModal({ mode: "create" });
+  });
+
+  // ปุ่มเพิ่มตำแหน่ง
+  positionTitleEls.btnAdd?.addEventListener("click", async () => {
+    await openPositionTitleModal({ mode: "create" });
   });
 
   // ค้นหา
@@ -1320,6 +1671,13 @@
     loadDepartments();
   });
 
+  positionTitleEls.search?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    positionTitleState.page = 1;
+    positionTitleState.q = (positionTitleEls.search.value || "").trim();
+    loadPositionTitles();
+  });
+
   // เปลี่ยน limit
   orgTypeEls.limit?.addEventListener("change", () => {
     orgTypeState.page = 1;
@@ -1351,6 +1709,12 @@
     loadDepartments();
   });
 
+  positionTitleEls.limit?.addEventListener("change", () => {
+    positionTitleState.page = 1;
+    positionTitleState.limit = Number(positionTitleEls.limit.value || 50);
+    loadPositionTitles();
+  });
+
   // รีเฟรช
   orgTypeEls.refresh?.addEventListener("click", () => {
     loadOrgTypes();
@@ -1370,6 +1734,10 @@
 
   departmentEls.refresh?.addEventListener("click", () => {
     loadDepartments();
+  });
+
+  positionTitleEls.refresh?.addEventListener("click", () => {
+    loadPositionTitles();
   });
 
   // คลิก pagination
@@ -1426,6 +1794,17 @@
 
     departmentState.page = next;
     loadDepartments();
+  });
+
+  positionTitleEls.pagination?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-page]");
+    if (!btn || btn.disabled) return;
+
+    const next = Number(btn.getAttribute("data-page"));
+    if (!next || next < 1 || next > positionTitleState.totalPages) return;
+
+    positionTitleState.page = next;
+    loadPositionTitles();
   });
 
   // คลิก edit/delete ในตาราง
@@ -1615,6 +1994,43 @@
         if (departmentState.page > departmentState.totalPages) {
           departmentState.page = departmentState.totalPages;
           await loadDepartments();
+        }
+      } catch (err) {
+        alert(`ลบไม่สำเร็จ: ${err.message}`);
+      }
+    }
+  });
+
+  positionTitleEls.tbody?.addEventListener("click", async (e) => {
+    const actionBtn = e.target.closest("button[data-action]");
+    if (!actionBtn) return;
+
+    const action = actionBtn.getAttribute("data-action");
+    const id = actionBtn.getAttribute("data-id");
+
+    if (action === "edit") {
+      const row = {
+        position_title_id: id,
+        position_code: actionBtn.getAttribute("data-code") || "",
+        position_title: actionBtn.getAttribute("data-title") || "",
+        organization_id: actionBtn.getAttribute("data-organization_id") || "",
+        department_id: actionBtn.getAttribute("data-department_id") || "",
+      };
+      openPositionTitleModal({ mode: "edit", row });
+      return;
+    }
+
+    if (action === "delete") {
+      const ok = confirm(`ต้องการลบตำแหน่ง ID ${id} ใช่ไหม?`);
+      if (!ok) return;
+
+      try {
+        await apiFetch(`/position-titles/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+        await loadPositionTitles();
+        if (positionTitleState.page > positionTitleState.totalPages) {
+          positionTitleState.page = positionTitleState.totalPages;
+          await loadPositionTitles();
         }
       } catch (err) {
         alert(`ลบไม่สำเร็จ: ${err.message}`);
@@ -1852,6 +2268,57 @@
     }
   });
 
+  positionTitleEls.form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const id = (positionTitleEls.inputId?.value || "").trim();
+    const position_code = (positionTitleEls.inputCode?.value || "").trim();
+    const position_title = (positionTitleEls.inputTitle?.value || "").trim();
+    const organization_id = (positionTitleEls.selectOrg?.value || "").trim();
+    const department_id = (positionTitleEls.selectDept?.value || "").trim();
+
+    if (!position_code || !position_title || !organization_id) {
+      if (positionTitleEls.formError) {
+        positionTitleEls.formError.textContent = "กรุณากรอก รหัสตำแหน่ง, ชื่อตำแหน่ง, หน่วยงาน และ ฝ่ายผู้ใช้งาน";
+        show(positionTitleEls.formError);
+      }
+      return;
+    }
+
+    try {
+      if (positionTitleEls.formError) hide(positionTitleEls.formError);
+
+      const payload = {
+        position_code,
+        position_title,
+        organization_id: Number(organization_id),
+        department_id: department_id ? Number(department_id) : null,
+      };
+
+      if (id) {
+        await apiFetch(`/position-titles/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          body: payload,
+        });
+      } else {
+        await apiFetch(`/position-titles`, {
+          method: "POST",
+          body: payload,
+        });
+      }
+
+      closePositionTitleModal();
+      await loadPositionTitles();
+    } catch (err) {
+      if (positionTitleEls.formError) {
+        positionTitleEls.formError.textContent = err.message || "บันทึกไม่สำเร็จ";
+        show(positionTitleEls.formError);
+      } else {
+        alert(err.message || "บันทึกไม่สำเร็จ");
+      }
+    }
+  });
+
   // FILTER: หน่วยงาน
   departmentEls.filterOrg?.addEventListener("change", async () => {
     departmentState.page = 1;
@@ -1873,6 +2340,47 @@
     await loadOrganizations();
   });
 
+  // FILTER: หน่วยงาน (ตำแหน่ง)
+  positionTitleEls.filterOrganization?.addEventListener("change", async () => {
+    positionTitleState.page = 1;
+    positionTitleState.organization_id = positionTitleEls.filterOrganization.value || "";
+
+    // เคลียร์ dept filter
+    positionTitleState.department_id = "";
+    if (positionTitleEls.filterDepartment) positionTitleEls.filterDepartment.value = "";
+
+    // โหลดฝ่ายให้ตรงกับ org ที่เลือก (อัปเดตเฉพาะ filter)
+    await loadPositionTitleDepartmentsByOrg(positionTitleState.organization_id, { target: "filter" });
+
+    await loadPositionTitles();
+  });
+
+
+  // FILTER: ฝ่าย (ตำแหน่ง)
+  positionTitleEls.filterDepartment?.addEventListener("change", async () => {
+    positionTitleState.page = 1;
+    positionTitleState.department_id = positionTitleEls.filterDepartment.value || "";
+    await loadPositionTitles();
+  });
+
+
+  // MODAL: เปลี่ยนหน่วยงาน -> โหลดฝ่ายใหม่ตามหน่วยงาน
+  positionTitleEls.selectOrg?.addEventListener("change", async () => {
+    const orgId = positionTitleEls.selectOrg.value || "";
+
+    // reset ฝ่าย
+    if (positionTitleEls.selectDept) {
+      positionTitleEls.selectDept.value = "";
+      positionTitleEls.selectDept.innerHTML = `<option value="">เลือกฝ่าย</option>`;
+    }
+
+    await loadPositionTitleDepartmentsByOrg(orgId, { target: "modal" });
+  });
+
+
+
+
+
 
   /* =========================
     Init
@@ -1883,6 +2391,8 @@
   hide(document.getElementById("btn-add-province"));
   hide(document.getElementById("btn-add-organization"));
   hide(document.getElementById("btn-add-person-prefix"));
+  hide(document.getElementById("btn-add-department"));
+  hide(document.getElementById("btn-add-position-title"));
 
   activateSection("default");
 

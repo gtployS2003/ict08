@@ -509,12 +509,23 @@ index gcms
 }
 
 .table-toolbar select {
+  width: 100%;
+  min-width: 260px;      /* ปรับตาม layout */
+  max-width: 100%;
   border-radius: 12px;
   border: 1px solid rgba(0, 0, 0, 0.10);
   padding: 10px 12px;
   background: #fff;
   cursor: pointer;
 }
+
+select,
+select option {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 
 /* ---- Table ---- */
 .table-wrap {
