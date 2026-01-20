@@ -16,6 +16,7 @@
     <script src="/ict/assets/js/api/person-prefixes.api.js"></script>
     <script src="/ict/assets/js/api/departments.api.js"></script>
     <script src="/ict/assets/js/api/position-titles.api.js"></script>
+    <script src="/ict/assets/js/api/user-roles.api.js"></script>
 
     <script src="/ict/assets/js/include.js" defer></script>
     <script src="/ict/assets/js/auth.js" defer></script>
@@ -43,7 +44,7 @@
                             <li><a href="#">รายการผู้ใช้งาน</a></li>
                             <!-- V อันนี้คือ login ครั้งแรก แจ้งเตือนหน้านี้ ให้ admin อนุมัตื -->
                             <li><a href="#">ตั้งค่าสิทธิ์ผู้ใช้งาน</a></li>
-                            <li><a href="#">รายการสิทธิ์ผู้ใช้งาน</a></li>
+                            <li><a href="#" data-section="user-roles">รายการสิทธิ์ผู้ใช้งาน</a></li>
                             <li><a href="#" data-section="position-titles">รายการตำแหน่งผู้ใช้งาน</a></li>
                             <li><a href="#" data-section="departments">รายการฝ่ายผู้ใช้งาน</a></li>
                             <li><a href="#" data-section="person-prefixes">รายการคำนำหน้าผู้ใช้งาน</a></li>
@@ -189,6 +190,10 @@
 
                             <button id="btn-add-position-title" class="btn btn-primary" type="button" hidden>
                                 <i class="fa-solid fa-plus"></i> เพิ่มตำแหน่ง
+                            </button>
+
+                            <button id="btn-add-user-role" class="btn btn-primary" type="button" hidden>
+                                <i class="fa-solid fa-plus"></i> เพิ่มสิทธิ์ผู้ใช้งาน
                             </button>
 
 
@@ -516,6 +521,52 @@
                             <div id="position-title-total" class="muted"></div>
                         </div>
                     </section>
+
+                    <!-- SECTION: USER ROLES -->
+                    <section id="section-user-roles" class="setting-section" hidden>
+                        <div class="table-toolbar">
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input id="user-role-search" type="search" placeholder="ค้นหาสิทธิ์ผู้ใช้งาน..." />
+                            </div>
+
+                            <div class="toolbar-right">
+                                <select id="user-role-limit">
+                                    <option value="20">20/หน้า</option>
+                                    <option value="50" selected>50/หน้า</option>
+                                    <option value="100">100/หน้า</option>
+                                </select>
+
+                                <button id="user-role-refresh" class="btn btn-ghost" type="button">
+                                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table class="data-table" aria-label="User Roles table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 90px">ID</th>
+                                        <th style="width: 140px">รหัสสิทธิ์</th>
+                                        <th>ชื่อสิทธิ์</th>
+                                        <th style="width: 170px">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="user-role-tbody">
+                                    <tr>
+                                        <td colspan="4" class="muted">ยังไม่มีข้อมูล (หรือยังไม่ได้โหลด)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="table-footer">
+                            <div id="user-role-pagination" class="pagination"></div>
+                            <div id="user-role-total" class="muted"></div>
+                        </div>
+                    </section>
+
                 </div>
             </section>
         </div>
@@ -783,6 +834,39 @@
                     <button type="button" class="btn btn-ghost" data-close="position-title-modal">ยกเลิก</button>
                     <button type="submit" class="btn btn-primary">
                         <span id="position-title-submit-text">บันทึก</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: USER ROLE FORM -->
+    <div id="user-role-modal" class="modal" hidden>
+        <div class="modal__overlay" data-close="user-role-modal"></div>
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="user-role-modal-title">
+            <div class="modal__header">
+                <h3 id="user-role-modal-title">เพิ่มสิทธิ์ผู้ใช้งาน</h3>
+                <button class="modal__close" type="button" aria-label="Close" data-close="user-role-modal">✕</button>
+            </div>
+
+            <form id="user-role-form" class="modal__body">
+                <input type="hidden" id="user-role-id" name="user_role_id" />
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label for="user-role-code">รหัสสิทธิ์</label>
+                        <input id="user-role-code" name="code" type="text" required />
+                    </div>
+                    <div class="form-field">
+                        <label for="user-role-name">ชื่อสิทธิ์</label>
+                        <input id="user-role-name" name="role" type="text" required />
+                    </div>
+                </div>
+                <div id="user-role-form-error" class="form-error" hidden></div>
+                <div class="modal__footer">
+                    <button type="button" class="btn btn-ghost" data-close="user-role-modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span id="user-role-submit-text">บันทึก</span>
                     </button>
                 </div>
             </form>

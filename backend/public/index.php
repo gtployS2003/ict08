@@ -15,6 +15,7 @@ require_once __DIR__ . '/../routes/organization.routes.php';
 require_once __DIR__ . '/../routes/person_prefixes.routes.php';
 require_once __DIR__ . '/../routes/departments.routes.php';
 require_once __DIR__ . '/../routes/position_titles.routes.php';
+require_once __DIR__ . '/../routes/user_roles.routes.php';
 
 cors_apply();
 cors_handle_preflight();
@@ -48,6 +49,7 @@ try {
     if (person_prefixes_routes($method, $segments, $pdo)) exit;
     if (departments_routes($method, $segments, $pdo)) exit;
     if (position_titles_routes($method, $segments, $pdo)) exit;
+    if (user_roles_routes($method, $segments, $pdo)) exit;
 
     fail("Route not found", 404, ["path" => $path, "method" => $method]);
 

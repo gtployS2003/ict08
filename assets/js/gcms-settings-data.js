@@ -83,6 +83,8 @@
     hide($("#btn-add-person-prefix"));
     hide($("#btn-add-department"));
     hide($("#btn-add-position-title"));
+    hide($("#btn-add-user-role"));
+
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -120,6 +122,12 @@
         show($("#section-position-titles"));
         show($("#btn-add-position-title"));
         setTitle("รายการตำแหน่งผู้ใช้งาน");
+        break;
+
+      case "user-roles":
+        show($("#section-user-roles"));
+        show($("#btn-add-user-role"));
+        setTitle("รายการสิทธิ์ผู้ใช้งาน");
         break;
 
       default:
@@ -414,9 +422,20 @@
       qs.set("limit", String(provinceState.limit));
 
       const json = await apiFetch(`/provinces?${qs.toString()}`, { method: "GET" });
-      const data = json.data || {};
-      const items = data.items || [];
-      const pagination = data.pagination || {};
+      const data = json?.data ?? {};
+
+      // รองรับหลายรูปแบบ response
+      const items =
+        data.items ??
+        (Array.isArray(data) ? data : null) ??
+        json.items ??
+        [];
+
+      const pagination =
+        data.pagination ??
+        json.pagination ??
+        {};
+
 
       provinceState.total = Number(pagination.total || items.length || 0);
       provinceState.totalPages = Number(pagination.total_pages || 1);
@@ -1061,8 +1080,6 @@
     refsLoaded: false,
   };
 
-
-
   function renderPositionTitleRows(items = []) {
     if (!positionTitleEls.tbody) return;
 
@@ -1297,6 +1314,158 @@
     }
   }
 
+  /* =========================
+   User Roles UI
+========================= */
+  const userRoleEls = {
+    section: $("#section-user-roles"),
+    tbody: $("#user-role-tbody"),
+    search: $("#user-role-search"),
+    limit: $("#user-role-limit"),
+    refresh: $("#user-role-refresh"),
+    pagination: $("#user-role-pagination"),
+    total: $("#user-role-total"),
+
+    btnAdd: $("#btn-add-user-role"),
+
+    modal: $("#user-role-modal"),
+    form: $("#user-role-form"),
+    modalTitle: $("#user-role-modal-title"),
+    submitText: $("#user-role-submit-text"),
+    inputId: $("#user-role-id"),
+    inputCode: $("#user-role-code"),
+    inputRole: $("#user-role-name"),
+    formError: $("#user-role-form-error"),
+  };
+
+  const userRoleState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    total: 0,
+    totalPages: 1,
+    loading: false,
+  };
+
+  function renderUserRoleRows(items = []) {
+    if (!userRoleEls.tbody) return;
+
+    if (!items.length) {
+      userRoleEls.tbody.innerHTML = `<tr><td colspan="4" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    userRoleEls.tbody.innerHTML = items.map((row) => {
+      const id = row.user_role_id;
+      return `
+      <tr data-id="${escapeHtml(id)}">
+        <td>${escapeHtml(id)}</td>
+        <td>${escapeHtml(row.code ?? "")}</td>
+        <td>${escapeHtml(row.role ?? "")}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm"
+            data-action="edit"
+            data-id="${escapeHtml(id)}"
+            data-code="${escapeHtml(row.code ?? "")}"
+            data-role="${escapeHtml(row.role ?? "")}">
+            แก้ไข
+          </button>
+          <button class="btn btn-danger btn-sm"
+            data-action="delete"
+            data-id="${escapeHtml(id)}">
+            ลบ
+          </button>
+        </td>
+      </tr>
+    `;
+    }).join("");
+  }
+
+  function renderUserRolePagination() {
+    if (!userRoleEls.pagination) return;
+
+    const { page, totalPages } = userRoleState;
+    if (totalPages <= 1) {
+      userRoleEls.pagination.innerHTML = "";
+      return;
+    }
+
+    const pages = [];
+    const push = (p) => pages.push(p);
+
+    push(1);
+    if (page - 2 > 2) push("…");
+    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
+    if (page + 2 < totalPages - 1) push("…");
+    if (totalPages > 1) push(totalPages);
+
+    userRoleEls.pagination.innerHTML = `
+    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
+    ${pages.map((p) => {
+      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
+      const active = p === page ? "is-active" : "";
+      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
+    }).join("")}
+    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
+  `;
+  }
+
+  function renderUserRoleTotal() {
+    if (!userRoleEls.total) return;
+    userRoleEls.total.textContent = `ทั้งหมด ${userRoleState.total} รายการ`;
+  }
+
+  async function loadUserRoles() {
+    const tbody = document.querySelector("#user-role-tbody");
+    const totalEl = document.querySelector("#user-role-total");
+    const pagerEl = document.querySelector("#user-role-pagination");
+
+    const q = (document.querySelector("#user-role-search")?.value || "").trim();
+    const limit = parseInt(document.querySelector("#user-role-limit")?.value || "50", 10);
+    const page = 1; // เริ่มง่ายๆก่อน เดี๋ยวค่อยทำ pagination
+
+    tbody.innerHTML = `<tr><td colspan="4" class="muted">กำลังโหลด...</td></tr>`;
+
+    const api = window.userRolesApi || window.UserRolesAPI;
+    const { items, pagination } = await api.list({ q, page, limit });
+
+    if (!items || items.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" class="muted">ไม่พบข้อมูล</td></tr>`;
+      if (totalEl) totalEl.textContent = `ทั้งหมด 0 รายการ`;
+      if (pagerEl) pagerEl.innerHTML = "";
+      return;
+    }
+
+    tbody.innerHTML = items.map((r) => `
+  <tr>
+    <td>${r.user_role_id ?? ""}</td>
+    <td>${escapeHtml(r.code ?? "")}</td>
+    <td>${escapeHtml(r.role ?? "")}</td>
+    <td>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm"
+        data-action="edit"
+        data-id="${r.user_role_id}"
+        data-code="${escapeHtml(r.code ?? "")}"
+        data-role="${escapeHtml(r.role ?? "")}"
+      >แก้ไข</button>
+
+      <button
+        type="button"
+        class="btn btn-danger btn-sm"
+        data-action="delete"
+        data-id="${r.user_role_id}"
+      >ลบ</button>
+    </td>
+  </tr>
+`).join("");
+
+
+    if (totalEl) totalEl.textContent = `ทั้งหมด ${pagination?.total ?? items.length} รายการ`;
+    if (pagerEl) pagerEl.innerHTML = ""; // ค่อยทำทีหลัง
+  }
+
 
   /* =========================
     Modal (open/close)
@@ -1467,6 +1636,34 @@
     document.body.style.overflow = "";
   }
 
+  function openUserRoleModal({ mode, id = "", code = "", role = "" }) {
+    if (!userRoleEls.modal) return;
+
+    // clear error
+    if (userRoleEls.formError) {
+      userRoleEls.formError.textContent = "";
+      hide(userRoleEls.formError);
+    }
+
+    const isEdit = mode === "edit";
+    if (userRoleEls.modalTitle) userRoleEls.modalTitle.textContent = isEdit ? "แก้ไขบทบาทผู้ใช้งาน" : "เพิ่มบทบาทผู้ใช้งาน";
+    if (userRoleEls.submitText) userRoleEls.submitText.textContent = isEdit ? "บันทึกการแก้ไข" : "บันทึก";
+
+    if (userRoleEls.inputId) userRoleEls.inputId.value = isEdit ? String(id) : "";
+    if (userRoleEls.inputCode) userRoleEls.inputCode.value = code || "";
+    if (userRoleEls.inputRole) userRoleEls.inputRole.value = role || "";
+
+    show(userRoleEls.modal);
+    document.body.style.overflow = "hidden";
+  }
+
+
+  function closeUserRoleModal() {
+    if (!userRoleEls.modal) return;
+    hide(userRoleEls.modal);
+    document.body.style.overflow = "";
+  }
+
   // ปิด modal เมื่อคลิกที่ overlay 
   document.addEventListener("click", (e) => {
     const closeId = e.target?.getAttribute?.("data-close");
@@ -1498,6 +1695,11 @@
   document.addEventListener("click", (e) => {
     const closeId = e.target?.getAttribute?.("data-close");
     if (closeId === "position-title-modal") closePositionTitleModal();
+  });
+
+  document.addEventListener("click", (e) => {
+    const closeId = e.target?.getAttribute?.("data-close");
+    if (closeId === "user-role-modal") closeUserRoleModal();
   });
 
   // กด ESC ปิด
@@ -1536,6 +1738,13 @@
       closePositionTitleModal();
     }
   });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && userRoleEls.modal && !userRoleEls.modal.hidden) {
+      closeUserRoleModal();
+    }
+  });
+
 
   // คลิกเมนูซ้ายที่มี data-section
   document.addEventListener("click", async (e) => {
@@ -1602,6 +1811,13 @@
       await loadPositionTitles();
     }
 
+    if (sectionKey === "user-roles") {
+      userRoleState.page = 1;
+      userRoleState.q = (userRoleEls.search?.value || "").trim();
+      userRoleState.limit = Number(userRoleEls.limit?.value || 50);
+      await loadUserRoles();
+    }
+
 
   });
 
@@ -1633,6 +1849,10 @@
   // ปุ่มเพิ่มตำแหน่ง
   positionTitleEls.btnAdd?.addEventListener("click", async () => {
     await openPositionTitleModal({ mode: "create" });
+  });
+
+  userRoleEls.btnAdd?.addEventListener("click", () => {
+    openUserRoleModal({ mode: "create" });
   });
 
   // ค้นหา
@@ -1678,6 +1898,13 @@
     loadPositionTitles();
   });
 
+  userRoleEls.search?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    userRoleState.page = 1;
+    userRoleState.q = (userRoleEls.search.value || "").trim();
+    loadUserRoles();
+  });
+
   // เปลี่ยน limit
   orgTypeEls.limit?.addEventListener("change", () => {
     orgTypeState.page = 1;
@@ -1715,6 +1942,12 @@
     loadPositionTitles();
   });
 
+  userRoleEls.limit?.addEventListener("change", () => {
+    userRoleState.page = 1;
+    userRoleState.limit = Number(userRoleEls.limit.value || 50);
+    loadUserRoles();
+  });
+
   // รีเฟรช
   orgTypeEls.refresh?.addEventListener("click", () => {
     loadOrgTypes();
@@ -1738,6 +1971,10 @@
 
   positionTitleEls.refresh?.addEventListener("click", () => {
     loadPositionTitles();
+  });
+
+  userRoleEls.refresh?.addEventListener("click", () => {
+    loadUserRoles();
   });
 
   // คลิก pagination
@@ -1805,6 +2042,17 @@
 
     positionTitleState.page = next;
     loadPositionTitles();
+  });
+
+  userRoleEls.pagination?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-page]");
+    if (!btn || btn.disabled) return;
+
+    const next = Number(btn.getAttribute("data-page"));
+    if (!next || next < 1 || next > userRoleState.totalPages) return;
+
+    userRoleState.page = next;
+    loadUserRoles();
   });
 
   // คลิก edit/delete ในตาราง
@@ -2034,6 +2282,35 @@
         }
       } catch (err) {
         alert(`ลบไม่สำเร็จ: ${err.message}`);
+      }
+    }
+  });
+
+  userRoleEls.tbody?.addEventListener("click", async (e) => {
+    const actionBtn = e.target.closest("button[data-action]");
+    if (!actionBtn) return;
+
+    const action = actionBtn.getAttribute("data-action");
+    const id = parseInt(actionBtn.getAttribute("data-id") || "0", 10);
+    if (!id) return;
+
+    const api = window.userRolesApi || window.UserRolesAPI;
+
+    if (action === "edit") {
+      const code = actionBtn.getAttribute("data-code") || "";
+      const role = actionBtn.getAttribute("data-role") || "";
+      openUserRoleModal({ mode: "edit", id, code, role });
+      return;
+    }
+
+    if (action === "delete") {
+      if (!confirm(`ต้องการลบบทบาทผู้ใช้งาน ID ${id} ใช่ไหม?`)) return;
+
+      try {
+        await api.remove(id);
+        await loadUserRoles();
+      } catch (err) {
+        alert(`ลบไม่สำเร็จ: ${err.message || err}`);
       }
     }
   });
@@ -2319,6 +2596,37 @@
     }
   });
 
+  userRoleEls.form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const id = parseInt((userRoleEls.inputId?.value || "").trim() || "0", 10);
+
+    const code = (userRoleEls.inputCode?.value || "").trim();
+    const role = (userRoleEls.inputRole?.value || "").trim(); // <-- ใช้ inputRole (คุณประกาศไว้แล้ว)
+
+    if (!code || !role) {
+      userRoleEls.formError.textContent = "กรุณากรอก รหัสบทบาท และ ชื่อบทบาท";
+      show(userRoleEls.formError);
+      return;
+    }
+
+    try {
+      hide(userRoleEls.formError);
+
+      const api = window.userRolesApi || window.UserRolesAPI;
+
+      if (id) await api.update(id, { code, role });
+      else await api.create({ code, role });
+
+      closeUserRoleModal();
+      await loadUserRoles();
+    } catch (err) {
+      userRoleEls.formError.textContent = err.message || "บันทึกไม่สำเร็จ";
+      show(userRoleEls.formError);
+    }
+  });
+
+
   // FILTER: หน่วยงาน
   departmentEls.filterOrg?.addEventListener("change", async () => {
     departmentState.page = 1;
@@ -2393,6 +2701,7 @@
   hide(document.getElementById("btn-add-person-prefix"));
   hide(document.getElementById("btn-add-department"));
   hide(document.getElementById("btn-add-position-title"));
+  hide(document.getElementById("btn-add-user-role"));
 
   activateSection("default");
 
