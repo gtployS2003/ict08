@@ -1,83 +1,112 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>กรอกข้อมูลผู้ใช้งาน</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <link rel="icon" type="image/png" href="/ict/assets/image/logo_หน่วย8.png" />
+  <title>ลงทะเบียนสมาชิก</title>
 
-  <!-- include head ของคุณ (ถ้ามี) -->
-  <!-- <script src="/assets/js/include.js" defer></script> -->
+  <!-- Config + API -->
+  <script src="/ict/backend/public/config.js.php"></script>
+  <script src="/ict/assets/js/api/http.js"></script>
 
+  <script src="/ict/assets/js/api/auth.api.js"></script>
+  <script src="/ict/assets/js/api/position-titles.api.js"></script>
+  <script src="/ict/assets/js/api/departments.api.js"></script>
+  <script src="/ict/assets/js/api/organizations.api.js"></script>
+  <script src="/ict/assets/js/api/person-prefixes.api.js"></script>
 
-  <script src="/backend/public/config.js.php"></script>
+  <!-- Page JS -->
+  <script src="/ict/assets/js/profile-setup.js" defer></script>
+  <script src="/ict/assets/js/include.js" defer></script>
+  <script src="/ict/assets/js/auth.js" defer></script>
+  <script src="/ict/assets/js/main.js" defer></script>
 
-  <!-- LIFF SDK -->
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
-  <script src="/assets/js/api/http.js" defer></script>
-  <script src="/assets/js/api/user.api.js" defer></script>
-  <script src="/assets/js/profile-setup.js" defer></script>
+  <!-- CSS ของหน้านี้ -->
+  <!-- <link rel="stylesheet" href="/ict/assets/css/profile-setup.css"> -->
 </head>
 
 <body>
-  <main class="ps-layout">
-    <!-- LEFT (Desktop) / TOP (Mobile) -->
-    <section class="ps-left">
-      <div class="ps-left__bg"></div>
+  <header class="header">
+    <div class="header-left">
+      <a href="/ict/site/home.html" class="brand">
+        <img class="logo" src="/ict/assets/image/logo_หน่วย8.png" alt="โลโก้ศูนย์" />
+      </a>
 
-      <div class="ps-left__content">
-        <div class="ps-avatar-wrap">
-          <img id="psAvatar" class="ps-avatar" src="" alt="avatar" />
+      <div>
+        <div class="title-main">ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)</div>
+        <div class="title-sub">Information And Communication Technology Center 8 (Phitsanulok)</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="profile-setup-page">
+    <div class="profile-setup-container">
+
+      <section class="profile-setup-card">
+        <div class="profile-setup-card-header">
+          <div class="profile-setup-card-title">ลงทะเบียนสมาชิก</div>
+          <!-- ถ้าต้องการ subtitle -->
+          <!-- <div class="profile-setup-card-subtitle">กรอกข้อมูลเพื่อใช้งานระบบ</div> -->
         </div>
-        <h1 id="psName" class="ps-name">Username</h1>
-        <p class="ps-sub">กรอกข้อมูลเพื่อเริ่มใช้งานระบบ</p>
-      </div>
-    </section>
 
-    <!-- RIGHT -->
-    <section class="ps-right">
-      <div class="ps-card">
-        <form id="profileForm" class="ps-form">
-          <!-- ตำแหน่งงาน -->
-          <label class="ps-field">
-            <span class="ps-label">ตำแหน่งงาน</span>
-            <select id="position" class="ps-input" required>
-              <option value="" selected disabled>เลือกตำแหน่งงาน</option>
-              <option value="ผู้ร้องขอ">ผู้ร้องขอ</option>
-              <option value="เจ้าหน้าที่ ICT8">เจ้าหน้าที่ ICT8</option>
-              <option value="หัวหน้าผู้รับผิดชอบ">หัวหน้าผู้รับผิดชอบ</option>
-              <option value="ผู้ช่วยเพิ่มเติม">ผู้ช่วยเพิ่มเติม</option>
-              <option value="ผู้เข้าร่วม">ผู้เข้าร่วม</option>
-              <option value="อื่น ๆ">อื่น ๆ</option>
-            </select>
-          </label>
+        <form id="profile-setup-form" class="profile-setup-form">
+          <div class="profile-setup-grid">
 
-          <!-- หน่วยงาน -->
-          <label class="ps-field">
-            <span class="ps-label">หน่วยงาน (Organization)</span>
-            <select id="organization" class="ps-input" required>
-              <option value="" selected disabled>เลือกหน่วยงาน</option>
-              <!-- เติมจาก JS หรือใส่คงที่ก็ได้ -->
-            </select>
-          </label>
+            <div class="profile-setup-field">
+              <label class="profile-setup-label" for="person_prefix">คำนำหน้าชื่อ <span class="profile-setup-req">*</span></label>
+              <select class="profile-setup-select" id="person_prefix" name="person_prefix" required>
+                <option value="">-- กรุณาเลือก --</option>
+              </select>
+            </div>
 
-          <!-- จังหวัด -->
-          <label class="ps-field">
-            <span class="ps-label">จังหวัด (Province)</span>
-            <select id="province" class="ps-input" required>
-              <option value="" selected disabled>เลือกจังหวัด</option>
-              <!-- เติมจาก JS -->
-            </select>
-          </label>
+            <div class="profile-setup-field">
+              <label class="profile-setup-label" for="first_name_th">ชื่อจริง <span class="profile-setup-req">*</span></label>
+              <input class="profile-setup-input" id="first_name_th" name="first_name_th" type="text" placeholder="เช่น สมชาย" autocomplete="given-name" required />
+              <div class="profile-setup-hint">กรอกชื่อจริงภาษาไทย</div>
+            </div>
 
-          <button id="btnSave" type="submit" class="ps-btn">
-            บันทึก
-          </button>
+            <div class="profile-setup-field">
+              <label class="profile-setup-label" for="last_name_th">นามสกุล <span class="profile-setup-req">*</span></label>
+              <input class="profile-setup-input" id="last_name_th" name="last_name_th" type="text" placeholder="เช่น ใจดี" autocomplete="family-name" required />
+              <div class="profile-setup-hint">กรอกนามสกุลภาษาไทย</div>
+            </div>
 
-          <p id="psMsg" class="ps-msg" aria-live="polite"></p>
+            <div class="profile-setup-field">
+              <label class="profile-setup-label" for="organization_id">หน่วยงาน <span class="profile-setup-req">*</span></label>
+              <select class="profile-setup-select" id="organization_id" name="organization_id" required>
+                <option value="">-- กรุณาเลือก --</option>
+              </select>
+            </div>
+
+            <div class="profile-setup-field">
+              <label class="profile-setup-label" for="department_id">ฝ่าย <span class="profile-setup-req">*</span></label>
+              <select class="profile-setup-select" id="department_id" name="department_id" required>
+                <option value="">-- กรุณาเลือก --</option>
+              </select>
+            </div>
+
+            <div class="profile-setup-field">
+              <label class="profile-setup-label" for="position_title_id">ตำแหน่งงาน <span class="profile-setup-req">*</span></label>
+              <select class="profile-setup-select" id="position_title_id" name="position_title_id" required>
+                <option value="">-- กรุณาเลือก --</option>
+              </select>
+            </div>
+
+          </div>
+
+          <div class="profile-setup-actions">
+            <a class="profile-setup-btn profile-setup-btn-ghost" href="/ict/login.html">กลับหน้าเข้าสู่ระบบ</a>
+            <button id="btn-submit-profile" class="profile-setup-btn profile-setup-btn-primary" type="submit">
+              บันทึกข้อมูล
+            </button>
+          </div>
         </form>
-      </div>
-    </section>
+      </section>
+
+    </div>
   </main>
+
+  <footer id="footer-index"></footer>
 </body>
 </html>

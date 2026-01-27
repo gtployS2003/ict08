@@ -1,133 +1,96 @@
 <!DOCTYPE html>
 <html lang="th">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" href="/assets/image/logo_หน่วย8.png" />
-    <title>ระบบศูนย์ควบคุมและรายงานผล</title>
 
-    <!-- include head -->
-    <script src="/assets/js/include.js" defer></script>
-    <script src="/assets/js/auth.js" defer></script>
-    <script src="/assets/js/main.js" defer></script>
-  </head>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/assets/image/logo_หน่วย8.png" />
+  <title>ระบบศูนย์ควบคุมและรายงานผล</title>
 
-  <body>
-    <header class="header">
-      <div class="header-left">
-        <a href="index.html"
-          ><img
-            class="logo"
-            src="/assets/image/logo_หน่วย8.png"
-            alt="โลโก้ศูนย์"
-        /></a>
-        <div>
-          <div class="title-main">
-            ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก) 
-          </div>
-          <div class="title-sub">
-            Information And Communication Technology Center 8 (Phitsanulok)
-          </div>
+  <!-- include head -->
+  <script src="/assets/js/include.js" defer></script>
+  <script src="/assets/js/auth.js" defer></script>
+  <script src="/assets/js/main.js" defer></script>
+</head>
+
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="index.html"><img class="logo" src="/assets/image/logo_หน่วย8.png" alt="โลโก้ศูนย์" /></a>
+      <div>
+        <div class="title-main">
+          ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)
+        </div>
+        <div class="title-sub">
+          Information And Communication Technology Center 8 (Phitsanulok)
         </div>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <!-- Main content -->
-    <main class="main">
-      <!-- ส่วนหัวของหน้า -->
-      <div class="main-header">
-        <h1 class="main-title">ระบบงานสารสนเทศ</h1>
-        <div class="divider"></div>
+  <!-- Main content -->
+  <main class="main">
+    <!-- ส่วนหัวของหน้า -->
+    <div class="main-header">
+      <h1 class="main-title">ระบบงานสารสนเทศ</h1>
+      <div class="divider"></div>
 
-        <!-- โปรไฟล์มุมขวาบน (แสดงเฉพาะตอน login แล้ว) -->
-        <div class="profile-wrapper member-only">
-          <button type="button" class="profile-circle" id="profileToggle">
-            <img
-              src="/assets/image/director-none.png"
-              class="profile-image"
-              alt=""
-            />
+      <!-- โปรไฟล์มุมขวาบน (แสดงเฉพาะตอน login แล้ว) -->
+      <div class="profile-wrapper member-only">
+        <button type="button" class="profile-circle" id="profileToggle">
+          <img src="/assets/image/director-none.png" class="profile-image" alt="" />
+        </button>
+
+        <div class="profile-menu" id="profileMenu">
+          <button type="button" class="profile-menu-item" onclick="logout()">
+            ออกจากระบบ
           </button>
-
-          <div class="profile-menu" id="profileMenu">
-            <button type="button" class="profile-menu-item" onclick="logout()">
-              ออกจากระบบ
-            </button>
-          </div>
         </div>
       </div>
+    </div>
 
-      <!-- การ์ดเมนูหลัก -->
-      <section class="cards">
-        <a
-          href="/site/home.html"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="card"
-        >
-          <i class="fa-solid fa-house"></i>
-          <span>เข้าสู่เว็บไซต์หน่วยงาน</span>
-        </a>
+    <!-- การ์ดเมนูหลัก -->
+    <section class="cards">
+      <a href="/site/home.html" target="_blank" rel="noopener noreferrer" class="card">
+        <i class="fa-solid fa-house"></i>
+        <span>เข้าสู่เว็บไซต์หน่วยงาน</span>
+      </a>
 
-        <a
-          href="/monitor/map-device.html"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="card"
-        >
-          <i class="fa-solid fa-gear"></i>
-          <span>ระบบตรวจสอบอุปกรณ์และเครื่องมือสารสนเทศ</span>
-        </a>
+      <a href="/monitor/map-device.html" target="_blank" rel="noopener noreferrer" class="card">
+        <i class="fa-solid fa-gear"></i>
+        <span>ระบบตรวจสอบอุปกรณ์และเครื่องมือสารสนเทศ</span>
+      </a>
 
-        <a
-          href="/schedule/calendar.html"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="card"
-        >
-          <i class="fa-regular fa-calendar"></i>
-          <span>ระบบปฏิทินงานและการประชุม</span>
-        </a>
+      <a href="/schedule/calendar.html" target="_blank" rel="noopener noreferrer" class="card">
+        <i class="fa-regular fa-calendar"></i>
+        <span>ระบบปฏิทินงานและการประชุม</span>
+      </a>
 
-        <a
-          href="/link/other_web.html"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="card"
-        >
-          <i class="fa-solid fa-link"></i>
-          <span>เชื่อมโยงเว็บไซต์อื่นๆ</span>
-        </a>
+      <a href="/link/other_web.html" target="_blank" rel="noopener noreferrer" class="card">
+        <i class="fa-solid fa-link"></i>
+        <span>เชื่อมโยงเว็บไซต์อื่นๆ</span>
+      </a>
 
-        <a
-          href="/document/download.html"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="card"
-        >
-          <i class="fa-regular fa-file"></i>
-          <span>ดาวน์โหลดเอกสาร</span>
-        </a>
+      <a href="/document/download.html" target="_blank" rel="noopener noreferrer" class="card">
+        <i class="fa-regular fa-file"></i>
+        <span>ดาวน์โหลดเอกสาร</span>
+      </a>
 
-        <a
-          href="/gcms/dashboard.html"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="card"
-        >
-          <i class="fa-solid fa-screwdriver-wrench"></i>
-          <span>ระบบศูนย์ควบคุมและรายงานผล</span>
-        </a>
+      <a href="/gcms/dashboard.html" target="_blank" rel="noopener noreferrer" class="card">
+        <i class="fa-solid fa-screwdriver-wrench"></i>
+        <span>ระบบศูนย์ควบคุมและรายงานผล</span>
+      </a>
 
-        <a href="/bot/#" target="_blank" rel="noopener noreferrer" class="card">
-          <i class="fa-solid fa-robot"></i>
-          <span>ระบบผู้ช่วยอัจฉริยะ (Bot Assistant)</span>
-        </a>
-      </section>
-    </main>
+      <a href="/bot/#" target="_blank" rel="noopener noreferrer" class="card">
+        <i class="fa-solid fa-robot"></i>
+        <span>ระบบผู้ช่วยอัจฉริยะ (Bot Assistant)</span>
+      </a>
+    </section>
+  </main>
 
-    <footer class="footer-index">
-      <div>&copy; 2025 ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)</div>
-    </footer>
-  </body>
+  <footer class="footer-index">
+    <div>&copy; 2025 ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)</div>
+  </footer>
+</body>
+
 </html>

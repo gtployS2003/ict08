@@ -59,6 +59,15 @@
       );
     },
 
+        /**
+     * ✅ GET /departments/dropdown?organization_id=
+     * return: [ ... ]
+     */
+    dropdown({ organization_id } = {}) {
+      if (!organization_id) return Promise.resolve([]);
+      return apiFetch(`${BASE_PATH}/dropdown${toQuery({ organization_id })}`);
+    },
+
     /**
      * POST /departments
      * body: { department_code, department_title, organization_id }

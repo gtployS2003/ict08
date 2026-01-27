@@ -35,6 +35,34 @@ class DepartmentsController
         }
     }
 
+        /**
+     * GET /departments/dropdown?organization_id=
+     * return: [ {department_id, department_title, ...}, ... ]
+     */
+    public function dropdown(): void
+    {
+        try {
+            $organization_id = 0;
+            if (isset($_GET['organization_id']) && ctype_digit((string) $_GET['organization_id'])) {
+                $organization_id = (int) $_GET['organization_id'];
+            }
+
+            if ($organization_id <= 0) {
+                // dropdown ต้องรู้ org ก่อน ไม่งั้นคืน list ว่าง (หรือจะ fail 422 ก็ได้)
+                ok([], 'success', 200);
+                return;
+                // หรือถ้าอยาก strict:
+                // fail('กรุณาระบุ organization_id ให้ถูกต้อง', 422); return;
+            }
+
+            $items = $this->model->listForDropdown($organization_id);
+            ok($items, 'success', 200);
+        } catch (Throwable $e) {
+            fail($e->getMessage(), 500);
+        }
+    }
+
+
     /**
      * POST /departments
      * body: { department_code, department_title }

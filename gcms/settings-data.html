@@ -17,6 +17,7 @@
     <script src="/ict/assets/js/api/departments.api.js"></script>
     <script src="/ict/assets/js/api/position-titles.api.js"></script>
     <script src="/ict/assets/js/api/user-roles.api.js"></script>
+    <script src="/ict/assets/js/api/user-approvals.api.js"></script>
 
     <script src="/ict/assets/js/include.js" defer></script>
     <script src="/ict/assets/js/auth.js" defer></script>
@@ -43,7 +44,7 @@
                         <ul id="menu-user" class="testing-dropdown-menu" hidden>
                             <li><a href="#">รายการผู้ใช้งาน</a></li>
                             <!-- V อันนี้คือ login ครั้งแรก แจ้งเตือนหน้านี้ ให้ admin อนุมัตื -->
-                            <li><a href="#">ตั้งค่าสิทธิ์ผู้ใช้งาน</a></li>
+                            <li><a href="#" data-section="user-setting">ตั้งค่าสิทธิ์ผู้ใช้งาน</a></li>
                             <li><a href="#" data-section="user-roles">รายการสิทธิ์ผู้ใช้งาน</a></li>
                             <li><a href="#" data-section="position-titles">รายการตำแหน่งผู้ใช้งาน</a></li>
                             <li><a href="#" data-section="departments">รายการฝ่ายผู้ใช้งาน</a></li>
@@ -196,7 +197,6 @@
                                 <i class="fa-solid fa-plus"></i> เพิ่มสิทธิ์ผู้ใช้งาน
                             </button>
 
-
                         </div>
 
                     </div>
@@ -307,7 +307,6 @@
 
                     <!-- SECTION: ORGANIZATIONS -->
                     <section id="section-org-list" class="setting-section" hidden>
-
                         <div class="table-toolbar">
                             <div class="search-box">
                                 <i class="fa-solid fa-magnifying-glass"></i>
@@ -566,6 +565,58 @@
                             <div id="user-role-total" class="muted"></div>
                         </div>
                     </section>
+
+                    <!-- SECTION: SETTING USER -->
+                    <section id="section-setting-user" class="setting-section" hidden>
+                        <div class="table-toolbar">
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input id="setting-user-search" type="search" placeholder="ค้นหาผู้ใช้งาน..." />
+                            </div>
+
+                            <div class="toolbar-right">
+                                <select id="setting-user-limit">
+                                    <option value="20">20/หน้า</option>
+                                    <option value="50" selected>50/หน้า</option>
+                                    <option value="100">100/หน้า</option>
+                                </select>
+
+                                <button id="setting-user-refresh" class="btn btn-ghost" type="button">
+                                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table class="data-table" aria-label="Setting User table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 90px">ID</th>
+                                        <th style="width: 140px">รหัสผู้ใช้งาน</th>
+                                        <th>ชื่อผู้ใช้งาน (Line)</th>
+                                        <th style="width: 170px">ชื่อ-สกุล</th>
+                                        <th>หน่วยงาน</th>
+                                        <th>ฝ่าย</th>
+                                        <th>ตำแหน่ง</th>
+                                        <th>สิทธิ์ผู้ใช้งาน</th>
+                                        <th style="width: 170px">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="setting-user-tbody">
+                                    <tr>
+                                        <td colspan="9" class="muted">ยังไม่มีข้อมูล (หรือยังไม่ได้โหลด)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="table-footer">
+                            <div id="setting-user-pagination" class="pagination"></div>
+                            <div id="setting-user-total" class="muted"></div>
+                        </div>
+
+                    </section>
+
 
                 </div>
             </section>

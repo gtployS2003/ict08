@@ -61,6 +61,18 @@
     },
 
     /**
+     * ✅ GET /position-titles/dropdown?organization_id=&department_id=
+     * return: [ ... ]
+     */
+    async dropdown({ organization_id, department_id = "" } = {}) {
+      if (!organization_id) return [];
+      return apiFetch(
+        `${BASE_PATH}/dropdown${toQuery({ organization_id, department_id })}`,
+        { method: "GET" }
+      );
+    },
+
+    /**
      * POST /position-titles
      * body: { position_code, position_title, department_id }
      */

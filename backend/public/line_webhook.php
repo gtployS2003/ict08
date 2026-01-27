@@ -66,8 +66,8 @@ foreach ($data['events'] as $event) {
     //    - else => EXTERNAL
     $user = $userModel->findByLineUserId($userId);
 
-    if (!$user && method_exists($userModel, 'upsertLineUser')) {
-        $user = $userModel->upsertLineUser($userId, 'guest');
+    if (!$user && method_exists($userModel, 'findByLineUserId')) {
+        $user = $userModel->findByLineUserId($userId);
     }
 
     $targetRichMenu = $RM_BEFORE;

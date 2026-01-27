@@ -1,152 +1,233 @@
+/* Base */
 :root{
-  --purple:#532274;
-  --bg:#f2f2f2;
-  --text:#111;
-  --radius:26px;
+  --purple: #532274;
+  --bg: #f5f5f5;
+  --profile-setup-card: #ffffff;
+  --text: #111;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --shadow: 0 10px 25px rgba(0,0,0,.08);
+  --radius: 16px;
 }
 
-*{ box-sizing:border-box; }
-html,body{ height:100%; margin:0; font-family:'Inter','Noto Sans Thai',sans-serif; background:var(--bg); color:var(--text); }
+*,
+*::before,
+*::after { box-sizing: border-box; }
 
-.ps-layout{
-  min-height:100vh;
-  display:grid;
-  grid-template-rows: 280px 1fr; /* Mobile: top + form */
-}
-
-/* LEFT / TOP */
-.ps-left{
-  position:relative;
-  overflow:hidden;
-  display:flex;
-  align-items:flex-end;
-  justify-content:center;
-  padding:24px 16px 18px;
-}
-.ps-left__bg{
-  position:absolute; inset:0;
-  background:var(--purple);
-}
-.ps-left__content{
-  position:relative;
-  text-align:center;
-  width:100%;
-  max-width:420px;
-}
-.ps-avatar-wrap{
-  width:116px; height:116px;
-  margin:0 auto 10px;
-  border-radius:999px;
-  background:#e5e5e5;
-  border:6px solid #fff;
-  display:flex; align-items:center; justify-content:center;
-  overflow:hidden;
-}
-.ps-avatar{
-  width:100%; height:100%;
-  object-fit:cover;
-  display:block;
-}
-.ps-name{
-  margin:0;
-  font-size:28px;
-  font-weight:800;
-  color:#111;
-  background:#fff;
-  display:inline-block;
-  padding:6px 16px;
-  border-radius:18px;
-  transform: translateY(12px);
-}
-.ps-sub{
-  margin:18px 0 0;
-  color:#fff;
-  opacity:.9;
-  font-size:14px;
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
-/* RIGHT */
-.ps-right{
-  display:flex;
-  justify-content:center;
-  padding:18px 16px 28px;
+body{
+  font-family: "Inter","Noto Sans Thai",sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
 }
 
-.ps-card{
-  width:100%;
-  max-width:440px;
-  background:#fff;
-  border-radius:22px;
-  padding:18px 18px 20px;
-  box-shadow:0 14px 30px rgba(0,0,0,.08);
+/* Page layout */
+.profile-setup-page{
+  padding-top: 120px; /* เผื่อ header fixed */
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 24px;
+  flex: 1;
 }
 
-.ps-form{ display:flex; flex-direction:column; gap:14px; }
-
-.ps-field{ display:flex; flex-direction:column; gap:8px; }
-.ps-label{ font-size:16px; font-weight:700; padding-left:6px; }
-
-.ps-input{
-  width:100%;
-  padding:14px 16px;
-  border-radius:999px;
-  border:2px solid var(--purple);
-  outline:none;
-  font-size:16px;
-  background:#fff;
+.profile-setup-container{
+  max-width: 980px;
+  margin: 0 auto;
 }
 
-.ps-btn{
-  margin-top:6px;
-  width:100%;
-  padding:14px 16px;
-  border:none;
-  border-radius:999px;
-  background:var(--purple);
-  color:#fff;
-  font-size:16px;
-  font-weight:800;
-  box-shadow:0 12px 20px rgba(0,0,0,.14);
-  cursor:pointer;
+.profile-setup-card{
+  background: var(--profile-setup-card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  overflow: hidden;
 }
 
-.ps-btn:disabled{
-  opacity:.6;
-  cursor:not-allowed;
+.profile-setup-card-header{
+  padding: 18px 18px 10px 18px;
 }
 
-.ps-msg{
-  margin:2px 0 0;
-  font-size:13px;
-  color:#b00020;
-  min-height:18px;
+.profile-setup-card-title{
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 6px;
 }
 
-/* Desktop: 2 columns */
-@media (min-width:1024px){
-  .ps-layout{
-    grid-template-rows: 1fr;
-    grid-template-columns: 420px 1fr;
+.profile-setup-card-subtitle{
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Info box */
+.profile-setup-info-box{
+  margin: 0 18px 12px 18px;
+  border: 1px dashed var(--border);
+  background: #fafafa;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.profile-setup-info-title{
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.profile-setup-info-list{
+  margin: 0;
+  padding-left: 18px;
+  color: #444;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Form */
+.profile-setup-form{
+  padding: 0 18px 18px 18px;
+}
+
+.profile-setup-grid{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.profile-setup-field{
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-setup-label{
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.profile-setup-req{ color: #dc2626; }
+
+.profile-setup-input,
+.profile-setup-select{
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 12px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+}
+
+.profile-setup-input:focus,
+.profile-setup-select:focus{
+  border-color: rgba(83,34,116,.55);
+  box-shadow: 0 0 0 4px rgba(83,34,116,.12);
+}
+
+.profile-setup-hint{
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.profile-setup-divider{
+  height: 1px;
+  background: var(--border);
+  margin: 16px 0;
+}
+
+/* Actions */
+.profile-setup-actions{
+  padding-top: 15px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.profile-setup-btn{
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-setup-btn-primary{
+  background: var(--purple);
+  color: #fff;
+}
+
+.profile-setup-btn-primary:disabled{
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.profile-setup-btn-ghost{
+  background: #fff;
+  border-color: var(--border);
+  color: #111;
+}
+
+.profile-setup-footer-note{
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Footer */
+.profile-setup-footer{
+  padding: 18px 16px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.profile-setup-footer-inner{
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+/* Desktop / Tablet */
+@media (min-width: 768px){
+  .profile-setup-page{
+    padding-top: 150px;
+    padding-left: 20px;
+    padding-right: 20px;
   }
-  .ps-left{
-    align-items:center;
-    padding:32px 24px;
+
+  .profile-setup-card-header{
+    padding: 22px 22px 12px 22px;
   }
-  .ps-name{
-    background:transparent;
-    color:#fff;
-    transform:none;
-    padding:0;
-    border-radius:0;
-    font-size:34px;
+
+  .profile-setup-form{
+    padding: 0 22px 22px 22px;
   }
-  .ps-sub{ margin-top:8px; }
-  .ps-right{
-    align-items:center;
-    padding:32px;
+
+  .profile-setup-grid{
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
   }
-  .ps-card{
-    max-width:520px;
-    padding:26px 26px 24px;
-  }
+
+  .profile-setup-span-2{ grid-column: span 2; }
+
+  .profile-setup-card-title{ font-size: 22px; }
+}
+
+/* Small phones */
+@media (max-width: 360px){
+  .logo{ width: 48px; height: 48px; }
+  .profile-setup-card-title{ font-size: 18px; }
+  .profile-setup-btn{ width: 100%; }
+  .profile-setup-actions{ justify-content: stretch; }
 }

@@ -20,6 +20,18 @@ function position_titles_routes(string $method, array $segments, PDO $pdo): bool
         return false;
     }
 
+    $controller = new PositionTitlesController($pdo);
+
+    // ✅ /position-titles/dropdown
+    if (($segments[1] ?? '') === 'dropdown') {
+        if ($method === 'GET') {
+            $controller->dropdown();
+            return true;
+        }
+        fail('Method Not Allowed', 405);
+        return true;
+    }
+
     $id = 0;
     if (isset($segments[1]) && ctype_digit((string)$segments[1])) {
         $id = (int)$segments[1];

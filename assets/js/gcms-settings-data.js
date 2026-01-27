@@ -130,6 +130,11 @@
         setTitle("รายการสิทธิ์ผู้ใช้งาน");
         break;
 
+      case "user-setting":
+        show($("#section-setting-user"));
+        setTitle("รายการอนุมัติผู้ใช้งาน");
+        break;
+
       default:
         show($("#section-default"));
         setTitle("การตั้งค่าข้อมูล");
@@ -1466,6 +1471,101 @@
     if (pagerEl) pagerEl.innerHTML = ""; // ค่อยทำทีหลัง
   }
 
+  /* =========================
+   User Approvals (Setting User)
+========================= */
+  const settingUserEls = {
+    section: $("#section-setting-user"),
+    tbody: $("#setting-user-tbody"),
+    search: $("#setting-user-search"),
+    limit: $("#setting-user-limit"),
+    refresh: $("#setting-user-refresh"),
+    pagination: $("#setting-user-pagination"),
+    total: $("#setting-user-total"),
+  };
+
+  const settingUserState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    total: 0,
+    totalPages: 1,
+    loading: false,
+  };
+
+  function renderSettingUserRows(items = []) {
+    if (!settingUserEls.tbody) return;
+
+    if (!items.length) {
+      settingUserEls.tbody.innerHTML = `
+      <tr>
+        <td colspan="9" class="muted">ไม่มีผู้ใช้งานรออนุมัติ</td>
+      </tr>`;
+      return;
+    }
+
+    settingUserEls.tbody.innerHTML = items.map((u) => `
+    <tr>
+      <td>${escapeHtml(u.user_id)}</td>
+      <td>${escapeHtml(u.line_user_id ?? "")}</td>
+      <td>${escapeHtml(u.line_user_name ?? "")}</td>
+      <td>${escapeHtml(u.display_name ?? "")}</td>
+      <td>${escapeHtml(u.organization_name ?? "-")}</td>
+      <td>${escapeHtml(u.department_title ?? "-")}</td>
+      <td>${escapeHtml(u.position_title ?? "-")}</td>
+      <td>${escapeHtml(u.role ?? "")}</td>
+      <td>
+        <button class="btn btn-primary btn-sm"
+          data-action="approve"
+          data-user-id="${u.user_id}"
+          data-role-id="${u.user_role_id}">
+          อนุมัติ
+        </button>
+      </td>
+    </tr>
+  `).join("");
+  }
+
+  async function loadPendingUsers() {
+    if (settingUserState.loading) return;
+    settingUserState.loading = true;
+
+    try {
+      settingUserEls.tbody.innerHTML =
+        `<tr><td colspan="9" class="muted">กำลังโหลด...</td></tr>`;
+
+      if (!window.UserApprovalsAPI?.getPendingApprovals) {
+        throw new Error("UserApprovalsAPI.getPendingApprovals not found (check include user-approvals.api.js)");
+      }
+
+      const res = await window.UserApprovalsAPI.getPendingApprovals({
+        q: settingUserState.q,
+        page: settingUserState.page,
+        limit: settingUserState.limit,
+      });
+
+
+      const data = res?.data || {};
+      const items = data.items || [];
+
+      settingUserState.total = data.pagination?.total || items.length || 0;
+      settingUserState.totalPages = data.pagination?.total_pages || 1;
+
+      renderSettingUserRows(items);
+
+      if (settingUserEls.total) {
+        settingUserEls.total.textContent = `ทั้งหมด ${settingUserState.total} รายการ`;
+      }
+    } catch (err) {
+      settingUserEls.tbody.innerHTML =
+        `<tr><td colspan="9" class="muted">${escapeHtml(err.message)}</td></tr>`;
+    } finally {
+      settingUserState.loading = false;
+    }
+  }
+
+
+
 
   /* =========================
     Modal (open/close)
@@ -1817,6 +1917,16 @@
       userRoleState.limit = Number(userRoleEls.limit?.value || 50);
       await loadUserRoles();
     }
+
+    if (sectionKey === "user-setting") {
+      settingUserState.page = 1;
+      settingUserState.q = (settingUserEls.search?.value || "").trim();
+      settingUserState.limit = Number(settingUserEls.limit?.value || 50);
+      show(settingUserEls.section);
+
+      await loadPendingUsers();
+    }
+
 
 
   });
@@ -2315,6 +2425,26 @@
     }
   });
 
+  settingUserEls.tbody?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action='approve']");
+    if (!btn) return;
+
+    const userId = Number(btn.getAttribute("data-user-id"));
+    const roleId = Number(btn.getAttribute("data-role-id"));
+
+    if (!confirm("ยืนยันการอนุมัติผู้ใช้งานนี้?")) return;
+
+    try {
+      await window.UserApprovalsAPI.approve({
+        user_id: userId,
+        role_id: roleId,
+      });
+
+      await loadPendingUsers();
+    } catch (err) {
+      alert(err.message || "อนุมัติไม่สำเร็จ");
+    }
+  });
 
   // submit form (create/update)
   orgTypeEls.form?.addEventListener("submit", async (e) => {
@@ -2602,7 +2732,7 @@
     const id = parseInt((userRoleEls.inputId?.value || "").trim() || "0", 10);
 
     const code = (userRoleEls.inputCode?.value || "").trim();
-    const role = (userRoleEls.inputRole?.value || "").trim(); // <-- ใช้ inputRole (คุณประกาศไว้แล้ว)
+    const role = (userRoleEls.inputRole?.value || "").trim();
 
     if (!code || !role) {
       userRoleEls.formError.textContent = "กรุณากรอก รหัสบทบาท และ ชื่อบทบาท";
@@ -2684,10 +2814,6 @@
 
     await loadPositionTitleDepartmentsByOrg(orgId, { target: "modal" });
   });
-
-
-
-
 
 
   /* =========================

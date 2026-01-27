@@ -161,6 +161,22 @@ class UserRoleModel
         return $row;
     }
 
+     public function findByCode(string $code): ?array
+    {
+        $code = trim($code);
+        if ($code === '') return null;
+
+        $sql = "SELECT `user_role_id`, `code`, `role`
+                FROM `{$this->table}`
+                WHERE `code` = :code
+                LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':code' => $code]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
     /**
      * เช็ค code ซ้ำ (optional)
      */

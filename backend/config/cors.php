@@ -3,12 +3,13 @@
 declare(strict_types=1);
 
 function cors_apply(): void {
-    // ปรับ origin ได้ภายหลังให้ปลอดภัยขึ้น
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Dev-Api-Key');
+    header('Access-Control-Expose-Headers: Content-Type, Authorization, X-Dev-Api-Key');
     header('Access-Control-Max-Age: 86400');
 }
+
 
 function cors_handle_preflight(): void {
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

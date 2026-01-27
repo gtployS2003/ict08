@@ -14,16 +14,25 @@ function getAuthHeaders() {
     headers["X-Dev-Api-Key"] = DEV_API_KEY;
   }
 
-  // (ถ้าภายหลังจะกลับมาใช้ token แบบเดิม ค่อยเปิดส่วนนี้)
-  // const token = localStorage.getItem("token");
-  // const userId = localStorage.getItem("user_id");
-  // if (token && userId) {
-  //   headers["Authorization"] = `Bearer ${token}`;
-  //   headers["X-User-Id"] = userId;
-  // }
+  // ✅ แนบ token สำหรับ route ที่ต้อง auth
+  const token =
+    localStorage.getItem("auth_token") ||
+    sessionStorage.getItem("auth_token") ||
+    localStorage.getItem("token") ||
+    sessionStorage.getItem("token") ||
+    localStorage.getItem("access_token") ||
+    sessionStorage.getItem("access_token");
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  if (!token) console.warn("[auth] No token found in storage");
+  else console.log("[auth] token found:", token.slice(0, 20) + "...");
 
   return headers;
 }
+
 
 async function handleJson(res) {
   // กันเคส response ไม่ใช่ json
@@ -65,3 +74,42 @@ async function httpDelete(path) {
   });
   return handleJson(res);
 }
+
+// ✅ เพิ่ม: apiFetch ให้เข้ากับ auth.api.js และไฟล์ api อื่น ๆ
+window.apiFetch = async function apiFetch(path, { method = "GET", body, headers = {} } = {}) {
+  const url = `${API_BASE}${path}`;
+
+  const opts = {
+    method,
+    headers: {
+      ...getAuthHeaders(),
+      ...headers,
+    },
+  };
+
+  if (body !== undefined) {
+    opts.body = JSON.stringify(body);
+  }
+
+  const res = await fetch(url, opts);
+  const json = await handleJson(res);
+
+  // ✅ ทำให้เรียกแล้วรู้ว่า fail
+  if (!res.ok || json?.success === false || json?.ok === false) {
+    const msg = json?.message || json?.error || `Request failed (${res.status})`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.payload = json;
+    throw err;
+  }
+
+  return json;
+};
+
+
+// (optional) export helper เดิม เผื่อใช้ที่อื่น
+window.httpGet = httpGet;
+window.httpPost = httpPost;
+window.httpPut = httpPut;
+window.httpDelete = httpDelete;
+

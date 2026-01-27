@@ -2,16 +2,26 @@
 <html lang="th">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <link rel="icon" type="image/png" href="/ict/assets/image/logo_หน่วย8.png">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="icon" type="image/png" href="/ict/assets/image/logo_หน่วย8.png" />
 
     <title>ระบบงานสารสนเทศ</title>
 
-    <!-- include head -->
+    <!-- config -->
+    <script src="/ict/backend/public/config.js.php"></script>
+
+    <script src="/ict/assets/js/api/http.js" defer></script>
+    <script src="/ict/assets/js/api/auth.api.js" defer></script>
+
+    <!-- LIFF SDK -->
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
+
+    <!-- your scripts -->
     <script src="/ict/assets/js/include.js" defer></script>
     <script src="/ict/assets/js/auth.js" defer></script>
     <script src="/ict/assets/js/main.js" defer></script>
+    <script src="/ict/assets/js/line-login.js" defer></script>
 
 </head>
 
@@ -22,7 +32,7 @@
                 <img class="logo" src="/ict/assets/image/logo_หน่วย8.png" alt="โลโก้ศูนย์" />
             </a>
 
-            <div class="brand-text">
+            <div>
                 <div class="title-main">ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)</div>
                 <div class="title-sub">Information And Communication Technology Center 8 (Phitsanulok)</div>
             </div>
@@ -39,8 +49,9 @@
                     <img src="/ict/assets/image/logo_หน่วย8.png" alt="โลโก้ศูนย์" class="login-card-logo" />
                     <div class="login-card-header-text">
                         <div class="login-card-title-main">ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)</div>
-                        <div class="login-card-title-sub">Information And Communication Technology Center 8
-                            (Phitsanulok)</div>
+                        <div class="login-card-title-sub">
+                            Information And Communication Technology Center 8 (Phitsanulok)
+                        </div>
                     </div>
                 </div>
 
@@ -51,12 +62,15 @@
                 </div>
             </section>
         </div>
-
     </main>
+
     <script>
         console.log("innerWidth=", window.innerWidth, "screenWidth=", screen.width);
+        console.log("API_BASE_URL=", window.API_BASE_URL || window.__API_BASE__ || window.API_BASE);
+        console.log("LIFF_ID=", window.LIFF_ID);
     </script>
 
     <footer id="footer-index"></footer>
+</body>
 
 </html>

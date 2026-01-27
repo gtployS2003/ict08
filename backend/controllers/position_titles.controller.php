@@ -41,6 +41,40 @@ class PositionTitlesController
         }
     }
 
+        /**
+     * GET /position-titles/dropdown?organization_id=&department_id=
+     * - organization_id จำเป็น
+     * - department_id ไม่จำเป็น (ถ้ามีจะ filter เพิ่ม)
+     */
+    public function dropdown(): void
+    {
+        try {
+            $organization_id = null;
+            if (isset($_GET['organization_id']) && ctype_digit((string) $_GET['organization_id'])) {
+                $organization_id = (int) $_GET['organization_id'];
+            }
+
+            if ($organization_id === null || $organization_id <= 0) {
+                // dropdown ต้องรู้ org ก่อน
+                ok([], 'success', 200);
+                return;
+                // หรือ strict: fail('กรุณาระบุ organization_id ให้ถูกต้อง', 422); return;
+            }
+
+            $department_id = null;
+            if (isset($_GET['department_id']) && ctype_digit((string) $_GET['department_id'])) {
+                $department_id = (int) $_GET['department_id'];
+            }
+
+            // เรียก model ใหม่ที่คุณเพิ่มแล้ว
+            $items = $this->model->listForDropdown($organization_id, $department_id);
+            ok($items, 'success', 200);
+        } catch (Throwable $e) {
+            fail($e->getMessage(), 500);
+        }
+    }
+
+
     /**
      * POST /position-titles
      * body: { position_code, position_title, organization_id, department_id|null }

@@ -42,7 +42,7 @@ class DepartmentModel
         OR o.name LIKE :q3
         OR o.code LIKE :q4
     )";
-            $like = '%' . $q . '%';
+            $like = '%' . $q . '%'; 
             $params[':q1'] = $like;
             $params[':q2'] = $like;
             $params[':q3'] = $like;
@@ -121,6 +121,38 @@ class DepartmentModel
             ],
         ];
     }
+
+        /**
+     * Lightweight list for dropdown
+     * GET /departments/dropdown?organization_id=
+     */
+    public function listForDropdown(int $organization_id): array
+    {
+        $organization_id = (int) $organization_id;
+        if ($organization_id <= 0) {
+            return [];
+        }
+
+        $sql = "
+            SELECT
+                d.department_id,
+                d.department_code,
+                d.department_title,
+                d.organization_id,
+                o.name AS organization_name
+            FROM department d
+            LEFT JOIN organization o ON o.organization_id = d.organization_id
+            WHERE d.organization_id = :orgId
+            ORDER BY d.department_title ASC
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':orgId', $organization_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
 
 
     /**

@@ -147,6 +147,60 @@ class PositionTitleModel
         ];
     }
 
+        /**
+     * Lightweight list for dropdown
+     * GET /position-titles/dropdown?organization_id=&department_id=
+     *
+     * - ถ้าใส่ organization_id อย่างเดียว: คืนตำแหน่งที่เป็นของหน่วยงานนั้นทั้งหมด
+     * - ถ้าใส่ department_id ด้วย: คืนเฉพาะตำแหน่งในฝ่ายนั้น
+     */
+    public function listForDropdown(int $organization_id, ?int $department_id = null): array
+    {
+        $organization_id = (int) $organization_id;
+        if ($organization_id <= 0) {
+            return [];
+        }
+
+        $department_id = ($department_id !== null) ? (int) $department_id : null;
+        if ($department_id !== null && $department_id <= 0) {
+            $department_id = null;
+        }
+
+        $where = "WHERE p.organization_id = :orgId";
+        $params = [':orgId' => $organization_id];
+
+        if ($department_id !== null) {
+            $where .= " AND p.department_id = :depId";
+            $params[':depId'] = $department_id;
+        }
+
+        $sql = "
+            SELECT
+                p.position_title_id,
+                p.position_code,
+                p.position_title,
+                p.organization_id,
+                p.department_id,
+                d.department_title,
+                o.name AS organization_name
+            FROM position_title p
+            LEFT JOIN department d ON d.department_id = p.department_id
+            LEFT JOIN organization o ON o.organization_id = p.organization_id
+            {$where}
+            ORDER BY p.position_title ASC, p.position_title_id ASC
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':orgId', $organization_id, PDO::PARAM_INT);
+        if ($department_id !== null) {
+            $stmt->bindValue(':depId', $department_id, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+
     /**
      * Check duplicate by code/title within same (org + department)
      * - ถ้า department_id เป็น NULL => เทียบเฉพาะรายการที่ department_id IS NULL ภายใต้ org เดียวกัน

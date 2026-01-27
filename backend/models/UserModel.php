@@ -2,55 +2,90 @@
 // backend/models/UserModel.php
 declare(strict_types=1);
 
-class UserModel {
-    public function __construct(private PDO $pdo) {}
+class UserModel
+{
+    public function __construct(private PDO $pdo)
+    {
+    }
 
-    public function findByUsername(string $username): ?array {
-        $sql = "SELECT user_id, username, password_hash, role
-                FROM users WHERE username = :u LIMIT 1";
+    /**
+     * ใช้กับ LINE login: หา user จาก line_user_id
+     * ตารางจริงของคุณคือ `user`
+     */
+    public function findByLineUserId(string $lineUserId): ?array
+    {
+        $sql = "SELECT user_id, line_user_id, line_user_name, user_role_id
+            FROM `user`
+            WHERE line_user_id = :l
+            LIMIT 1";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute(['u' => $username]);
+        $stmt->execute([':l' => $lineUserId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
     }
 
-    // ✅ เพิ่ม: ใช้หา user จาก LINE userId
-    public function findByLineUserId(string $lineUserId): ?array {
-        $sql = "SELECT user_id, username, role, line_user_id
-                FROM users
-                WHERE line_user_id = :l
+    /**
+     * ✅ ใช้กับ approvals: หา user จาก user_id
+     */
+    public function findById(int $userId): ?array
+    {
+        $sql = "SELECT user_id, line_user_id, line_user_name, user_role_id
+                FROM `user`
+                WHERE user_id = :id
                 LIMIT 1";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute(['l' => $lineUserId]);
+        $stmt->execute([':id' => $userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
     }
 
-    // ✅ แนะนำเพิ่ม: ถ้ายังไม่มี user ใน DB ให้สร้างไว้ก่อน (role = guest/external ชั่วคราว)
-    public function upsertLineUser(string $lineUserId, string $defaultRole = 'guest'): array {
-        // 1) หา user ก่อน
-        $existing = $this->findByLineUserId($lineUserId);
-        if ($existing) return $existing;
-
-        // 2) ถ้าไม่มี ให้ insert
-        // หมายเหตุ: ต้องมีคอลัมน์ line_user_id และ role ในตาราง users
-        $sql = "INSERT INTO users (line_user_id, role)
-                VALUES (:l, :r)";
+    /**
+     * สร้าง user ใหม่จาก LINE (ตอนสมัครสมาชิก)
+     * - user_role_id: ถ้าไม่ใช่เจ้าหน้าที่ศูนย์ให้เป็น user อัตโนมัติ
+     */
+    public function createFromLine(string $lineUserId, string $lineUserName, int $userRoleId): int
+    {
+        $sql = "INSERT INTO user (line_user_id, line_user_name, user_role_id)
+                VALUES (:line_user_id, :line_user_name, :user_role_id)";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute(['l' => $lineUserId, 'r' => $defaultRole]);
+        $stmt->execute([
+            ':line_user_id' => $lineUserId,
+            ':line_user_name' => $lineUserName,
+            ':user_role_id' => $userRoleId
+        ]);
 
-        // 3) ดึงกลับมาให้ครบ
-        return $this->findByLineUserId($lineUserId) ?? [
-            'user_id' => (int)$this->pdo->lastInsertId(),
-            'line_user_id' => $lineUserId,
-            'role' => $defaultRole
-        ];
+        return (int) $this->pdo->lastInsertId();
     }
 
-    // ✅ (ถ้าต้องการ) ใช้ตอนสมัครสมาชิกเสร็จ เพื่อ set role เป็น internal/external
-    public function setRoleByLineUserId(string $lineUserId, string $role): bool {
-        $sql = "UPDATE users SET role = :r WHERE line_user_id = :l";
+    /**
+     * (optional) อัปเดตชื่อที่มาจาก LINE ถ้ามีการเปลี่ยน display name
+     */
+    public function updateLineUserName(int $userId, string $lineUserName): bool
+    {
+        $sql = "UPDATE user SET line_user_name = :n WHERE user_id = :id";
         $stmt = $this->pdo->prepare($sql);
-        return $stmt->execute(['r' => $role, 'l' => $lineUserId]);
+        return $stmt->execute([
+            ':n' => $lineUserName,
+            ':id' => $userId
+        ]);
     }
+
+    public function updateRole(int $userId, int $userRoleId): bool
+    {
+        $sql = "UPDATE `user`
+            SET user_role_id = :rid
+            WHERE user_id = :uid
+            LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([
+            ':rid' => $userRoleId,
+            ':uid' => $userId
+        ]);
+    }
+
+    public function updateUserRole(int $userId, int $roleId): bool
+    {
+        return $this->updateRole($userId, $roleId);
+    }
+
 }

@@ -7,9 +7,9 @@ class OrganizationModel
 {
     private PDO $db;
 
-    public function __construct()
+    public function __construct(?PDO $pdo = null)
     {
-        $this->db = db();
+        $this->db = $pdo ?: db();
     }
 
     /**
@@ -246,6 +246,14 @@ class OrganizationModel
         }
 
         return $row;
+    }
+
+    /**
+     * Alias เพื่อให้เรียกแบบมาตรฐานเดียวกับ model อื่น
+     */
+    public function findById(int $organizationId): array
+    {
+        return $this->getById($organizationId);
     }
 
     /**
