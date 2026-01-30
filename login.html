@@ -11,17 +11,20 @@
     <!-- config -->
     <script src="/ict/backend/public/config.js.php"></script>
 
+    <!-- LIFF SDK (อย่า defer) -->
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+    <!-- api -->
     <script src="/ict/assets/js/api/http.js" defer></script>
     <script src="/ict/assets/js/api/auth.api.js" defer></script>
-
-    <!-- LIFF SDK -->
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
 
     <!-- your scripts -->
     <script src="/ict/assets/js/include.js" defer></script>
     <script src="/ict/assets/js/auth.js" defer></script>
     <script src="/ict/assets/js/main.js" defer></script>
-    <script src="/ict/assets/js/line-login.js" defer></script>
+    <script src="/ict/assets/js/line-login.js?v=20260129-19" defer></script>
+
+
 
 </head>
 
@@ -59,6 +62,10 @@
                     <button type="button" class="btn-login btn-line" id="btn-line-login">
                         เข้าสู่ระบบด้วย LINE
                     </button>
+
+                    <button id="btn-line-logout" type="button">Logout (DEV)</button>
+
+
                 </div>
             </section>
         </div>

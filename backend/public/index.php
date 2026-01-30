@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/cors.php';
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/env.php';
+
 require_once __DIR__ . '/../helpers/response.php';
+
 
 require_once __DIR__ . '/../routes/news.routes.php';
 require_once __DIR__ . '/../routes/activities.routes.php';
@@ -17,6 +20,8 @@ require_once __DIR__ . '/../routes/departments.routes.php';
 require_once __DIR__ . '/../routes/position_titles.routes.php';
 require_once __DIR__ . '/../routes/user_roles.routes.php';
 require_once __DIR__ . '/../routes/user_approvals.routes.php';
+
+env_load(__DIR__ . '/../.env');
 
 cors_apply();
 cors_handle_preflight();

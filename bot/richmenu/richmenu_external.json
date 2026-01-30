@@ -15,15 +15,16 @@
       "bounds": { "x": 833, "y": 0, "width": 833, "height": 843 },
       "action": {
         "type": "postback",
-        "data": "support_request",
+        "data": "ext:support",
         "displayText": "ขอสนับสนุน"
       }
     },
     {
       "bounds": { "x": 1666, "y": 0, "width": 834, "height": 843 },
       "action": {
-        "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/link/other_web.html"
+        "type": "postback",
+        "data": "ext:track",
+        "displayText": "ติดตามสถานะ"
       }
     },
     {

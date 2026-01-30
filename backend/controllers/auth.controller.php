@@ -5,9 +5,11 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../services/LineService.php';
+
 
 require_once __DIR__ . '/../models/UserModel.php';
-// เพิ่ม 2 model นี้ (เดี๋ยวเราจะสร้างไฟล์ให้ในขั้นถัดไป)
+
 require_once __DIR__ . '/../models/PersonModel.php';
 require_once __DIR__ . '/../models/NotificationModel.php';
 require_once __DIR__ . '/../models/UserRoleModel.php';
@@ -30,60 +32,127 @@ class AuthController
      * - status=register-> ไม่พบ user => ไปสมัครสมาชิก
      */
     public function lineLogin(): void
-    {
-        $body = read_json_body();
-        $missing = require_fields($body, ['line_user_id', 'line_user_name']);
-        if ($missing)
-            fail("Missing fields", 422, $missing);
+{
+    $body = read_json_body();
+    $missing = require_fields($body, ['line_user_id', 'line_user_name']);
+    if ($missing) fail("Missing fields", 422, $missing);
 
-        $lineUserId = trim((string) $body['line_user_id']);
-        $lineUserName = trim((string) $body['line_user_name']);
-        if ($lineUserId === '')
-            fail("Invalid line_user_id", 422);
+    $lineUserId = trim((string)$body['line_user_id']);
+    $lineUserName = trim((string)$body['line_user_name']);
+    if ($lineUserId === '') fail("Invalid line_user_id", 422);
 
-        $userModel = new UserModel($this->pdo);
-        $user = $userModel->findByLineUserId($lineUserId);
+    $userModel = new UserModel($this->pdo);
+    $user = $userModel->findByLineUserId($lineUserId);
 
-        // ไม่พบ user -> ให้ไป register
-        if (!$user) {
-            ok([
-                "status" => "register"
-            ], "User not found, registration required");
-        }
+    // ไม่พบ user -> ให้ไป register
+    if (!$user) {
+        ok(["status" => "register"], "User not found, registration required");
+    }
 
-        $userId = (int) $user['user_id'];
+    $userId = (int)$user['user_id'];
 
-        // เช็คสถานะอนุมัติจาก person.is_active (ถ้ามี person)
-        $personModel = new PersonModel($this->pdo);
-        $person = $personModel->findByUserId($userId);
+    // เช็คสถานะอนุมัติจาก person.is_active
+    $personModel = new PersonModel($this->pdo);
+    $person = $personModel->findByUserId($userId);
 
-        $isActive = (int) ($person['is_active'] ?? 0);
+    $isActive = (int)($person['is_active'] ?? 0);
 
-        if ($isActive !== 1) {
-            ok([
-                "status" => "pending",
-                "user" => [
-                    "user_id" => $userId,
-                    "line_user_id" => $lineUserId,
-                    "line_user_name" => $lineUserName,
-                ]
-            ], "Pending approval");
-        }
-
-        // อนุมัติแล้ว -> ออก token
-        $token = auth_sign((string) $userId);
-
+    if ($isActive !== 1) {
         ok([
-            "status" => "active",
-            "token" => $token,
+            "status" => "pending",
             "user" => [
                 "user_id" => $userId,
                 "line_user_id" => $lineUserId,
                 "line_user_name" => $lineUserName,
-            ],
-            "person" => $person
-        ], "Login with LINE success");
+            ]
+        ], "Pending approval");
     }
+
+    // ===============================
+    // อนุมัติแล้ว -> ออก token
+    // ===============================
+    $token = auth_sign((string)$userId);
+
+    // ===============================
+    // สลับ Rich Menu ตาม internal/external
+    // เกณฑ์: organization_type_id === 1 => internal (STAFF)
+    // ===============================
+    $richMenuResult = null;
+
+    // อ่านค่าจาก env
+    $RM_BEFORE   = getenv('LINE_RICHMENU_BEFORE') ?: '';
+    $RM_INTERNAL = getenv('LINE_RICHMENU_INTERNAL') ?: '';
+    $RM_EXTERNAL = getenv('LINE_RICHMENU_EXTERNAL') ?: '';
+
+    $ACCESS_TOKEN = getenv('LINE_CHANNEL_ACCESS_TOKEN') ?: '';
+
+    // ตัดสิน internal/external จาก organization_type_id
+    $isInternal = false;
+    $orgTypeId = 0;
+
+    $organizationId = (int)($person['organization_id'] ?? 0);
+    if ($organizationId > 0) {
+        try {
+            $orgModel = new OrganizationModel($this->pdo);
+            $org = $orgModel->findById($organizationId);
+            $orgTypeId = (int)($org['organization_type_id'] ?? 0);
+
+            // internal = type 1 (ตามที่คุณใช้ใน register)
+            if ($orgTypeId === 1) $isInternal = true;
+        } catch (Throwable $e) {
+            // ถ้าอ่าน org ไม่ได้ ให้ถือว่า external ไปก่อน
+            $isInternal = false;
+        }
+    }
+
+    // เลือก richmenu id
+    $targetRichMenuId = $isInternal ? $RM_INTERNAL : $RM_EXTERNAL;
+
+    // ยิง LINE API เพื่อ link rich menu (ถ้าตั้งค่า env ครบ)
+    if ($ACCESS_TOKEN !== '' && $targetRichMenuId !== '') {
+        try {
+            $lineService = new LineService($ACCESS_TOKEN);
+
+            // (optional) เคลียร์ก่อนลิงก์ เพื่อให้แน่ใจว่าสลับทันที
+            $lineService->unlinkRichMenuFromUser($lineUserId);
+
+            $richMenuResult = $lineService->linkRichMenuToUser($lineUserId, $targetRichMenuId);
+        } catch (Throwable $e) {
+            // ไม่ให้ login fail เพราะเมนูเปลี่ยนไม่ได้
+            $richMenuResult = [
+                'ok' => false,
+                'http' => 0,
+                'error' => $e->getMessage(),
+            ];
+        }
+    } else {
+        $richMenuResult = [
+            'ok' => false,
+            'http' => 0,
+            'error' => 'Missing LINE_CHANNEL_ACCESS_TOKEN or target richmenu id in .env',
+        ];
+    }
+
+    ok([
+        "status" => "active",
+        "token" => $token,
+        "user" => [
+            "user_id" => $userId,
+            "line_user_id" => $lineUserId,
+            "line_user_name" => $lineUserName,
+        ],
+        "person" => $person,
+
+        // debug ช่วยเช็คว่าเลือก internal/external ถูกไหม และ LINE API ตอบอะไร
+        "rich_menu" => [
+            "is_internal" => $isInternal,
+            "organization_type_id" => $orgTypeId,
+            "target_richmenu_id" => $targetRichMenuId,
+            "result" => $richMenuResult
+        ]
+    ], "Login with LINE success");
+}
+
 
         /**
      * POST /auth/login

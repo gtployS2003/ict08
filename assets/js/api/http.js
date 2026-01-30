@@ -7,14 +7,18 @@ const API_BASE = APP_CONFIG.API_BASE || "http://127.0.0.1/ict/backend/public";
 const APP_ENV = APP_CONFIG.APP_ENV || "dev";
 const DEV_API_KEY = APP_CONFIG.DEV_API_KEY || "";
 
-function getAuthHeaders() {
+function getAuthHeaders({ skipAuth = false } = {}) {
   const headers = { "Content-Type": "application/json" };
 
   if (APP_ENV === "dev" && DEV_API_KEY) {
     headers["X-Dev-Api-Key"] = DEV_API_KEY;
   }
 
-  // ✅ แนบ token สำหรับ route ที่ต้อง auth
+  // ✅ ถ้าบอกว่าไม่ต้อง auth ก็ไม่ต้องหา token และไม่ต้อง warn
+  if (skipAuth) {
+    return headers;
+  }
+
   const token =
     localStorage.getItem("auth_token") ||
     sessionStorage.getItem("auth_token") ||
@@ -25,13 +29,14 @@ function getAuthHeaders() {
 
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
+    console.log("[auth] token found:", token.slice(0, 20) + "...");
+  } else {
+    console.warn("[auth] No token found in storage");
   }
-
-  if (!token) console.warn("[auth] No token found in storage");
-  else console.log("[auth] token found:", token.slice(0, 20) + "...");
 
   return headers;
 }
+
 
 
 async function handleJson(res) {
@@ -76,13 +81,16 @@ async function httpDelete(path) {
 }
 
 // ✅ เพิ่ม: apiFetch ให้เข้ากับ auth.api.js และไฟล์ api อื่น ๆ
-window.apiFetch = async function apiFetch(path, { method = "GET", body, headers = {} } = {}) {
+window.apiFetch = async function apiFetch(
+  path,
+  { method = "GET", body, headers = {}, skipAuth = false } = {}
+) {
   const url = `${API_BASE}${path}`;
 
   const opts = {
     method,
     headers: {
-      ...getAuthHeaders(),
+      ...getAuthHeaders({ skipAuth }), // ✅ ส่ง flag เข้าไป
       ...headers,
     },
   };
@@ -94,7 +102,6 @@ window.apiFetch = async function apiFetch(path, { method = "GET", body, headers 
   const res = await fetch(url, opts);
   const json = await handleJson(res);
 
-  // ✅ ทำให้เรียกแล้วรู้ว่า fail
   if (!res.ok || json?.success === false || json?.ok === false) {
     const msg = json?.message || json?.error || `Request failed (${res.status})`;
     const err = new Error(msg);
@@ -105,6 +112,7 @@ window.apiFetch = async function apiFetch(path, { method = "GET", body, headers 
 
   return json;
 };
+
 
 
 // (optional) export helper เดิม เผื่อใช้ที่อื่น

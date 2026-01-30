@@ -2,7 +2,8 @@
 // backend/config/env.php
 declare(strict_types=1);
 
-function env_load(string $envFilePath): void {
+function env_load(string $envFilePath): void
+{
     if (!file_exists($envFilePath)) return;
 
     $lines = file($envFilePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -16,12 +17,27 @@ function env_load(string $envFilePath): void {
         $key = trim($parts[0]);
         $val = trim($parts[1]);
 
+        // ถ้าไม่ได้ครอบด้วย quotes ให้ตัด inline comment (# ...)
+        $isQuoted =
+            (str_starts_with($val, '"') && str_ends_with($val, '"')) ||
+            (str_starts_with($val, "'") && str_ends_with($val, "'"));
+
+        if (!$isQuoted) {
+            $hashPos = strpos($val, '#');
+            if ($hashPos !== false) {
+                $val = rtrim(substr($val, 0, $hashPos));
+            }
+        }
+
         // remove wrapping quotes
         if ((str_starts_with($val, '"') && str_ends_with($val, '"')) ||
             (str_starts_with($val, "'") && str_ends_with($val, "'"))) {
             $val = substr($val, 1, -1);
         }
 
+        if ($key === '') continue;
+
+        // ถ้ายังไม่ถูก set ค่อย set
         if (getenv($key) === false) {
             putenv("$key=$val");
             $_ENV[$key] = $val;
@@ -29,7 +45,8 @@ function env_load(string $envFilePath): void {
     }
 }
 
-function env(string $key, ?string $default = null): ?string {
+function env(string $key, ?string $default = null): ?string
+{
     $v = getenv($key);
     if ($v === false) return $default;
     return $v;

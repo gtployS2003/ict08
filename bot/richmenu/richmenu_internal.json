@@ -1,8 +1,8 @@
 {
   "size": { "width": 2500, "height": 1686 },
   "selected": false,
-  "name": "ICT8 - External",
-  "chatBarText": "เมนูผู้ใช้งาน",
+  "name": "ICT8 - Internal",
+  "chatBarText": "เมนูเจ้าหน้าที่",
   "areas": [
     {
       "bounds": { "x": 0, "y": 0, "width": 833, "height": 843 },
@@ -14,37 +14,36 @@
     {
       "bounds": { "x": 833, "y": 0, "width": 833, "height": 843 },
       "action": {
-        "type": "postback",
-        "data": "support_request",
-        "displayText": "ขอสนับสนุน"
+        "type": "uri",
+        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/schedule/calendar.html"
       }
     },
     {
       "bounds": { "x": 1666, "y": 0, "width": 834, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/link/other_web.html"
+        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/gcms/dashboard.html"
       }
     },
     {
       "bounds": { "x": 0, "y": 843, "width": 833, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/login.html"
+        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/#"
       }
     },
     {
       "bounds": { "x": 833, "y": 843, "width": 833, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/document/download.html"
+        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/monitor/map-device.html"
       }
     },
     {
       "bounds": { "x": 1666, "y": 843, "width": 834, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/link/other_web.html"
+        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/document/download.html"
       }
     }
   ]

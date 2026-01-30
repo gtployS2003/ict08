@@ -45,6 +45,7 @@
     return apiFetch(`${AUTH_BASE}/line-login`, {
       method: "POST",
       body: data,
+      skipAuth: true,
     });
   }
 
