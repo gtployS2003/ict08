@@ -1,11 +1,3 @@
-// assets/js/line-login.js
-/**
- * LINE Login via LIFF (Manual click only)
- * - ไม่ auto-login
- * - กดปุ่มเท่านั้นถึงทำงาน
- * - มี debug บนหน้า (เห็นใน LINE ได้)
- */
-
 document.addEventListener("DOMContentLoaded", () => {
   const btnLogin = document.getElementById("btn-line-login");
   const btnLogout = document.getElementById("btn-line-logout");
@@ -20,7 +12,83 @@ document.addEventListener("DOMContentLoaded", () => {
   logUI("DOM ready");
   logUI("href=" + location.href);
   logUI("LIFF_ID=" + (window.LIFF_ID || "(missing)"));
+
+  autoResumeAfterRedirect().catch((e) => {
+    logUI("autoResume error", { message: e?.message || String(e) });
+  });
+
 });
+
+async function autoResumeAfterRedirect() {
+  if (!window.liff || !window.LIFF_ID) return;
+
+  const hasOAuthParams =
+    location.search.includes("code=") || location.search.includes("state=");
+
+  // ✅ Resume เฉพาะตอนกลับมาจาก OAuth
+  if (!hasOAuthParams) return;
+
+  await liff.init({ liffId: window.LIFF_ID });
+
+  logUI("AUTO: after init", {
+    hasOAuthParams,
+    isInClient: liff.isInClient(),
+    isLoggedIn: liff.isLoggedIn(),
+  });
+
+  if (liff.isLoggedIn()) {
+    logUI("AUTO: logged in -> continue flow");
+    await continueAfterLogin();
+  }
+}
+
+
+async function continueAfterLogin() {
+  logUI("STEP 5: getProfile()");
+  const profile = await liff.getProfile();
+  if (!profile?.userId) return logUI("ERROR: no userId from profile");
+
+  logUI("profile", { userId: profile.userId, name: profile.displayName });
+
+  logUI("STEP 6: call backend /auth/line-login");
+  const res = await AuthAPI.lineLogin({
+    line_user_id: profile.userId,
+    line_user_name: profile.displayName,
+  });
+
+  const data = res?.data || {};
+  logUI("backend response", data);
+
+  if (data.status === "active") {
+    if (data.token) AuthAPI.saveToken(data.token);
+
+    if (liff.isInClient()) {
+      logUI("STEP 7: closeWindow()");
+      setTimeout(() => {
+        try { liff.closeWindow(); } catch {}
+      }, 300);
+      return;
+    }
+
+    alert("isInClient=false → ปิดหน้าต่าง LIFF ไม่ได้ (ตอนนี้ไม่ได้เปิดแบบ LIFF ในแอป LINE)");
+    location.href = "/ict/index.html";
+    return;
+  }
+
+  if (data.status === "register") {
+    sessionStorage.setItem("line_user_id", profile.userId);
+    sessionStorage.setItem("line_user_name", profile.displayName);
+    location.href = "/ict/profile-setup.html";
+    return;
+  }
+
+  if (data.status === "pending") {
+    alert("บัญชีของคุณอยู่ระหว่างรอการอนุมัติจากเจ้าหน้าที่");
+    return;
+  }
+
+  alert("ไม่สามารถเข้าสู่ระบบได้");
+}
 
 function ensureDebugPanel() {
   if (document.getElementById("liff-debug-panel")) return;
@@ -115,62 +183,18 @@ async function handleLineLogin() {
       isLoggedIn: liff.isLoggedIn(),
     });
 
-    // ยังไม่ login -> เริ่ม login (ผู้ใช้ต้องกด Continue เองตาม flow ของ LINE)
+    // ยังไม่ login -> เริ่ม login
     if (!liff.isLoggedIn()) {
       logUI("STEP 4: liff.login()");
       liff.login();
       return;
     }
 
-    // login แล้ว -> ดึง profile + call backend
-    logUI("STEP 5: getProfile()");
-    const profile = await liff.getProfile();
-    if (!profile?.userId) return logUI("ERROR: no userId from profile");
-
-    logUI("profile", { userId: profile.userId, name: profile.displayName });
-
-    logUI("STEP 6: call backend /auth/line-login");
-    const res = await AuthAPI.lineLogin({
-      line_user_id: profile.userId,
-      line_user_name: profile.displayName,
-    });
-
-    const data = res?.data || {};
-    logUI("backend response", data);
-
-    if (data.status === "active") {
-      if (data.token) AuthAPI.saveToken(data.token);
-
-      if (liff.isInClient()) {
-        // ✅ แนะนำ: ปิดก่อน (sendMessages บางเครื่องทำให้ค้าง/ปิดไม่ได้)
-        logUI("STEP 7: closeWindow()");
-        setTimeout(() => {
-          try { liff.closeWindow(); } catch {}
-        }, 300);
-        return;
-      }
-
-      // นอก client ปิดไม่ได้
-      alert("isInClient=false → ปิดหน้าต่าง LIFF ไม่ได้ (ตอนนี้ไม่ได้เปิดแบบ LIFF ในแอป LINE)");
-      location.href = "/ict/index.html";
-      return;
-    }
-
-    if (data.status === "register") {
-      sessionStorage.setItem("line_user_id", profile.userId);
-      sessionStorage.setItem("line_user_name", profile.displayName);
-      location.href = "/ict/profile-setup.html";
-      return;
-    }
-
-    if (data.status === "pending") {
-      alert("บัญชีของคุณอยู่ระหว่างรอการอนุมัติจากเจ้าหน้าที่");
-      return;
-    }
-
-    alert("ไม่สามารถเข้าสู่ระบบได้");
+    // login แล้ว -> ทำต่อให้จบ
+    await continueAfterLogin();
   } catch (e) {
     logUI("catch error", { message: e?.message || String(e) });
     alert("เกิดข้อผิดพลาด: " + (e?.message || String(e)));
   }
 }
+

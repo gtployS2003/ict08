@@ -32,129 +32,158 @@ class AuthController
      * - status=register-> ไม่พบ user => ไปสมัครสมาชิก
      */
     public function lineLogin(): void
-{
-    $body = read_json_body();
-    $missing = require_fields($body, ['line_user_id', 'line_user_name']);
-    if ($missing) fail("Missing fields", 422, $missing);
+    {
+        $body = read_json_body();
+        $missing = require_fields($body, ['line_user_id', 'line_user_name']);
+        if ($missing)
+            fail("Missing fields", 422, $missing);
 
-    $lineUserId = trim((string)$body['line_user_id']);
-    $lineUserName = trim((string)$body['line_user_name']);
-    if ($lineUserId === '') fail("Invalid line_user_id", 422);
+        $lineUserId = trim((string) $body['line_user_id']);
+        $lineUserName = trim((string) $body['line_user_name']);
+        if ($lineUserId === '')
+            fail("Invalid line_user_id", 422);
 
-    $userModel = new UserModel($this->pdo);
-    $user = $userModel->findByLineUserId($lineUserId);
+        $userModel = new UserModel($this->pdo);
+        $user = $userModel->findByLineUserId($lineUserId);
 
-    // ไม่พบ user -> ให้ไป register
-    if (!$user) {
-        ok(["status" => "register"], "User not found, registration required");
-    }
+        // ไม่พบ user -> ให้ไป register
+        if (!$user) {
+            ok(["status" => "register"], "User not found, registration required");
+            return;
+        }
 
-    $userId = (int)$user['user_id'];
+        $userId = (int) $user['user_id'];
 
-    // เช็คสถานะอนุมัติจาก person.is_active
-    $personModel = new PersonModel($this->pdo);
-    $person = $personModel->findByUserId($userId);
+        // เช็คสถานะอนุมัติจาก person.is_active
+        $personModel = new PersonModel($this->pdo);
+        $person = $personModel->findByUserId($userId);
 
-    $isActive = (int)($person['is_active'] ?? 0);
+        $isActive = (int) ($person['is_active'] ?? 0);
 
-    if ($isActive !== 1) {
-        ok([
-            "status" => "pending",
+        if ($isActive !== 1) {
+            // pending -> ให้ใช้เมนู BEFORE (หรือคุณจะทำเมนู PENDING แยกก็ได้)
+            $RM_BEFORE = getenv('LINE_RICHMENU_BEFORE') ?: '';
+            $lineService = new LineService(getenv('LINE_CHANNEL_ACCESS_TOKEN') ?: '');
+            $rmRes = $lineService->setUserRichMenu($lineUserId, $RM_BEFORE);
+
+
+            $payload = [
+                "status" => "pending",
+                "user" => [
+                    "user_id" => $userId,
+                    "line_user_id" => $lineUserId,
+                    "line_user_name" => $lineUserName,
+                ]
+            ];
+
+            if ($this->isDebug()) {
+                $payload["rich_menu"] = [
+                    "target_richmenu_id" => $RM_BEFORE,
+                    "result" => $rmRes
+                ];
+            }
+
+            ok($payload, "Pending approval");
+            return;
+        }
+
+
+        // ===============================
+        // อนุมัติแล้ว -> ออก token
+        // ===============================
+        $token = auth_sign((string) $userId);
+
+        // ===============================
+        // สลับ Rich Menu ตาม internal/external
+        // เกณฑ์: organization_type_id === 1 => internal (STAFF)
+        // ===============================
+        $richMenuResult = null;
+
+        // อ่านค่าจาก env
+        $RM_BEFORE = getenv('LINE_RICHMENU_BEFORE') ?: '';
+        $RM_INTERNAL = getenv('LINE_RICHMENU_INTERNAL') ?: '';
+        $RM_EXTERNAL = getenv('LINE_RICHMENU_EXTERNAL') ?: '';
+
+        $ACCESS_TOKEN = getenv('LINE_CHANNEL_ACCESS_TOKEN') ?: '';
+
+        // ตัดสิน internal/external จาก organization_type_id
+        $isInternal = false;
+        $orgTypeId = 0;
+
+        $organizationId = (int) ($person['organization_id'] ?? 0);
+        if ($organizationId > 0) {
+            try {
+                $orgModel = new OrganizationModel($this->pdo);
+                $org = $orgModel->findById($organizationId);
+                $orgTypeId = (int) ($org['organization_type_id'] ?? 0);
+
+                // internal = type 1 (ตามที่คุณใช้ใน register)
+                if ($orgTypeId === 1)
+                    $isInternal = true;
+            } catch (Throwable $e) {
+                // ถ้าอ่าน org ไม่ได้ ให้ถือว่า external ไปก่อน
+                $isInternal = false;
+            }
+        }
+
+        // เลือก richmenu id
+        $targetRichMenuId = $isInternal ? $RM_INTERNAL : $RM_EXTERNAL;
+
+        // ยิง LINE API เพื่อ link rich menu (ถ้าตั้งค่า env ครบ)
+        if ($ACCESS_TOKEN !== '' && $targetRichMenuId !== '') {
+            try {
+                $lineService = new LineService($ACCESS_TOKEN);
+                $richMenuResult = $lineService->setUserRichMenu($lineUserId, $targetRichMenuId);
+
+                // ✅ เช็คซ้ำว่าตอนนี้ user ได้ richmenu อะไรจริง (debug โหดมาก)
+                $check = $lineService->getUserRichMenuId($lineUserId);
+
+            } catch (Throwable $e) {
+                // ไม่ให้ login fail เพราะเมนูเปลี่ยนไม่ได้
+                $richMenuResult = [
+                    'ok' => false,
+                    'http' => 0,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        } else {
+            $richMenuResult = [
+                'ok' => false,
+                'http' => 0,
+                'error' => 'Missing LINE_CHANNEL_ACCESS_TOKEN or target richmenu id in .env',
+            ];
+        }
+
+        $ctx = $this->detectInternalExternal($person);
+
+        $payload = [
+            "status" => "active",
+            "token" => $token,
             "user" => [
                 "user_id" => $userId,
                 "line_user_id" => $lineUserId,
                 "line_user_name" => $lineUserName,
-            ]
-        ], "Pending approval");
-    }
+            ],
+            "person" => $person,
+        ];
 
-    // ===============================
-    // อนุมัติแล้ว -> ออก token
-    // ===============================
-    $token = auth_sign((string)$userId);
-
-    // ===============================
-    // สลับ Rich Menu ตาม internal/external
-    // เกณฑ์: organization_type_id === 1 => internal (STAFF)
-    // ===============================
-    $richMenuResult = null;
-
-    // อ่านค่าจาก env
-    $RM_BEFORE   = getenv('LINE_RICHMENU_BEFORE') ?: '';
-    $RM_INTERNAL = getenv('LINE_RICHMENU_INTERNAL') ?: '';
-    $RM_EXTERNAL = getenv('LINE_RICHMENU_EXTERNAL') ?: '';
-
-    $ACCESS_TOKEN = getenv('LINE_CHANNEL_ACCESS_TOKEN') ?: '';
-
-    // ตัดสิน internal/external จาก organization_type_id
-    $isInternal = false;
-    $orgTypeId = 0;
-
-    $organizationId = (int)($person['organization_id'] ?? 0);
-    if ($organizationId > 0) {
-        try {
-            $orgModel = new OrganizationModel($this->pdo);
-            $org = $orgModel->findById($organizationId);
-            $orgTypeId = (int)($org['organization_type_id'] ?? 0);
-
-            // internal = type 1 (ตามที่คุณใช้ใน register)
-            if ($orgTypeId === 1) $isInternal = true;
-        } catch (Throwable $e) {
-            // ถ้าอ่าน org ไม่ได้ ให้ถือว่า external ไปก่อน
-            $isInternal = false;
-        }
-    }
-
-    // เลือก richmenu id
-    $targetRichMenuId = $isInternal ? $RM_INTERNAL : $RM_EXTERNAL;
-
-    // ยิง LINE API เพื่อ link rich menu (ถ้าตั้งค่า env ครบ)
-    if ($ACCESS_TOKEN !== '' && $targetRichMenuId !== '') {
-        try {
-            $lineService = new LineService($ACCESS_TOKEN);
-
-            // (optional) เคลียร์ก่อนลิงก์ เพื่อให้แน่ใจว่าสลับทันที
-            $lineService->unlinkRichMenuFromUser($lineUserId);
-
-            $richMenuResult = $lineService->linkRichMenuToUser($lineUserId, $targetRichMenuId);
-        } catch (Throwable $e) {
-            // ไม่ให้ login fail เพราะเมนูเปลี่ยนไม่ได้
-            $richMenuResult = [
-                'ok' => false,
-                'http' => 0,
-                'error' => $e->getMessage(),
+        if ($this->isDebug()) {
+            $payload["rich_menu"] = [
+                "is_internal" => $isInternal,
+                "organization_type_id" => $orgTypeId,
+                "internal_type_id" => (int) $ctx['internal_type_id'],
+                "target_richmenu_id" => $targetRichMenuId,
+                "result" => $richMenuResult,
+                "check" => $check,
             ];
         }
-    } else {
-        $richMenuResult = [
-            'ok' => false,
-            'http' => 0,
-            'error' => 'Missing LINE_CHANNEL_ACCESS_TOKEN or target richmenu id in .env',
-        ];
+
+        ok($payload, "Login with LINE success");
+
     }
 
-    ok([
-        "status" => "active",
-        "token" => $token,
-        "user" => [
-            "user_id" => $userId,
-            "line_user_id" => $lineUserId,
-            "line_user_name" => $lineUserName,
-        ],
-        "person" => $person,
 
-        // debug ช่วยเช็คว่าเลือก internal/external ถูกไหม และ LINE API ตอบอะไร
-        "rich_menu" => [
-            "is_internal" => $isInternal,
-            "organization_type_id" => $orgTypeId,
-            "target_richmenu_id" => $targetRichMenuId,
-            "result" => $richMenuResult
-        ]
-    ], "Login with LINE success");
-}
-
-
-        /**
+    /**
      * POST /auth/login
      * LINE-only login (alias ไปที่ lineLogin)
      * body: { line_user_id, line_user_name }
@@ -324,5 +353,99 @@ class AuthController
             ]);
         }
     }
+
+    private function isDebug(): bool
+    {
+        $v = getenv('APP_DEBUG') ?: '';
+        return $v === '1' || strtolower($v) === 'true';
+    }
+
+    /**
+     * เปลี่ยน richmenu ให้ user โดยไม่ทำให้ flow หลักล้ม
+     * คืน array ผลลัพธ์ไว้สำหรับ debug เท่านั้น
+     */
+    private function trySetRichMenu(string $lineUserId, string $targetRichMenuId): array
+    {
+        $ACCESS_TOKEN = getenv('LINE_CHANNEL_ACCESS_TOKEN') ?: '';
+        if ($ACCESS_TOKEN === '' || $targetRichMenuId === '') {
+            return [
+                'ok' => false,
+                'http' => 0,
+                'error' => 'Missing LINE_CHANNEL_ACCESS_TOKEN or target richmenu id in .env',
+            ];
+        }
+
+        try {
+            $lineService = new LineService($ACCESS_TOKEN);
+
+            // เคลียร์ก่อนลิงก์ (กันค้าง)
+            $lineService->unlinkRichMenuFromUser($lineUserId);
+
+            return $lineService->linkRichMenuToUser($lineUserId, $targetRichMenuId);
+        } catch (Throwable $e) {
+            return [
+                'ok' => false,
+                'http' => 0,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * ตัดสิน internal/external จาก user_role (แนะนำ)
+     * - STAFF => internal
+     * - USER  => external
+     */
+    private function detectIsInternal(array $user): bool
+    {
+        $userRoleId = (int) ($user['user_role_id'] ?? 0);
+
+        // map จาก code ใน DB เพื่อกัน ID เปลี่ยน
+        $roleStaffId = 2;
+        try {
+            $urm = new UserRoleModel($this->pdo);
+            $r = $urm->findByCode('STAFF');
+            if ($r && isset($r['user_role_id'])) {
+                $roleStaffId = (int) $r['user_role_id'];
+            }
+        } catch (Throwable $e) {
+            // fallback ใช้ 2
+        }
+
+        return $userRoleId === $roleStaffId;
+    }
+
+    /**
+     * ตัดสิน internal/external จาก organization_type_id
+     * - ตั้งค่า internal type id ได้ใน .env: ORG_TYPE_INTERNAL_ID=1
+     */
+    private function detectInternalExternal(array $person): array
+    {
+        $internalTypeId = (int) (getenv('ORG_TYPE_INTERNAL_ID') ?: 1);
+
+        $orgTypeId = 0;
+        $isInternal = false;
+
+        $organizationId = (int) ($person['organization_id'] ?? 0);
+        if ($organizationId > 0) {
+            try {
+                $orgModel = new OrganizationModel($this->pdo);
+                $org = $orgModel->findById($organizationId);
+                $orgTypeId = (int) ($org['organization_type_id'] ?? 0);
+                $isInternal = ($orgTypeId === $internalTypeId);
+            } catch (Throwable $e) {
+                // อ่าน org ไม่ได้ -> ถือว่า external
+                $isInternal = false;
+            }
+        }
+
+        return [
+            'is_internal' => $isInternal,
+            'organization_type_id' => $orgTypeId,
+            'internal_type_id' => $internalTypeId,
+        ];
+    }
+
+
 
 }

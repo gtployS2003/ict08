@@ -125,4 +125,42 @@ class LineService
         $url = "https://api.line.me/v2/bot/user/{$userId}/richmenu";
         return $this->request('DELETE', $url, null);
     }
+
+        /**
+     * ตั้ง richmenu ให้ user แบบชัวร์: unlink ก่อนแล้วค่อย link
+     * - ถ้า unlink ไม่ได้ (เช่น user ยังไม่มี richmenu) จะไม่ถือว่า fail
+     */
+    public function setUserRichMenu(string $userId, string $richMenuId): array
+    {
+        $unlink = $this->unlinkRichMenuFromUser($userId);
+
+        // unlink อาจได้ 200 (สำเร็จ) หรือ 404 (ไม่มีเมนูเดิม) ก็ถือว่าไปต่อได้
+        $unlinkOk = $unlink['ok'] || ($unlink['http'] ?? 0) === 404;
+
+        if (!$unlinkOk) {
+            return [
+                'ok' => false,
+                'step' => 'unlink',
+                'unlink' => $unlink,
+            ];
+        }
+
+        $link = $this->linkRichMenuToUser($userId, $richMenuId);
+
+        return [
+            'ok' => $link['ok'] ?? false,
+            'step' => 'link',
+            'unlink' => $unlink,
+            'link' => $link,
+        ];
+    }
+
+        /** ดู richmenu ปัจจุบันของ user (ใช้ debug) */
+    public function getUserRichMenuId(string $userId): array
+    {
+        $url = "https://api.line.me/v2/bot/user/{$userId}/richmenu";
+        return $this->request('GET', $url, null);
+    }
+
+
 }
