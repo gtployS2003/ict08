@@ -8,9 +8,9 @@ require_once __DIR__ . '/../services/LineService.php';
 
 // 1) โหลดค่า env
 $CHANNEL_SECRET = getenv('LINE_CHANNEL_SECRET') ?: '';
-$ACCESS_TOKEN   = getenv('LINE_CHANNEL_ACCESS_TOKEN') ?: '';
+$ACCESS_TOKEN = getenv('LINE_CHANNEL_ACCESS_TOKEN') ?: '';
 
-$RM_BEFORE   = getenv('LINE_RICHMENU_BEFORE') ?: '';
+$RM_BEFORE = getenv('LINE_RICHMENU_BEFORE') ?: '';
 $RM_INTERNAL = getenv('LINE_RICHMENU_INTERNAL') ?: '';
 $RM_EXTERNAL = getenv('LINE_RICHMENU_EXTERNAL') ?: '';
 
@@ -49,15 +49,16 @@ try {
     exit;
 }
 
-$userModel     = new UserModel($pdo);
+$userModel = new UserModel($pdo);
 $userRoleModel = new UserRoleModel($pdo);
 
 foreach ($data['events'] as $event) {
-    $type   = $event['type'] ?? '';
+    $type = $event['type'] ?? '';
     $source = $event['source'] ?? [];
     $userId = $source['userId'] ?? null;
 
-    if (!$userId) continue;
+    if (!$userId)
+        continue;
 
     // ===== 4) หา user + roleCode (INTERNAL/EXTERNAL/ADMIN/GUEST) =====
     $user = $userModel->findByLineUserId($userId);
@@ -65,8 +66,8 @@ foreach ($data['events'] as $event) {
     $roleCode = 'GUEST';
     if ($user && !empty($user['user_role_id'])) {
         try {
-            $roleRow = $userRoleModel->getById((int)$user['user_role_id']); // getById อาจ throw
-            $roleCode = strtoupper((string)($roleRow['code'] ?? 'EXTERNAL'));
+            $roleRow = $userRoleModel->getById((int) $user['user_role_id']); // getById อาจ throw
+            $roleCode = strtoupper((string) ($roleRow['code'] ?? 'EXTERNAL'));
         } catch (Throwable $e) {
             $roleCode = 'EXTERNAL';
         }
@@ -87,58 +88,111 @@ foreach ($data['events'] as $event) {
     // ===== 5) follow =====
     if ($type === 'follow') {
         if (isset($event['replyToken'])) {
-            $line->replyMessage($event['replyToken'], [[
-                'type' => 'text',
-                'text' => "สวัสดีค่ะ 😊\nยินดีต้อนรับสู่ ศูนย์เทคโนโลยสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)\nกรุณาแตะเมนู “เข้าสู่ระบบ” เพื่อสมัคร/เข้าสู่ระบบก่อนใช้งานค่ะ"
-            ]]);
+            $line->replyMessage($event['replyToken'], [
+                [
+                    'type' => 'text',
+                    'text' => "สวัสดีค่ะ 😊\nยินดีต้อนรับสู่ ศูนย์เทคโนโลยสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)\nกรุณาแตะเมนู “เข้าสู่ระบบ” เพื่อสมัคร/เข้าสู่ระบบก่อนใช้งานค่ะ"
+                ]
+            ]);
         }
         continue;
     }
 
     // ===== Handler กลาง: external menu actions =====
-    $handleExternal = function(string $action) use ($line, $event) : void {
-        if (!isset($event['replyToken'])) return;
-
-        // ขอสนับสนุน
+    $handleExternal = function (string $action) use ($line, $event): void {
+        if (!isset($event['replyToken']))
+            return;
+        // ขอสนับสนุน (MINIMAL THEME: ICT8 Purple)
         if ($action === 'ext:support') {
-            $line->replyMessage($event['replyToken'], [[
-                'type' => 'template',
+            $ICT8_PURPLE = '#532274';
+            $TEXT_MUTED = '#6B7280';
+
+            $flex = [
+                'type' => 'flex',
                 'altText' => 'เมนูการขอสนับสนุน',
-                'template' => [
-                    'type' => 'buttons',
-                    'title' => 'การขอสนับสนุน',
-                    'text' => 'โปรดเลือกรายการที่ต้องการ',
-                    'actions' => [
-                        [
-                            'type' => 'postback',
-                            'label' => 'ขอสนับสนุนห้องประชุม',
-                            'data' => 'req_meeting',
-                            'displayText' => 'ขอสนับสนุนห้องประชุม'
-                        ],
-                        [
-                            'type' => 'postback',
-                            'label' => 'แจ้งเสีย/แจ้งซ่อม',
-                            'data' => 'req_repair',
-                            'displayText' => 'แจ้งเสีย/แจ้งซ่อม'
-                        ],
-                        [
-                            'type' => 'postback',
-                            'label' => 'อื่นๆ',
-                            'data' => 'req_other',
-                            'displayText' => 'อื่นๆ'
+                'contents' => [
+                    'type' => 'bubble',
+                    'size' => 'mega',
+                    'body' => [
+                        'type' => 'box',
+                        'layout' => 'vertical',
+                        'spacing' => 'md',
+                        'paddingAll' => '20px',
+                        'backgroundColor' => '#FFFFFF',
+                        'contents' => [
+                            [
+                                'type' => 'text',
+                                'text' => 'การขอสนับสนุน',
+                                'weight' => 'bold',
+                                'size' => 'xl',
+                                'color' => $ICT8_PURPLE
+                            ],
+    
+                            [
+                                'type' => 'separator',
+                                'margin' => 'lg',
+                                'color' => '#E5E7EB'
+                            ],
+
+                            // 1) Primary
+                            [
+                                'type' => 'button',
+                                'style' => 'secondary',
+
+                                'height' => 'md',
+                                'margin' => 'lg',
+                                'action' => [
+                                    'type' => 'postback',
+                                    'label' => 'จองห้องประชุม',
+                                    'data' => 'req_meeting',
+                                    'displayText' => 'ขอสนับสนุนห้องประชุม'
+                                ]
+                            ],
+                            // 2) Secondary
+                            [
+                                'type' => 'button',
+                                'style' => 'secondary',
+
+                                'height' => 'md',
+                                'action' => [
+                                    'type' => 'postback',
+                                    'label' => 'แจ้งเสีย/แจ้งซ่อม',
+                                    'data' => 'req_repair',
+                                    'displayText' => 'แจ้งเสีย/แจ้งซ่อม'
+                                ]
+                            ],
+                            // 3) Secondary
+                            [
+                                'type' => 'button',
+                                'style' => 'secondary',
+
+                                'height' => 'md',
+                                'action' => [
+                                    'type' => 'postback',
+                                    'label' => 'อื่นๆ',
+                                    'data' => 'req_other',
+                                    'displayText' => 'อื่นๆ'
+                                ]
+                            ],
                         ]
                     ]
                 ]
-            ]]);
+            ];
+
+            $line->replyMessage($event['replyToken'], [$flex]);
             return;
         }
 
+
+
         // ติดตามสถานะ
         if ($action === 'ext:track') {
-            $line->replyMessage($event['replyToken'], [[
-                'type' => 'text',
-                'text' => "🔎 ติดตามสถานะ\nกรุณาพิมพ์ “เลขคำขอ” หรือ “รหัสติดตาม” ที่ได้รับค่ะ"
-            ]]);
+            $line->replyMessage($event['replyToken'], [
+                [
+                    'type' => 'text',
+                    'text' => "🔎 ติดตามสถานะ\nกรุณาพิมพ์ “เลขคำขอ” หรือ “รหัสติดตาม” ที่ได้รับค่ะ"
+                ]
+            ]);
             return;
         }
     };
@@ -157,36 +211,40 @@ foreach ($data['events'] as $event) {
         if (in_array($postback, ['req_meeting', 'req_repair', 'req_other'], true) && isset($event['replyToken'])) {
             $map = [
                 'req_meeting' => 'คุณเลือก: ขอสนับสนุนห้องประชุม',
-                'req_repair'  => 'คุณเลือก: แจ้งเสีย/แจ้งซ่อม',
-                'req_other'   => 'คุณเลือก: อื่นๆ'
+                'req_repair' => 'คุณเลือก: แจ้งเสีย/แจ้งซ่อม',
+                'req_other' => 'คุณเลือก: อื่นๆ'
             ];
-            $line->replyMessage($event['replyToken'], [[
-                'type' => 'text',
-                'text' => ($map[$postback] ?? 'รับเรื่องแล้วค่ะ') . "\n(ขั้นถัดไป: จะพาไปกรอกข้อมูล/สร้างคำขอในระบบ)"
-            ]]);
+            $line->replyMessage($event['replyToken'], [
+                [
+                    'type' => 'text',
+                    'text' => ($map[$postback] ?? 'รับเรื่องแล้วค่ะ') . "\n(ขั้นถัดไป: จะพาไปกรอกข้อมูล/สร้างคำขอในระบบ)"
+                ]
+            ]);
             continue;
         }
     }
 
     // ===== 7) Message text =====
     if ($type === 'message' && isset($event['replyToken'])) {
-        $msg = trim((string)($event['message']['text'] ?? ''));
+        $msg = trim((string) ($event['message']['text'] ?? ''));
 
         $textToExternal = [
-            'ขอสนับสนุน'   => 'ext:support',
+            'ขอสนับสนุน' => 'ext:support',
             'ติดตามสถานะ' => 'ext:track',
         ];
 
-         if (($roleCode === 'INTERNAL' || $roleCode === 'ADMIN' || $roleCode === 'EXTERNAL') && isset($textToExternal[$msg])) {
-        $handleExternal($textToExternal[$msg]);
-        continue;
-    }
+        if (($roleCode === 'INTERNAL' || $roleCode === 'ADMIN' || $roleCode === 'EXTERNAL') && isset($textToExternal[$msg])) {
+            $handleExternal($textToExternal[$msg]);
+            continue;
+        }
 
         if ($msg === 'เมนู' || $msg === 'menu') {
-            $line->replyMessage($event['replyToken'], [[
-                'type' => 'text',
-                'text' => 'แสดงเมนูด้านล่างได้เลยค่ะ 👇'
-            ]]);
+            $line->replyMessage($event['replyToken'], [
+                [
+                    'type' => 'text',
+                    'text' => 'แสดงเมนูด้านล่างได้เลยค่ะ 👇'
+                ]
+            ]);
             continue;
         }
     }
