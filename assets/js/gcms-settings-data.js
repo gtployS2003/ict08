@@ -84,6 +84,7 @@
     hide($("#btn-add-department"));
     hide($("#btn-add-position-title"));
     hide($("#btn-add-user-role"));
+    hide($("#btn-add-request-type"));
 
 
 
@@ -139,6 +140,12 @@
       case "users":
         show($("#section-users"));
         setTitle("รายการผู้ใช้งาน");
+        break;
+
+      case "request-types":
+        show($("#section-request-types"));
+        show($("#btn-add-request-type"));
+        setTitle("ประเภทคำขอ");
         break;
 
       default:
@@ -2325,8 +2332,190 @@
     return fd;
   }
 
+  /* =========================
+  Request Types UI
+========================= */
+  const requestTypeEls = {
+    section: $("#section-request-types"),
+    tbody: $("#request-type-tbody"),
+    search: $("#request-type-search"),
+    limit: $("#request-type-limit"),
+    refresh: $("#request-type-refresh"),
+    pagination: $("#request-type-pagination"),
+    total: $("#request-type-total"),
+
+    btnAdd: $("#btn-add-request-type"),
+
+    modal: $("#request-type-modal"),
+    form: $("#request-type-form"),
+    modalTitle: $("#request-type-modal-title"),
+    submitText: $("#request-type-submit-text"),
+
+    inputId: $("#request-type-id"),
+    inputName: $("#request-type-name"),
+    inputDesc: $("#request-type-desc"),
+    inputUrl: $("#request-type-url"),
+
+    formError: $("#request-type-form-error"),
+  };
+
+  const requestTypeState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    total: 0,
+    totalPages: 1,
+    loading: false,
+  };
+
+  function renderRequestTypeRows(items = []) {
+    if (!requestTypeEls.tbody) return;
+
+    if (!items.length) {
+      requestTypeEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    requestTypeEls.tbody.innerHTML = items.map((row) => {
+      const id = row.request_type_id ?? row.id ?? "";
+      const name = row.type_name ?? row.name ?? "";
+      const desc = row.discription ?? row.description ?? "";
+      const url = row.url_link ?? row.url ?? "";
+
+      return `
+      <tr data-id="${escapeHtml(id)}">
+        <td>${escapeHtml(id)}</td>
+        <td>${escapeHtml(name)}</td>
+        <td class="muted">${escapeHtml(desc)}</td>
+        <td>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">เปิดลิงก์</a>` : "-"}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm"
+            data-action="edit"
+            data-id="${escapeHtml(id)}"
+            data-name="${escapeHtml(name)}"
+            data-desc="${escapeHtml(desc)}"
+            data-url="${escapeHtml(url)}">แก้ไข</button>
+          <button class="btn btn-danger btn-sm"
+            data-action="delete"
+            data-id="${escapeHtml(id)}">ลบ</button>
+        </td>
+      </tr>
+    `;
+    }).join("");
+  }
+
+  function renderRequestTypePagination() {
+    if (!requestTypeEls.pagination) return;
+
+    const { page, totalPages } = requestTypeState;
+    if (totalPages <= 1) {
+      requestTypeEls.pagination.innerHTML = "";
+      return;
+    }
+
+    const pages = [];
+    const push = (p) => pages.push(p);
+
+    push(1);
+    if (page - 2 > 2) push("…");
+    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
+    if (page + 2 < totalPages - 1) push("…");
+    if (totalPages > 1) push(totalPages);
+
+    requestTypeEls.pagination.innerHTML = `
+    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
+    ${pages.map((p) => {
+      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
+      const active = p === page ? "is-active" : "";
+      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
+    }).join("")}
+    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
+  `;
+  }
+
+  function renderRequestTypeTotal() {
+    if (!requestTypeEls.total) return;
+    requestTypeEls.total.textContent = `ทั้งหมด ${requestTypeState.total} รายการ`;
+  }
+
+  async function loadRequestTypes() {
+    if (requestTypeState.loading) return;
+    requestTypeState.loading = true;
+
+    try {
+      requestTypeEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">กำลังโหลด...</td></tr>`;
+
+      if (!window.RequestTypesAPI?.list) {
+        throw new Error("RequestTypesAPI.list not found (check include request-types.api.js)");
+      }
+
+      const res = await window.RequestTypesAPI.list({
+        q: requestTypeState.q,
+        page: requestTypeState.page,
+        limit: requestTypeState.limit,
+      });
+
+      // รองรับได้หลายรูปแบบ
+      const data = res?.data ?? res ?? {};
+      const items =
+        data.items ??
+        res.items ??
+        [];
+
+      const pagination =
+        data.pagination ??
+        res.pagination ??
+        {
+          total: data.total ?? res.total ?? items.length,
+          total_pages: data.total_pages ?? res.total_pages ?? 1,
+        };
+
+      requestTypeState.total = Number(pagination.total || items.length || 0);
+      requestTypeState.totalPages = Number(pagination.total_pages || 1);
+
+      renderRequestTypeRows(items);
+      renderRequestTypePagination();
+      renderRequestTypeTotal();
+    } catch (err) {
+      requestTypeEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">${escapeHtml(err.message)}</td></tr>`;
+    } finally {
+      requestTypeState.loading = false;
+    }
+  }
 
 
+  /* ===== Modal helpers ===== */
+  function openRequestTypeModal({ mode, row = null } = {}) {
+    if (!requestTypeEls.modal) return;
+
+    if (requestTypeEls.formError) {
+      requestTypeEls.formError.textContent = "";
+      hide(requestTypeEls.formError);
+    }
+
+    const isEdit = mode === "edit";
+    if (requestTypeEls.modalTitle) requestTypeEls.modalTitle.textContent = isEdit ? "แก้ไขประเภทคำขอ" : "เพิ่มประเภทคำขอ";
+    if (requestTypeEls.submitText) requestTypeEls.submitText.textContent = isEdit ? "บันทึกการแก้ไข" : "บันทึก";
+
+    const id = row?.request_type_id ?? row?.id ?? "";
+    const name = row?.type_name ?? row?.name ?? "";
+    const desc = row?.discription ?? row?.description ?? "";
+    const url = row?.url_link ?? row?.url ?? "";
+
+    if (requestTypeEls.inputId) requestTypeEls.inputId.value = isEdit ? String(id) : "";
+    if (requestTypeEls.inputName) requestTypeEls.inputName.value = String(name || "");
+    if (requestTypeEls.inputDesc) requestTypeEls.inputDesc.value = String(desc || "");
+    if (requestTypeEls.inputUrl) requestTypeEls.inputUrl.value = String(url || "");
+
+    show(requestTypeEls.modal);
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeRequestTypeModal() {
+    if (!requestTypeEls.modal) return;
+    hide(requestTypeEls.modal);
+    document.body.style.overflow = "";
+  }
 
   function openOrganizationModal({ mode, row = null } = {}) {
     if (!orgEls.modal) return;
@@ -2564,6 +2753,12 @@
     if (closeId === "user-detail-modal") closeUserDetailModal();
   });
 
+  document.addEventListener("click", (e) => {
+    const closeId = e.target?.getAttribute?.("data-close");
+    if (closeId === "request-type-modal") closeRequestTypeModal();
+  });
+
+
   // กด ESC ปิด
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && orgTypeEls.modal && !orgTypeEls.modal.hidden) {
@@ -2612,6 +2807,13 @@
       closeUserDetailModal();
     }
   });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && requestTypeEls.modal && !requestTypeEls.modal.hidden) {
+      closeRequestTypeModal();
+    }
+  });
+
 
   // คลิกเมนูซ้ายที่มี data-section
   document.addEventListener("click", async (e) => {
@@ -2706,6 +2908,14 @@
       await loadUsers();
     }
 
+    if (sectionKey === "request-types") {
+      requestTypeState.page = 1;
+      requestTypeState.q = (requestTypeEls.search?.value || "").trim();
+      requestTypeState.limit = Number(requestTypeEls.limit?.value || 50);
+      await loadRequestTypes();
+    }
+
+
 
 
   });
@@ -2744,10 +2954,9 @@
     openUserRoleModal({ mode: "create" });
   });
 
-  usersEls.btnAdd?.addEventListener("click", () => {
-    alert("TODO: open create user modal");
+  requestTypeEls.btnAdd?.addEventListener("click", () => {
+    openRequestTypeModal({ mode: "create" });
   });
-
 
   // ค้นหา
   orgTypeEls.search?.addEventListener("keydown", (e) => {
@@ -2806,6 +3015,14 @@
     loadUsers();
   });
 
+  requestTypeEls.search?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    requestTypeState.page = 1;
+    requestTypeState.q = (requestTypeEls.search.value || "").trim();
+    loadRequestTypes();
+  });
+
+
   // เปลี่ยน limit
   orgTypeEls.limit?.addEventListener("change", () => {
     orgTypeState.page = 1;
@@ -2855,6 +3072,13 @@
     loadUsers();
   });
 
+  requestTypeEls.limit?.addEventListener("change", () => {
+    requestTypeState.page = 1;
+    requestTypeState.limit = Number(requestTypeEls.limit.value || 50);
+    loadRequestTypes();
+  });
+
+
   // รีเฟรช
   orgTypeEls.refresh?.addEventListener("click", () => {
     loadOrgTypes();
@@ -2887,6 +3111,11 @@
   usersEls.refresh?.addEventListener("click", () => {
     loadUsers();
   });
+
+  requestTypeEls.refresh?.addEventListener("click", () => {
+    loadRequestTypes();
+  });
+
 
   // คลิก pagination
   orgTypeEls.pagination?.addEventListener("click", (e) => {
@@ -2976,6 +3205,18 @@
     userRoleState.page = next;
     loadUserRoles();
   });
+
+  requestTypeEls.pagination?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-page]");
+    if (!btn || btn.disabled) return;
+
+    const next = Number(btn.getAttribute("data-page"));
+    if (!next || next < 1 || next > requestTypeState.totalPages) return;
+
+    requestTypeState.page = next;
+    loadRequestTypes();
+  });
+
 
   // คลิก edit/delete ในตาราง
   orgTypeEls.tbody?.addEventListener("click", async (e) => {
@@ -3311,6 +3552,46 @@
     }
   });
 
+  requestTypeEls.tbody?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+
+    const action = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id") || "";
+
+    const api = window.RequestTypesAPI || window.requestTypesApi;
+    if (!api) return alert("RequestTypesAPI not found");
+
+    if (action === "edit") {
+      const row = {
+        request_type_id: id,
+        type_name: btn.getAttribute("data-name") || "",
+        discription: btn.getAttribute("data-desc") || "",
+        url_link: btn.getAttribute("data-url") || "",
+      };
+      openRequestTypeModal({ mode: "edit", row });
+      return;
+    }
+
+    if (action === "delete") {
+      if (!confirm(`ต้องการลบประเภทคำขอ ID ${id} ใช่ไหม?`)) return;
+
+      try {
+        if (!api.remove) throw new Error("RequestTypesAPI.remove not found");
+        await api.remove(id);
+
+        await loadRequestTypes();
+        if (requestTypeState.page > requestTypeState.totalPages) {
+          requestTypeState.page = requestTypeState.totalPages;
+          await loadRequestTypes();
+        }
+      } catch (err) {
+        alert(`ลบไม่สำเร็จ: ${err.message || err}`);
+      }
+    }
+  });
+
+
   // submit form (create/update)
   orgTypeEls.form?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -3621,6 +3902,51 @@
     }
   });
 
+  requestTypeEls.form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const id = (requestTypeEls.inputId?.value || "").trim();
+    const type_name = (requestTypeEls.inputName?.value || "").trim();
+    const url_link = (requestTypeEls.inputUrl?.value || "").trim();
+    const discription = (requestTypeEls.inputDesc?.value || "").trim();
+
+    if (!type_name) {
+      if (requestTypeEls.formError) {
+        requestTypeEls.formError.textContent = "กรุณากรอกชื่อประเภทคำขอ";
+        show(requestTypeEls.formError);
+      }
+      return;
+    }
+
+    try {
+      if (requestTypeEls.formError) hide(requestTypeEls.formError);
+
+      const api = window.RequestTypesAPI || window.requestTypesApi;
+      if (!api) throw new Error("RequestTypesAPI not found");
+
+      const payload = { type_name, url_link, discription };
+
+      if (id) {
+        if (!api.update) throw new Error("RequestTypesAPI.update not found");
+        await api.update(id, payload);
+      } else {
+        if (!api.create) throw new Error("RequestTypesAPI.create not found");
+        await api.create(payload);
+      }
+
+      closeRequestTypeModal();
+      await loadRequestTypes();
+    } catch (err) {
+      if (requestTypeEls.formError) {
+        requestTypeEls.formError.textContent = err.message || "บันทึกไม่สำเร็จ";
+        show(requestTypeEls.formError);
+      } else {
+        alert(err.message || "บันทึกไม่สำเร็จ");
+      }
+    }
+  });
+
+
 
 
 
@@ -3740,6 +4066,7 @@
   hide(document.getElementById("btn-add-department"));
   hide(document.getElementById("btn-add-position-title"));
   hide(document.getElementById("btn-add-user-role"));
+  hide(document.getElementById("btn-add-request-type"));
 
 
   activateSection("default");

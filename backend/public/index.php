@@ -26,6 +26,8 @@ require_once __DIR__ . '/../routes/position_titles.routes.php';
 require_once __DIR__ . '/../routes/user_roles.routes.php';
 require_once __DIR__ . '/../routes/user_approvals.routes.php';
 require_once __DIR__ . '/../routes/users.routes.php';
+require_once __DIR__ . '/../routes/request_types.routes.php';
+
 
 
 
@@ -64,6 +66,7 @@ try {
     if (user_roles_routes($method, $segments, $pdo)) exit;
     if (user_approvals_routes($method, $segments, $pdo)) exit;
     if (users_routes($method, $segments, $pdo)) exit;
+    if (request_types_routes($method, $segments, $pdo)) exit;
 
     fail("Route not found", 404, ["path" => $path, "method" => $method]);
 
