@@ -1,10 +1,16 @@
 <?php
 // backend/public/line_webhook.php
-require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/env.php';
+env_load(__DIR__ . '/../.env');
+
+require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../models/UserModel.php';
 require_once __DIR__ . '/../models/UserRoleModel.php';
+require_once __DIR__ . '/../models/RequestTypeModel.php';
+
 require_once __DIR__ . '/../services/LineService.php';
+
+
 
 // 1) โหลดค่า env
 $CHANNEL_SECRET = getenv('LINE_CHANNEL_SECRET') ?: '';
@@ -51,6 +57,7 @@ try {
 
 $userModel = new UserModel($pdo);
 $userRoleModel = new UserRoleModel($pdo);
+$requestTypeModel = new RequestTypeModel($pdo);
 
 foreach ($data['events'] as $event) {
     $type = $event['type'] ?? '';
@@ -99,14 +106,60 @@ foreach ($data['events'] as $event) {
     }
 
     // ===== Handler กลาง: external menu actions =====
-    $handleExternal = function (string $action) use ($line, $event): void {
+    $handleExternal = function (string $action) use ($line, $event, $requestTypeModel): void {
+
         if (!isset($event['replyToken']))
             return;
-        // ขอสนับสนุน (MINIMAL THEME: ICT8 Purple)
+
+        // =============================
+        // ขอสนับสนุน (Dynamic จาก DB)
+        // =============================
         if ($action === 'ext:support') {
+
             $ICT8_PURPLE = '#532274';
             $TEXT_MUTED = '#6B7280';
 
+            // 👉 ดึงจาก DB
+            $items = $requestTypeModel->list('', 1, 200);
+
+            $buttons = [];
+
+            foreach ($items as $it) {
+
+                $label = trim((string) ($it['type_name'] ?? ''));
+                $url = trim((string) ($it['url_link'] ?? ''));
+
+                if ($label === '')
+                    continue;
+
+                // ใช้ URI ไป LIFF / ฟอร์ม
+                if ($url !== '') {
+                    $buttons[] = [
+                        'type' => 'button',
+                        'style' => 'secondary',
+                        'height' => 'md',
+                        'margin' => empty($buttons) ? 'lg' : 'md',
+                        'action' => [
+                            'type' => 'uri',
+                            'label' => mb_strimwidth($label, 0, 20, '...'),
+                            'uri' => $url,
+                        ]
+                    ];
+                }
+            }
+
+            // ถ้าไม่มีใน DB
+            if (!$buttons) {
+                $buttons[] = [
+                    'type' => 'text',
+                    'text' => 'ยังไม่มีประเภทคำขอในระบบ',
+                    'wrap' => true,
+                    'margin' => 'lg',
+                    'color' => $TEXT_MUTED,
+                ];
+            }
+
+            // 👉 Flex Bubble
             $flex = [
                 'type' => 'flex',
                 'altText' => 'เมนูการขอสนับสนุน',
@@ -119,73 +172,34 @@ foreach ($data['events'] as $event) {
                         'spacing' => 'md',
                         'paddingAll' => '20px',
                         'backgroundColor' => '#FFFFFF',
-                        'contents' => [
+                        'contents' => array_merge(
                             [
-                                'type' => 'text',
-                                'text' => 'การขอสนับสนุน',
-                                'weight' => 'bold',
-                                'size' => 'xl',
-                                'color' => $ICT8_PURPLE
+                                [
+                                    'type' => 'text',
+                                    'text' => 'การขอสนับสนุน',
+                                    'weight' => 'bold',
+                                    'size' => 'xl',
+                                    'color' => $ICT8_PURPLE,
+                                ],
+                                [
+                                    'type' => 'separator',
+                                    'margin' => 'lg',
+                                    'color' => '#E5E7EB',
+                                ],
                             ],
-    
-                            [
-                                'type' => 'separator',
-                                'margin' => 'lg',
-                                'color' => '#E5E7EB'
-                            ],
-
-                            // 1) Primary
-                            [
-                                'type' => 'button',
-                                'style' => 'secondary',
-
-                                'height' => 'md',
-                                'margin' => 'lg',
-                                'action' => [
-                                    'type' => 'postback',
-                                    'label' => 'จองห้องประชุม',
-                                    'data' => 'req_meeting',
-                                    'displayText' => 'ขอสนับสนุนห้องประชุม'
-                                ]
-                            ],
-                            // 2) Secondary
-                            [
-                                'type' => 'button',
-                                'style' => 'secondary',
-
-                                'height' => 'md',
-                                'action' => [
-                                    'type' => 'postback',
-                                    'label' => 'แจ้งเสีย/แจ้งซ่อม',
-                                    'data' => 'req_repair',
-                                    'displayText' => 'แจ้งเสีย/แจ้งซ่อม'
-                                ]
-                            ],
-                            // 3) Secondary
-                            [
-                                'type' => 'button',
-                                'style' => 'secondary',
-
-                                'height' => 'md',
-                                'action' => [
-                                    'type' => 'postback',
-                                    'label' => 'อื่นๆ',
-                                    'data' => 'req_other',
-                                    'displayText' => 'อื่นๆ'
-                                ]
-                            ],
-                        ]
-                    ]
-                ]
+                            $buttons
+                        ),
+                    ],
+                ],
             ];
 
             $line->replyMessage($event['replyToken'], [$flex]);
             return;
         }
 
-
-
-        // ติดตามสถานะ
+        // =============================
+        // ติดตามสถานะ (เดิม)
+        // =============================
         if ($action === 'ext:track') {
             $line->replyMessage($event['replyToken'], [
                 [
@@ -196,6 +210,7 @@ foreach ($data['events'] as $event) {
             return;
         }
     };
+
 
     // ===== 6) Postback =====
     if ($type === 'postback') {
