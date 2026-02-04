@@ -86,6 +86,7 @@
     hide($("#btn-add-user-role"));
 
 
+
     // เปิด section ตาม key
     switch (sectionKey) {
       case "provinces":
@@ -133,6 +134,11 @@
       case "user-setting":
         show($("#section-setting-user"));
         setTitle("รายการอนุมัติผู้ใช้งาน");
+        break;
+
+      case "users":
+        show($("#section-users"));
+        setTitle("รายการผู้ใช้งาน");
         break;
 
       default:
@@ -1564,12 +1570,764 @@
     }
   }
 
+  /* =========================
+  Users UI
+========================= */
+  const usersEls = {
+    section: $("#section-users"),
+    tbody: $("#user-tbody"),
+    search: $("#user-search"),
+    limit: $("#user-limit"),
+    refresh: $("#user-refresh"),
+    pagination: $("#user-pagination"),
+    total: $("#user-total"),
 
+    filterOrg: $("#user-filter-organization"),
+    filterDept: $("#user-filter-department"),
+    filterPos: $("#user-filter-position-title"),
+
+  };
+
+  const usersState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    organization_id: "",
+    department_id: "",
+    position_title_id: "",
+    total: 0,
+    totalPages: 1,
+    loading: false,
+    refsLoaded: false,
+  };
+
+
+  function getUsersApi() {
+    return window.UsersAPI || window.usersApi; // รองรับ 2 ชื่อ
+  }
+
+  function renderUsersRows(items = []) {
+    if (!items.length) {
+      usersEls.tbody.innerHTML = `<tr><td colspan="7" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    usersEls.tbody.innerHTML = items.map((u) => {
+      const id = u.person_id ?? "-";
+      const fullName = [u.first_name_th, u.last_name_th].filter(Boolean).join(" ") || (u.display_name || "-");
+      const orgName = u.organization_name || "-";
+      const posName = u.position_title || "-";
+      const roleName = u.role_name || "-";
+      const statusText = Number(u.is_active) === 1 ? "ใช้งาน" : "รออนุมัติ/ปิดใช้งาน";
+
+      return `
+      <tr>
+        <td>${escapeHtml(id)}</td>
+        <td>${escapeHtml(fullName)}</td>
+        <td>${escapeHtml(orgName)}</td>
+        <td>${escapeHtml(posName)}</td>
+        <td>${escapeHtml(roleName)}</td>
+        <td>${escapeHtml(statusText)}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" data-action="detail" data-id="${escapeHtml(id)}">รายละเอียด</button>
+          <button class="btn btn-ghost btn-sm" data-action="edit" data-id="${escapeHtml(id)}">แก้ไข</button>
+          <button class="btn btn-danger btn-sm" data-action="delete" data-id="${escapeHtml(id)}">ลบ</button>
+        </td>
+      </tr>
+    `;
+    }).join("");
+  }
+
+  function renderUsersPagination() {
+    if (!usersEls.pagination) return;
+
+    const { page, totalPages } = usersState;
+
+    if (totalPages <= 1) {
+      usersEls.pagination.innerHTML = "";
+      return;
+    }
+
+    const pages = [];
+    const push = (p) => pages.push(p);
+
+    push(1);
+    if (page - 2 > 2) push("…");
+    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
+    if (page + 2 < totalPages - 1) push("…");
+    if (totalPages > 1) push(totalPages);
+
+    usersEls.pagination.innerHTML = `
+    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
+    ${pages.map((p) => {
+      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
+      const active = p === page ? "is-active" : "";
+      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
+    }).join("")}
+    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
+  `;
+  }
+
+  function renderUsersTotal() {
+    if (!usersEls.total) return;
+    usersEls.total.textContent = `ทั้งหมด ${usersState.total} รายการ`;
+  }
+
+  /**
+   * โหลด refs สำหรับ filter cascading:
+   * - orgs -> filterOrg
+   * - depts -> filterDept (ตาม org)
+   * - positions -> filterPos (ตาม org+dept)
+   */
+  async function loadUsersRefs() {
+    if (usersState.refsLoaded) return;
+    usersState.refsLoaded = true;
+
+    // organizations
+    try {
+      const orgJson = await apiFetch(`/organizations?page=1&limit=500`, { method: "GET" });
+      const orgItems = orgJson?.data?.items || [];
+
+      if (usersEls.filterOrg) {
+        usersEls.filterOrg.innerHTML = [
+          `<option value="">ทุกหน่วยงาน</option>`,
+          ...orgItems.map(o =>
+            `<option value="${escapeHtml(o.organization_id)}">${escapeHtml(o.name)} (${escapeHtml(o.code)})</option>`
+          ),
+        ].join("");
+      }
+    } catch (e) {
+      console.warn("load orgs for users failed:", e);
+    }
+
+    // init empty dept/pos
+    if (usersEls.filterDept) usersEls.filterDept.innerHTML = `<option value="">ทุกฝ่าย</option>`;
+    if (usersEls.filterPos) usersEls.filterPos.innerHTML = `<option value="">ทุกตำแหน่ง</option>`;
+  }
+
+  async function loadUsersDepartmentsByOrg(orgId = "") {
+    if (!usersEls.filterDept) return;
+
+    usersEls.filterDept.innerHTML = `<option value="">ทุกฝ่าย</option>`;
+
+    // org ว่าง -> ไม่ต้องโหลด dept (คงไว้เป็นทุกฝ่าย)
+    if (!orgId) return;
+
+    try {
+      const qs = new URLSearchParams({ page: "1", limit: "500", organization_id: String(orgId) });
+      const depJson = await apiFetch(`/departments?${qs.toString()}`, { method: "GET" });
+      const depItems = depJson?.data?.items || [];
+
+      usersEls.filterDept.innerHTML = [
+        `<option value="">ทุกฝ่าย</option>`,
+        ...depItems.map(d =>
+          `<option value="${escapeHtml(d.department_id)}">${escapeHtml(d.department_title)} (${escapeHtml(d.department_code)})</option>`
+        ),
+      ].join("");
+    } catch (e) {
+      console.warn("load departments for users failed:", e);
+      usersEls.filterDept.innerHTML = `<option value="">โหลดฝ่ายไม่สำเร็จ</option>`;
+    }
+  }
+
+  async function loadUsersPositions({ orgId = "", deptId = "" } = {}) {
+    if (!usersEls.filterPos) return;
+
+    usersEls.filterPos.innerHTML = `<option value="">ทุกตำแหน่ง</option>`;
+
+    // ถ้าไม่เลือก org -> ไม่โหลด (ถือว่า all)
+    if (!orgId) return;
+
+    try {
+      const qs = new URLSearchParams({ page: "1", limit: "500", organization_id: String(orgId) });
+      if (deptId) qs.set("department_id", String(deptId));
+
+      const posJson = await apiFetch(`/position-titles?${qs.toString()}`, { method: "GET" });
+      const posItems = posJson?.data?.items || [];
+
+      usersEls.filterPos.innerHTML = [
+        `<option value="">ทุกตำแหน่ง</option>`,
+        ...posItems.map(p =>
+          `<option value="${escapeHtml(p.position_title_id)}">${escapeHtml(p.position_title)} (${escapeHtml(p.position_code)})</option>`
+        ),
+      ].join("");
+    } catch (e) {
+      console.warn("load position titles for users failed:", e);
+      usersEls.filterPos.innerHTML = `<option value="">โหลดตำแหน่งไม่สำเร็จ</option>`;
+    }
+  }
+
+  /** load list จาก listUsers() */
+  async function loadUsers() {
+    if (usersState.loading) return;
+    usersState.loading = true;
+
+    try {
+      usersEls.tbody.innerHTML = `<tr><td colspan="7" class="muted">กำลังโหลด...</td></tr>`;
+
+      const res = await window.UsersAPI.listUsers({
+        q: usersState.q,
+        page: usersState.page,
+        limit: usersState.limit,
+        organization_id: usersState.organization_id,
+        department_id: usersState.department_id,
+        position_title_id: usersState.position_title_id,
+      });
+
+      // ✅ รูปแบบจริงของคุณ: { items, page, limit, total, total_pages }
+      const items = Array.isArray(res?.items) ? res.items : [];
+      usersState.total = Number(res?.total || 0);
+      usersState.totalPages = Number(res?.total_pages || 1);
+
+      renderUsersRows(items);
+      renderUsersPagination();
+      renderUsersTotal();
+    } catch (err) {
+      console.error("[users] load failed:", err);
+      usersEls.tbody.innerHTML = `<tr><td colspan="7" class="muted">โหลดข้อมูลไม่สำเร็จ</td></tr>`;
+    } finally {
+      usersState.loading = false;
+    }
+  }
 
 
   /* =========================
     Modal (open/close)
   ========================= */
+
+  const usersDetailEls = {
+    modal: document.getElementById("user-detail-modal"),
+
+    // person table fields
+    person_id: document.getElementById("ud-person-id"),
+    person_user_id: document.getElementById("ud-person-user-id"),
+    person_prefix_id: document.getElementById("ud-person-prefix-id"),
+
+    first_name_th: document.getElementById("ud-first-name-th"),
+    first_name_en: document.getElementById("ud-first-name-en"),
+    last_name_th: document.getElementById("ud-last-name-th"),
+    last_name_en: document.getElementById("ud-last-name-en"),
+
+    display_name: document.getElementById("ud-display-name"),
+
+    organization_id: document.getElementById("ud-organization-id"),
+    department_id: document.getElementById("ud-department-id"),
+    position_title_id: document.getElementById("ud-position-title-id"),
+
+    photo_path: document.getElementById("ud-photo-path"),
+    is_active: document.getElementById("ud-is-active"),
+
+    start_date: document.getElementById("ud-start-date"),
+    end_date: document.getElementById("ud-end-date"),
+    create_at: document.getElementById("ud-create-at"),
+    update_at: document.getElementById("ud-update-at"),
+    user_role: document.getElementById("ud-user-role"),
+
+    btnEdit: document.getElementById("user-detail-edit"),
+  };
+
+  let usersDetailCurrentId = null;
+
+  function openUserDetailModal(row) {
+    if (!usersDetailEls.modal) return;
+
+    usersDetailCurrentId = row?.person_id ?? null;
+
+    const set = (el, val) => { if (el) el.textContent = (val ?? val === 0) ? String(val) : "-"; };
+
+    set(usersDetailEls.person_id, row?.person_id);
+    set(usersDetailEls.person_user_id, row?.person_user_id);
+    set(usersDetailEls.person_prefix_id, row?.prefix_name ?? row?.person_prefix_id);
+
+    set(usersDetailEls.first_name_th, row?.first_name_th);
+    set(usersDetailEls.first_name_en, row?.first_name_en);
+    set(usersDetailEls.last_name_th, row?.last_name_th);
+    set(usersDetailEls.last_name_en, row?.last_name_en);
+
+    set(usersDetailEls.display_name, row?.display_name);
+
+    set(usersDetailEls.organization_id, row?.organization_name ?? row?.organization_id);
+    set(usersDetailEls.department_id, row?.department_name ?? row?.department_id);
+    set(usersDetailEls.position_title_id, row?.position_title_name ?? row?.position_title_id);
+
+    set(usersDetailEls.photo_path, row?.photo_path);
+    // แสดง is_active ให้เป็นอ่านง่าย
+    set(usersDetailEls.is_active, Number(row?.is_active) === 1 ? "ใช้งาน (1)" : "ไม่ใช้งาน/รออนุมัติ (0)");
+
+    set(usersDetailEls.start_date, row?.start_date);
+    set(usersDetailEls.end_date, row?.end_date);
+    set(usersDetailEls.create_at, row?.create_at);
+
+    set(usersDetailEls.user_role, row?.user_role_name ?? row?.role ?? "-");
+
+    show(usersDetailEls.modal);
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeUserDetailModal() {
+    if (!usersDetailEls.modal) return;
+    hide(usersDetailEls.modal);
+    document.body.style.overflow = "";
+    usersDetailCurrentId = null;
+  }
+
+  /* =========================
+   User Edit Modal (Full fields)
+========================= */
+
+  const userEditEls = {
+    modal: document.getElementById("user-edit-modal"),
+    form: document.getElementById("user-edit-form"),
+    formError: document.getElementById("user-edit-form-error"),
+
+    // hidden ids
+    userId: document.getElementById("ue-user-id"),
+    personId: document.getElementById("ue-person-id"),
+
+    // fields
+    prefix: document.getElementById("ue-person-prefix-id"),
+    displayName: document.getElementById("ue-display-name"),
+
+    firstTh: document.getElementById("ue-first-name-th"),
+    lastTh: document.getElementById("ue-last-name-th"),
+    firstEn: document.getElementById("ue-first-name-en"),
+    lastEn: document.getElementById("ue-last-name-en"),
+
+    org: document.getElementById("ue-organization-id"),
+    dept: document.getElementById("ue-department-id"),
+    pos: document.getElementById("ue-position-title-id"),
+
+    isActive: document.getElementById("ue-is-active"),
+    startDate: document.getElementById("ue-start-date"),
+    endDate: document.getElementById("ue-end-date"),
+
+    role: document.getElementById("ue-user-role-id"),
+
+    // photo (optional)
+    photoFile: document.getElementById("ue-photo-file"),
+    photoPath: document.getElementById("ue-photo-path"),
+    photoPreviewWrap: document.getElementById("ue-photo-preview"),
+    photoPreviewImg: document.getElementById("ue-photo-preview-img"),
+    photoPreviewName: document.getElementById("ue-photo-preview-name"),
+    photoClear: document.getElementById("ue-photo-clear"),
+
+    btnSave: document.getElementById("user-edit-save"),
+  };
+
+  function isUserEditReady() {
+    return !!(userEditEls.modal && userEditEls.form);
+  }
+
+  function showEditError(msg) {
+    if (!userEditEls.formError) return;
+    userEditEls.formError.textContent = msg || "";
+    if (msg) show(userEditEls.formError);
+    else hide(userEditEls.formError);
+  }
+
+  function resetUserEditForm() {
+    if (!isUserEditReady()) return;
+
+    showEditError("");
+    userEditEls.form.reset();
+
+    if (userEditEls.userId) userEditEls.userId.value = "";
+    if (userEditEls.personId) userEditEls.personId.value = "";
+
+    if (userEditEls.dept) {
+      userEditEls.dept.innerHTML = `<option value="">- เลือกฝ่าย -</option>`;
+      userEditEls.dept.disabled = true;
+    }
+    if (userEditEls.pos) {
+      userEditEls.pos.innerHTML = `<option value="">- เลือกตำแหน่ง -</option>`;
+      userEditEls.pos.disabled = true;
+    }
+
+    if (userEditEls.photoFile) userEditEls.photoFile.value = "";
+    if (userEditEls.photoPath) userEditEls.photoPath.textContent = "-";
+    if (userEditEls.photoPreviewWrap) hide(userEditEls.photoPreviewWrap);
+    if (userEditEls.photoPreviewImg) userEditEls.photoPreviewImg.src = "";
+    if (userEditEls.photoPreviewName) userEditEls.photoPreviewName.textContent = "-";
+    if (userEditEls.photoClear) userEditEls.photoClear.dataset.clear = "0";
+
+  }
+
+  function openUserEditModal() {
+    if (!userEditEls.modal) return;
+    show(userEditEls.modal);
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeUserEditModal() {
+    if (!userEditEls.modal) return;
+    hide(userEditEls.modal);
+    document.body.style.overflow = "";
+  }
+
+  /** helper: set option list */
+  function setOptions(selectEl, items, { valueKey, labelKey, placeholder }) {
+    if (!selectEl) return;
+    const ph = placeholder || "- เลือก -";
+    const arr = Array.isArray(items) ? items : [];
+    selectEl.innerHTML =
+      `<option value="">${escapeHtml(ph)}</option>` +
+      arr
+        .map((it) => {
+          const v = it?.[valueKey];
+          const t = it?.[labelKey];
+          return `<option value="${escapeHtml(v)}">${escapeHtml(t ?? "")}</option>`;
+        })
+        .join("");
+  }
+
+  function toDateValue(v) {
+    if (!v) return "";
+    const s = String(v).slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "";
+  }
+
+  /** load dropdown refs for edit modal */
+  async function loadUserEditRefs({
+    selectedPrefixId = "",
+    selectedOrgId = "",
+    selectedDeptId = "",
+    selectedPosId = "",
+    selectedRoleId = "",
+  } = {}) {
+    // prefix list (endpoint ของคุณคือ /person-prefixes)
+    try {
+      const pj = await apiFetch(`/person-prefixes?page=1&limit=500`, { method: "GET" });
+      const items = pj?.data?.items || [];
+      setOptions(userEditEls.prefix, items, {
+        valueKey: "person_prefix_id",
+        labelKey: "prefix_th",
+        placeholder: "- เลือกคำนำหน้า -",
+      });
+      if (selectedPrefixId) userEditEls.prefix.value = String(selectedPrefixId);
+    } catch (e) {
+      console.warn("load prefix refs failed:", e);
+    }
+
+    // organizations list
+    try {
+      const oj = await apiFetch(`/organizations?page=1&limit=500`, { method: "GET" });
+      const items = oj?.data?.items || [];
+      setOptions(userEditEls.org, items, {
+        valueKey: "organization_id",
+        labelKey: "name",
+        placeholder: "- เลือกหน่วยงาน -",
+      });
+      if (selectedOrgId) userEditEls.org.value = String(selectedOrgId);
+    } catch (e) {
+      console.warn("load org refs failed:", e);
+    }
+
+    // user roles list (คุณมี api อยู่แล้ว)
+    try {
+      const api = window.userRolesApi || window.UserRolesAPI;
+      const rj = await api.list({ q: "", page: 1, limit: 500 });
+      const items = rj?.items || rj?.data?.items || [];
+      setOptions(userEditEls.role, items, {
+        valueKey: "user_role_id",
+        labelKey: "role",
+        placeholder: "- เลือกสิทธิ์ผู้ใช้งาน -",
+      });
+      if (selectedRoleId) userEditEls.role.value = String(selectedRoleId);
+    } catch (e) {
+      console.warn("load role refs failed:", e);
+    }
+
+    // cascading: departments -> positions
+    await reloadUserEditDepartments(selectedOrgId, selectedDeptId);
+    await reloadUserEditPositions({ orgId: selectedOrgId, deptId: selectedDeptId, selectedPosId });
+  }
+
+  async function reloadUserEditDepartments(orgId, selectedDeptId = "") {
+    if (!userEditEls.dept) return;
+
+    userEditEls.dept.disabled = true;
+    userEditEls.dept.innerHTML = `<option value="">- เลือกฝ่าย -</option>`;
+
+    if (!orgId) return;
+
+    try {
+      const qs = new URLSearchParams({ page: "1", limit: "500", organization_id: String(orgId) });
+      const dj = await apiFetch(`/departments?${qs.toString()}`, { method: "GET" });
+      const items = dj?.data?.items || [];
+
+      setOptions(userEditEls.dept, items, {
+        valueKey: "department_id",
+        labelKey: "department_title",
+        placeholder: "- เลือกฝ่าย -",
+      });
+
+      userEditEls.dept.disabled = false;
+      if (selectedDeptId) userEditEls.dept.value = String(selectedDeptId);
+    } catch (e) {
+      console.warn("reload departments failed:", e);
+      userEditEls.dept.innerHTML = `<option value="">โหลดฝ่ายไม่สำเร็จ</option>`;
+    }
+  }
+
+  async function reloadUserEditPositions({ orgId = "", deptId = "", selectedPosId = "" } = {}) {
+    if (!userEditEls.pos) return;
+
+    userEditEls.pos.disabled = true;
+    userEditEls.pos.innerHTML = `<option value="">- เลือกตำแหน่ง -</option>`;
+
+    if (!orgId) return;
+
+    try {
+      const qs = new URLSearchParams({ page: "1", limit: "500", organization_id: String(orgId) });
+      if (deptId) qs.set("department_id", String(deptId));
+
+      const pj = await apiFetch(`/position-titles?${qs.toString()}`, { method: "GET" });
+      const items = pj?.data?.items || [];
+
+      setOptions(userEditEls.pos, items, {
+        valueKey: "position_title_id",
+        labelKey: "position_title",
+        placeholder: "- เลือกตำแหน่ง -",
+      });
+
+      userEditEls.pos.disabled = false;
+      if (selectedPosId) userEditEls.pos.value = String(selectedPosId);
+    } catch (e) {
+      console.warn("reload positions failed:", e);
+      userEditEls.pos.innerHTML = `<option value="">โหลดตำแหน่งไม่สำเร็จ</option>`;
+    }
+  }
+
+  /** open edit modal and fill data */
+  async function openUserEditByPersonId(personId) {
+    if (!isUserEditReady()) return;
+
+    resetUserEditForm();
+    openUserEditModal();
+
+    try {
+      const api = getUsersApi();
+      if (!api?.getUser) throw new Error("UsersAPI.getUser not found");
+
+      const res = await api.getUser(Number(personId));
+      const row = res?.data ?? res;
+
+      // map fields (อิงจาก row ที่คุณใช้ใน detail modal)
+      const userId = row?.person_user_id ?? row?.user_id ?? "";
+      const prefixId = row?.person_prefix_id ?? "";
+      const orgId = row?.organization_id ?? "";
+      const deptId = row?.department_id ?? "";
+      const posId = row?.position_title_id ?? "";
+      const roleId = row?.user_role_id ?? "";
+
+      if (userEditEls.userId) userEditEls.userId.value = String(userId);
+      if (userEditEls.personId) userEditEls.personId.value = String(row?.person_id ?? personId);
+
+      if (userEditEls.displayName) userEditEls.displayName.value = row?.display_name ?? "";
+
+      if (userEditEls.firstTh) userEditEls.firstTh.value = row?.first_name_th ?? "";
+      if (userEditEls.lastTh) userEditEls.lastTh.value = row?.last_name_th ?? "";
+      if (userEditEls.firstEn) userEditEls.firstEn.value = row?.first_name_en ?? "";
+      if (userEditEls.lastEn) userEditEls.lastEn.value = row?.last_name_en ?? "";
+
+      if (userEditEls.isActive) userEditEls.isActive.value = String(Number(row?.is_active ?? 0));
+      if (userEditEls.startDate) userEditEls.startDate.value = toDateValue(row?.start_date);
+      if (userEditEls.endDate) userEditEls.endDate.value = toDateValue(row?.end_date);
+
+      if (userEditEls.photoPath) userEditEls.photoPath.textContent = row?.photo_path || "-";
+
+      await loadUserEditRefs({
+        selectedPrefixId: prefixId,
+        selectedOrgId: orgId,
+        selectedDeptId: deptId,
+        selectedPosId: posId,
+        selectedRoleId: roleId,
+      });
+    } catch (err) {
+      console.error(err);
+      showEditError(err?.message || "โหลดข้อมูลแก้ไขไม่สำเร็จ");
+    }
+  }
+
+  /** submit edit */
+  async function submitUserEditForm(e) {
+    e.preventDefault();
+    showEditError("");
+
+    const api = getUsersApi();
+    if (!api) return showEditError("UsersAPI not found");
+
+    const payload = {
+      // user
+      user_id: userEditEls.userId?.value ? Number(userEditEls.userId.value) : null,
+      user_role_id: userEditEls.role?.value ? Number(userEditEls.role.value) : null,
+      display_name: userEditEls.displayName?.value?.trim() || "",
+
+      // person
+      person_id: userEditEls.personId?.value ? Number(userEditEls.personId.value) : null,
+      person_prefix_id: userEditEls.prefix?.value ? Number(userEditEls.prefix.value) : null,
+      first_name_th: userEditEls.firstTh?.value?.trim() || "",
+      last_name_th: userEditEls.lastTh?.value?.trim() || "",
+      first_name_en: userEditEls.firstEn?.value?.trim() || "",
+      last_name_en: userEditEls.lastEn?.value?.trim() || "",
+
+      organization_id: userEditEls.org?.value ? Number(userEditEls.org.value) : null,
+      department_id: userEditEls.dept?.value ? Number(userEditEls.dept.value) : null,
+      position_title_id: userEditEls.pos?.value ? Number(userEditEls.pos.value) : null,
+
+      is_active: userEditEls.isActive?.value ? Number(userEditEls.isActive.value) : 0,
+      start_date: userEditEls.startDate?.value || null,
+      end_date: userEditEls.endDate?.value || null,
+    };
+
+    try {
+      if (userEditEls.btnSave) {
+        userEditEls.btnSave.disabled = true;
+        userEditEls.btnSave.textContent = "กำลังบันทึก...";
+      }
+
+      const personId = payload.person_id;
+      if (!personId) throw new Error("ไม่พบ person_id");
+
+      // ✅ ตัดสินใจว่าจะส่งแบบ multipart หรือ json
+      const hasFile = !!userEditEls.photoFile?.files?.[0];
+      const wantClear = userEditEls.photoClear?.dataset?.clear === "1";
+
+      if (hasFile || wantClear) {
+        if (!api.updateUserFormData) {
+          throw new Error("UsersAPI.updateUserFormData not found (ต้องเพิ่มใน users.api.js)");
+        }
+        const fd = buildUserEditFormData(payload);
+        await api.updateUserFormData(personId, fd);
+      } else {
+        if (!api.updateUser) {
+          throw new Error("UsersAPI.updateUser not found");
+        }
+        await api.updateUser(personId, payload);
+      }
+
+      closeUserEditModal();
+      await loadUsers();
+
+      if (usersDetailEls?.modal && !usersDetailEls.modal.hidden && usersDetailCurrentId === personId) {
+        const res = await api.getUser(personId);
+        const row = res?.data ?? res;
+        openUserDetailModal(row);
+      }
+    } catch (err) {
+      console.error(err);
+      showEditError(err?.message || "บันทึกไม่สำเร็จ");
+    } finally {
+      if (userEditEls.btnSave) {
+        userEditEls.btnSave.disabled = false;
+        userEditEls.btnSave.textContent = "บันทึก";
+      }
+    }
+  }
+
+
+  /** bind interactions */
+  function bindUserEditModalEvents() {
+    if (!isUserEditReady()) return;
+
+    // close by overlay / button data-close
+    document.addEventListener("click", (e) => {
+      const closeId = e.target?.getAttribute?.("data-close");
+      if (closeId === "user-edit-modal") closeUserEditModal();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && userEditEls.modal && !userEditEls.modal.hidden) {
+        closeUserEditModal();
+      }
+    });
+
+    // cascading org -> dept/pos
+    userEditEls.org?.addEventListener("change", async () => {
+      const orgId = userEditEls.org.value || "";
+
+      // reset dept/pos
+      if (userEditEls.dept) userEditEls.dept.value = "";
+      if (userEditEls.pos) userEditEls.pos.value = "";
+
+      await reloadUserEditDepartments(orgId, "");
+      await reloadUserEditPositions({ orgId, deptId: "", selectedPosId: "" });
+    });
+
+    userEditEls.dept?.addEventListener("change", async () => {
+      const orgId = userEditEls.org?.value || "";
+      const deptId = userEditEls.dept?.value || "";
+      if (userEditEls.pos) userEditEls.pos.value = "";
+      await reloadUserEditPositions({ orgId, deptId, selectedPosId: "" });
+    });
+
+    // photo preview (optional)
+    userEditEls.photoFile?.addEventListener("change", () => {
+      const f = userEditEls.photoFile.files?.[0];
+      if (!f) {
+        if (userEditEls.photoPreviewWrap) hide(userEditEls.photoPreviewWrap);
+        return;
+      }
+
+      // ✅ เลือกไฟล์ใหม่ = ไม่ล้างรูปแล้ว
+      if (userEditEls.photoClear) userEditEls.photoClear.dataset.clear = "0";
+
+      const url = URL.createObjectURL(f);
+      if (userEditEls.photoPreviewImg) userEditEls.photoPreviewImg.src = url;
+      if (userEditEls.photoPreviewName) userEditEls.photoPreviewName.textContent = f.name;
+      if (userEditEls.photoPreviewWrap) show(userEditEls.photoPreviewWrap);
+    });
+
+
+    userEditEls.photoClear?.addEventListener("click", () => {
+      if (userEditEls.photoFile) userEditEls.photoFile.value = "";
+      if (userEditEls.photoPreviewImg) userEditEls.photoPreviewImg.src = "";
+      if (userEditEls.photoPreviewName) userEditEls.photoPreviewName.textContent = "-";
+      if (userEditEls.photoPreviewWrap) hide(userEditEls.photoPreviewWrap);
+
+      // ✅ ตั้ง flag ว่าต้องการล้างรูปจริงตอนกดบันทึก
+      userEditEls.photoClear.dataset.clear = "1";
+    });
+
+
+    // submit
+    userEditEls.form.addEventListener("submit", submitUserEditForm);
+  }
+
+  // init bind (safe)
+  bindUserEditModalEvents();
+
+  function buildUserEditFormData(payload) {
+    const fd = new FormData();
+
+    // ส่งทุก field ที่เป็น primitive
+    Object.entries(payload).forEach(([k, v]) => {
+      if (v === undefined) return;
+      if (v === null) {
+        fd.append(k, ""); // ให้ backend ตีความว่า null/empty ได้
+        return;
+      }
+      fd.append(k, String(v));
+    });
+
+    // แนบไฟล์รูป (ถ้ามีเลือก)
+    const file = userEditEls.photoFile?.files?.[0];
+    if (file) {
+      fd.append("photo_file", file); // ✅ ชื่อ field ไฟล์ (ให้ backend รับ $_FILES['photo_file'])
+    }
+
+    // กรณีกด “ล้างรูป” แล้วต้องการให้ backend ลบรูปเดิม
+    // (เราจะ set flag ตอนกดล้างรูป)
+    if (userEditEls.photoClear?.dataset?.clear === "1") {
+      fd.append("photo_clear", "1");
+    }
+
+    return fd;
+  }
+
+
+
+
   function openOrganizationModal({ mode, row = null } = {}) {
     if (!orgEls.modal) return;
 
@@ -1757,7 +2515,6 @@
     document.body.style.overflow = "hidden";
   }
 
-
   function closeUserRoleModal() {
     if (!userRoleEls.modal) return;
     hide(userRoleEls.modal);
@@ -1800,6 +2557,11 @@
   document.addEventListener("click", (e) => {
     const closeId = e.target?.getAttribute?.("data-close");
     if (closeId === "user-role-modal") closeUserRoleModal();
+  });
+
+  document.addEventListener("click", (e) => {
+    const closeId = e.target?.getAttribute?.("data-close");
+    if (closeId === "user-detail-modal") closeUserDetailModal();
   });
 
   // กด ESC ปิด
@@ -1845,6 +2607,11 @@
     }
   });
 
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && usersDetailEls.modal && !usersDetailEls.modal.hidden) {
+      closeUserDetailModal();
+    }
+  });
 
   // คลิกเมนูซ้ายที่มี data-section
   document.addEventListener("click", async (e) => {
@@ -1927,6 +2694,18 @@
       await loadPendingUsers();
     }
 
+    if (sectionKey === "users") {
+      usersState.page = 1;
+      usersState.q = (usersEls.search?.value || "").trim();
+      usersState.limit = Number(usersEls.limit?.value || 50);
+      usersState.organization_id = usersEls.filterOrg?.value || "";
+      usersState.department_id = usersEls.filterDept?.value || "";
+      usersState.position_title_id = usersEls.filterPos?.value || "";
+
+      await loadUsersRefs();
+      await loadUsers();
+    }
+
 
 
   });
@@ -1964,6 +2743,11 @@
   userRoleEls.btnAdd?.addEventListener("click", () => {
     openUserRoleModal({ mode: "create" });
   });
+
+  usersEls.btnAdd?.addEventListener("click", () => {
+    alert("TODO: open create user modal");
+  });
+
 
   // ค้นหา
   orgTypeEls.search?.addEventListener("keydown", (e) => {
@@ -2015,6 +2799,13 @@
     loadUserRoles();
   });
 
+  usersEls.search?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    usersState.page = 1;
+    usersState.q = (usersEls.search.value || "").trim();
+    loadUsers();
+  });
+
   // เปลี่ยน limit
   orgTypeEls.limit?.addEventListener("change", () => {
     orgTypeState.page = 1;
@@ -2058,6 +2849,12 @@
     loadUserRoles();
   });
 
+  usersEls.limit?.addEventListener("change", () => {
+    usersState.page = 1;
+    usersState.limit = Number(usersEls.limit.value || 50);
+    loadUsers();
+  });
+
   // รีเฟรช
   orgTypeEls.refresh?.addEventListener("click", () => {
     loadOrgTypes();
@@ -2085,6 +2882,10 @@
 
   userRoleEls.refresh?.addEventListener("click", () => {
     loadUserRoles();
+  });
+
+  usersEls.refresh?.addEventListener("click", () => {
+    loadUsers();
   });
 
   // คลิก pagination
@@ -2152,6 +2953,17 @@
 
     positionTitleState.page = next;
     loadPositionTitles();
+  });
+
+  usersEls.pagination?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-page]");
+    if (!btn || btn.disabled) return;
+
+    const next = Number(btn.getAttribute("data-page"));
+    if (!next || next < 1 || next > usersState.totalPages) return;
+
+    usersState.page = next;
+    loadUsers();
   });
 
   userRoleEls.pagination?.addEventListener("click", (e) => {
@@ -2443,6 +3255,59 @@
       await loadPendingUsers();
     } catch (err) {
       alert(err.message || "อนุมัติไม่สำเร็จ");
+    }
+  });
+
+  usersEls.tbody?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+
+    const action = btn.getAttribute("data-action");
+    const id = Number(btn.getAttribute("data-id") || "0");
+    if (!id) return;
+
+    const api = getUsersApi();
+    if (!api) return alert("UsersAPI not found");
+
+    if (action === "detail") {
+      try {
+        // ใช้ api ที่คุณได้จาก getUsersApi()
+        if (typeof api.getUser !== "function") {
+          throw new Error("UsersAPI.getUser not found");
+        }
+
+        const res = await api.getUser(id);
+        const row = res?.data ?? res;
+
+        openUserDetailModal(row);
+      } catch (err) {
+        alert(err.message || "โหลดรายละเอียดไม่สำเร็จ");
+      }
+      return;
+    }
+
+
+    if (action === "edit") {
+      await openUserEditByPersonId(id);
+      return;
+    }
+
+
+    if (action === "delete") {
+      if (!confirm(`ต้องการลบผู้ใช้งาน ID ${id} ใช่ไหม?`)) return;
+
+      try {
+        if (!api.remove) throw new Error("UsersAPI.remove not found");
+        await api.remove(id);
+
+        await loadUsers();
+        if (usersState.page > usersState.totalPages) {
+          usersState.page = usersState.totalPages;
+          await loadUsers();
+        }
+      } catch (err) {
+        alert(`ลบไม่สำเร็จ: ${err.message || err}`);
+      }
     }
   });
 
@@ -2757,6 +3622,8 @@
   });
 
 
+
+
   // FILTER: หน่วยงาน
   departmentEls.filterOrg?.addEventListener("change", async () => {
     departmentState.page = 1;
@@ -2802,6 +3669,42 @@
   });
 
 
+  usersEls.filterOrg?.addEventListener("change", async () => {
+    usersState.page = 1;
+    usersState.organization_id = usersEls.filterOrg.value || "";
+
+    // reset dept/pos
+    usersState.department_id = "";
+    usersState.position_title_id = "";
+    if (usersEls.filterDept) usersEls.filterDept.value = "";
+    if (usersEls.filterPos) usersEls.filterPos.value = "";
+
+    await loadUsersDepartmentsByOrg(usersState.organization_id);
+    await loadUsersPositions({ orgId: usersState.organization_id, deptId: "" });
+
+    await loadUsers();
+  });
+
+  usersEls.filterDept?.addEventListener("change", async () => {
+    usersState.page = 1;
+    usersState.department_id = usersEls.filterDept.value || "";
+
+    // reset pos
+    usersState.position_title_id = "";
+    if (usersEls.filterPos) usersEls.filterPos.value = "";
+
+    await loadUsersPositions({ orgId: usersState.organization_id, deptId: usersState.department_id });
+
+    await loadUsers();
+  });
+
+  usersEls.filterPos?.addEventListener("change", async () => {
+    usersState.page = 1;
+    usersState.position_title_id = usersEls.filterPos.value || "";
+    await loadUsers();
+  });
+
+
   // MODAL: เปลี่ยนหน่วยงาน -> โหลดฝ่ายใหม่ตามหน่วยงาน
   positionTitleEls.selectOrg?.addEventListener("change", async () => {
     const orgId = positionTitleEls.selectOrg.value || "";
@@ -2814,6 +3717,15 @@
 
     await loadPositionTitleDepartmentsByOrg(orgId, { target: "modal" });
   });
+
+  usersDetailEls.btnEdit?.addEventListener("click", async () => {
+    const id = usersDetailCurrentId;
+    if (!id) return;
+
+    closeUserDetailModal();
+    await openUserEditByPersonId(id);
+  });
+
 
 
   /* =========================
@@ -2828,6 +3740,7 @@
   hide(document.getElementById("btn-add-department"));
   hide(document.getElementById("btn-add-position-title"));
   hide(document.getElementById("btn-add-user-role"));
+
 
   activateSection("default");
 

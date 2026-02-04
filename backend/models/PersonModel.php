@@ -40,6 +40,58 @@ class PersonModel
     }
 
     /**
+     * ✅ ดึงรายละเอียด person แบบ JOIN ชื่อ (สำหรับ modal รายละเอียดผู้ใช้งาน)
+     * - ใช้ person_user_id เป็น key
+     */
+    public function findDetailByUserId(int $userId): ?array
+    {
+        $sql = "
+        SELECT
+            p.person_id,
+            p.person_user_id,
+
+            p.person_prefix_id,
+            px.prefix_title AS prefix_name,   -- ปรับชื่อคอลัมน์ตาม DB จริงได้
+
+            p.first_name_th,
+            p.first_name_en,
+            p.last_name_th,
+            p.last_name_en,
+            p.display_name,
+
+            p.organization_id,
+            o.name AS organization_name,
+
+            p.department_id,
+            d.department_title AS department_name,
+
+            p.position_title_id,
+            pt.position_title AS position_title_name,
+
+            p.photo_path,
+            p.is_active,
+            p.start_date,
+            p.end_date,
+            p.create_at
+
+        FROM person p
+        LEFT JOIN person_prefixes px ON px.person_prefix_id = p.person_prefix_id
+        LEFT JOIN organization o      ON o.organization_id  = p.organization_id
+        LEFT JOIN department d        ON d.department_id    = p.department_id
+        LEFT JOIN position_title pt   ON pt.position_title_id = p.position_title_id
+
+        WHERE p.person_user_id = :uid
+        LIMIT 1
+    ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    /**
      * ใช้ตอนสมัครสมาชิก (register)
      * - is_active ต้องเป็น 0 (รอการอนุมัติ)
      *
@@ -125,7 +177,7 @@ class PersonModel
         return (int) $this->pdo->lastInsertId();
     }
 
-    
+
     /**
      * (ใช้ฝั่ง admin) อนุมัติสมาชิก (ชื่อเดิมที่คุณมี)
      * - set is_active = 1
@@ -184,8 +236,8 @@ class PersonModel
         ";
         $stmtC = $this->pdo->prepare($sqlCount);
         $stmtC->execute($params);
-        $total = (int)($stmtC->fetch(PDO::FETCH_ASSOC)['cnt'] ?? 0);
-        $totalPages = (int)max(1, (int)ceil($total / $limit));
+        $total = (int) ($stmtC->fetch(PDO::FETCH_ASSOC)['cnt'] ?? 0);
+        $totalPages = (int) max(1, (int) ceil($total / $limit));
 
         // items
         $sql = "

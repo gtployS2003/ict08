@@ -18,6 +18,7 @@
     <script src="/ict/assets/js/api/position-titles.api.js"></script>
     <script src="/ict/assets/js/api/user-roles.api.js"></script>
     <script src="/ict/assets/js/api/user-approvals.api.js"></script>
+    <script src="/ict/assets/js/api/users.api.js"></script>
 
     <script src="/ict/assets/js/include.js" defer></script>
     <script src="/ict/assets/js/auth.js" defer></script>
@@ -42,7 +43,7 @@
                             <span class="arrow">▾</span>
                         </button>
                         <ul id="menu-user" class="testing-dropdown-menu" hidden>
-                            <li><a href="#">รายการผู้ใช้งาน</a></li>
+                            <li><a href="#" data-section="users">รายการผู้ใช้งาน</a></li>
                             <!-- V อันนี้คือ login ครั้งแรก แจ้งเตือนหน้านี้ ให้ admin อนุมัตื -->
                             <li><a href="#" data-section="user-setting">ตั้งค่าสิทธิ์ผู้ใช้งาน</a></li>
                             <li><a href="#" data-section="user-roles">รายการสิทธิ์ผู้ใช้งาน</a></li>
@@ -617,6 +618,70 @@
 
                     </section>
 
+                    <!-- SECTION: USERS -->
+                    <section id="section-users" class="setting-section" hidden>
+                        <div class="table-toolbar">
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input id="user-search" type="search"
+                                    placeholder="ค้นหาผู้ใช้งาน (ชื่อ/Line/สิทธิ์/หน่วยงาน/ฝ่าย/ตำแหน่ง)..." />
+                            </div>
+
+                            <div class="toolbar-right">
+                                <!-- filters -->
+                                <select id="user-filter-organization">
+                                    <option value="">ทุกหน่วยงาน</option>
+                                </select>
+
+                                <select id="user-filter-department">
+                                    <option value="">ทุกฝ่าย</option>
+                                </select>
+
+                                <select id="user-filter-position-title">
+                                    <option value="">ทุกตำแหน่ง</option>
+                                </select>
+
+                                <select id="user-limit">
+                                    <option value="20">20/หน้า</option>
+                                    <option value="50" selected>50/หน้า</option>
+                                    <option value="100">100/หน้า</option>
+                                </select>
+
+                                <button id="user-refresh" class="btn btn-ghost" type="button">
+                                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table class="data-table" aria-label="Users table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th style="width: 150px">ชื่อ-สกุล</th>
+                                        <th style="width: 200px">หน่วยงาน</th>
+                                        <th>ตำแหน่ง</th>
+                                        <th>สิทธิ์</th>
+                                        <th>สถานะ</th>
+                                        <th style="width: 220px">จัดการ</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody id="user-tbody">
+                                    <tr>
+                                        <td colspan="7" class="muted">ยังไม่มีข้อมูล (หรือยังไม่ได้โหลด)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="table-footer">
+                            <div id="user-pagination" class="pagination"></div>
+                            <div id="user-total" class="muted"></div>
+                        </div>
+                    </section>
+
+
 
                 </div>
             </section>
@@ -923,6 +988,274 @@
             </form>
         </div>
     </div>
+
+    <!-- MODAL: USER DETAIL -->
+    <div id="user-detail-modal" class="modal" hidden>
+        <div class="modal__overlay" data-close="user-detail-modal"></div>
+
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="user-detail-modal-title">
+            <div class="modal__header">
+                <h3 id="user-detail-modal-title">รายละเอียดผู้ใช้งาน</h3>
+                <button class="modal__close" type="button" aria-label="Close" data-close="user-detail-modal">✕</button>
+            </div>
+
+            <div class="kv-list detail-form">
+                <div class="kv field">
+                    <div class="k">รหัสบุคคล</div>
+                    <div class="v" id="ud-person-id">-</div>
+                </div>
+                <div class="kv field">
+                    <div class="k">รหัสผู้ใช้</div>
+                    <div class="v" id="ud-person-user-id">-</div>
+                </div>
+                <div class="kv field">
+                    <div class="k">คำนำหน้า</div>
+                    <div class="v" id="ud-person-prefix-id">-</div>
+                </div>
+
+                <div class="kv field">
+                    <div class="k">ชื่อแสดง</div>
+                    <div class="v" id="ud-display-name">-</div>
+                </div>
+
+                <div class="kv field">
+                    <div class="k">ชื่อ (ไทย)</div>
+                    <div class="v" id="ud-first-name-th">-</div>
+                </div>
+                <div class="kv field">
+                    <div class="k">นามสกุล (ไทย)</div>
+                    <div class="v" id="ud-last-name-th">-</div>
+                </div>
+
+                <div class="kv field">
+                    <div class="k">ชื่อ (อังกฤษ)</div>
+                    <div class="v" id="ud-first-name-en">-</div>
+                </div>
+
+                <div class="kv field">
+                    <div class="k">นามสกุล (อังกฤษ)</div>
+                    <div class="v" id="ud-last-name-en">-</div>
+                </div>
+
+                <div class="kv field">
+                    <div class="k">หน่วยงาน</div>
+                    <div class="v" id="ud-organization-id">-</div>
+                </div>
+                <div class="kv field">
+                    <div class="k">ฝ่าย</div>
+                    <div class="v" id="ud-department-id">-</div>
+                </div>
+                <div class="kv field">
+                    <div class="k">ตำแหน่ง</div>
+                    <div class="v" id="ud-position-title-id">-</div>
+                </div>
+
+                <div class="kv field">
+                    <div class="k">รูปโปรไฟล์</div>
+                    <div class="v" id="ud-photo-path">-</div>
+                </div>
+
+                <div class="kv field">
+                    <div class="k">สถานะการใช้งาน</div>
+                    <div class="v" id="ud-is-active">-</div>
+                </div>
+
+                <div class="kv field">
+                    <div class="k">วันที่เริ่มงาน</div>
+                    <div class="v" id="ud-start-date">-</div>
+                </div>
+                <div class="kv field">
+                    <div class="k">วันที่สิ้นสุด</div>
+                    <div class="v" id="ud-end-date">-</div>
+                </div>
+                <div class="kv field">
+                    <div class="k">วันที่สร้างข้อมูล</div>
+                    <div class="v" id="ud-create-at">-</div>
+                </div>
+
+                <div class="kv field">
+                    <div class="k">สิทธิ์ผู้ใช้งาน</div>
+                    <div class="v" id="ud-user-role">-</div>
+                </div>
+            </div>
+            <div class="modal__footer">
+                <button id="user-detail-edit" class="btn btn-primary" type="button">แก้ไข</button>
+                <button class="btn btn-outline" type="button" data-close="user-detail-modal">ปิด</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- User Edit Modal -->
+    <div id="user-edit-modal" class="modal" hidden>
+        <div class="modal__overlay" data-close="user-edit-modal"></div>
+
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="user-edit-modal-title">
+            <div class="modal__header">
+                <h3 id="user-edit-modal-title">แก้ไขผู้ใช้งาน</h3>
+                <button class="modal__close" type="button" aria-label="Close" data-close="user-edit-modal">✕</button>
+            </div>
+
+            <form id="user-edit-form" class="detail-form" autocomplete="off">
+                <!-- hidden ids -->
+                <input type="hidden" id="ue-user-id" name="user_id" value="">
+                <input type="hidden" id="ue-person-id" name="person_id" value="">
+
+                <div class="kv-list">
+                    <!-- คำนำหน้า -->
+                    <div class="kv field">
+                        <label class="k" for="ue-person-prefix-id">คำนำหน้า</label>
+                        <div class="v">
+                            <select id="ue-person-prefix-id" name="person_prefix_id" class="input">
+                                <option value="">- เลือกคำนำหน้า -</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- ชื่อแสดง -->
+                    <div class="kv field">
+                        <label class="k" for="ue-display-name">ชื่อแสดง</label>
+                        <div class="v">
+                            <input id="ue-display-name" name="display_name" class="input" type="text">
+                        </div>
+                    </div>
+
+                    <!-- ชื่อ/นามสกุล TH -->
+                    <div class="kv field">
+                        <label class="k" for="ue-first-name-th">ชื่อ (ไทย)</label>
+                        <div class="v">
+                            <input id="ue-first-name-th" name="first_name_th" class="input" type="text">
+                        </div>
+                    </div>
+
+                    <div class="kv field">
+                        <label class="k" for="ue-last-name-th">นามสกุล (ไทย)</label>
+                        <div class="v">
+                            <input id="ue-last-name-th" name="last_name_th" class="input" type="text">
+                        </div>
+                    </div>
+
+                    <!-- ชื่อ/นามสกุล EN -->
+                    <div class="kv field">
+                        <label class="k" for="ue-first-name-en">ชื่อ (อังกฤษ)</label>
+                        <div class="v">
+                            <input id="ue-first-name-en" name="first_name_en" class="input" type="text">
+                        </div>
+                    </div>
+
+                    <div class="kv field">
+                        <label class="k" for="ue-last-name-en">นามสกุล (อังกฤษ)</label>
+                        <div class="v">
+                            <input id="ue-last-name-en" name="last_name_en" class="input" type="text">
+                        </div>
+                    </div>
+
+                    <!-- หน่วยงาน -->
+                    <div class="kv field">
+                        <label class="k" for="ue-organization-id">หน่วยงาน</label>
+                        <div class="v">
+                            <select id="ue-organization-id" name="organization_id" class="input">
+                                <option value="">- เลือกหน่วยงาน -</option>
+                            </select>
+                            <div class="hint">* เลือกหน่วยงานแล้ว ฝ่ายจะเปลี่ยนตาม</div>
+                        </div>
+                    </div>
+
+                    <!-- ฝ่าย (ต้องเป็นฝ่ายที่อยู่ในหน่วยงานนั้น) -->
+                    <div class="kv field">
+                        <label class="k" for="ue-department-id">ฝ่าย</label>
+                        <div class="v">
+                            <select id="ue-department-id" name="department_id" class="input" disabled>
+                                <option value="">- เลือกฝ่าย -</option>
+                            </select>
+                            <div class="hint">* เลือกฝ่ายแล้ว ตำแหน่งจะเปลี่ยนตาม</div>
+                        </div>
+                    </div>
+
+                    <!-- ตำแหน่ง -->
+                    <div class="kv field">
+                        <label class="k" for="ue-position-title-id">ตำแหน่ง</label>
+                        <div class="v">
+                            <select id="ue-position-title-id" name="position_title_id" class="input" disabled>
+                                <option value="">- เลือกตำแหน่ง -</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- รูปโปรไฟล์ (upload) -->
+                    <div class="kv field">
+                        <label class="k" for="ue-photo-file">รูปโปรไฟล์</label>
+                        <div class="v">
+                            <input id="ue-photo-file" name="photo_file" class="input" type="file"
+                                accept="image/png,image/jpeg,image/webp">
+                            <div class="hint">รองรับ .jpg .png .webp</div>
+
+                            <!-- preview (minimal) -->
+                            <div id="ue-photo-preview" class="photo-preview" hidden>
+                                <img id="ue-photo-preview-img" src="" alt="preview" />
+                                <div class="photo-preview__meta">
+                                    <span id="ue-photo-preview-name">-</span>
+                                    <button id="ue-photo-clear" type="button"
+                                        class="btn btn-outline btn-sm">ล้างรูป</button>
+                                </div>
+                            </div>
+
+                            <!-- existing path (ไว้แสดง path เดิมถ้ายังไม่อัปโหลดใหม่) -->
+                            <div class="hint">
+                                รูปปัจจุบัน: <span id="ue-photo-path">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- สถานะการใช้งาน -->
+                    <div class="kv field">
+                        <label class="k" for="ue-is-active">สถานะการใช้งาน</label>
+                        <div class="v">
+                            <select id="ue-is-active" name="is_active" class="input">
+                                <option value="1">ใช้งาน</option>
+                                <option value="0">ไม่ใช้งาน</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- วันที่เริ่ม/สิ้นสุด -->
+                    <div class="kv field">
+                        <label class="k" for="ue-start-date">วันที่เริ่มงาน</label>
+                        <div class="v">
+                            <input id="ue-start-date" name="start_date" class="input" type="date">
+                        </div>
+                    </div>
+
+                    <div class="kv field">
+                        <label class="k" for="ue-end-date">วันที่สิ้นสุด</label>
+                        <div class="v">
+                            <input id="ue-end-date" name="end_date" class="input" type="date">
+                        </div>
+                    </div>
+
+                    <!-- สิทธิ์ผู้ใช้งาน -->
+                    <div class="kv field">
+                        <label class="k" for="ue-user-role-id">สิทธิ์ผู้ใช้งาน</label>
+                        <div class="v">
+                            <select id="ue-user-role-id" name="user_role_id" class="input">
+                                <option value="">- เลือกสิทธิ์ผู้ใช้งาน -</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- error -->
+                    <div id="user-edit-form-error" class="form-error" hidden></div>
+                </div>
+            </form>
+
+            <div class="modal__footer">
+                <button id="user-edit-save" class="btn btn-primary" type="submit" form="user-edit-form">บันทึก</button>
+                <button class="btn btn-outline" type="button" data-close="user-edit-modal">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+
 
     <footer id="footer-index"></footer>
 </body>
