@@ -85,8 +85,7 @@
     hide($("#btn-add-position-title"));
     hide($("#btn-add-user-role"));
     hide($("#btn-add-request-type"));
-
-
+    hide($("#btn-add-request-sub-type"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -146,6 +145,12 @@
         show($("#section-request-types"));
         show($("#btn-add-request-type"));
         setTitle("ประเภทคำขอ");
+        break;
+
+      case "request-sub-types":
+        show($("#section-request-sub-types"));
+        show($("#btn-add-request-sub-type"));
+        setTitle("ประเภทคำขอย่อย");
         break;
 
       default:
@@ -2387,7 +2392,7 @@
         <td>${escapeHtml(id)}</td>
         <td>${escapeHtml(name)}</td>
         <td class="muted">${escapeHtml(desc)}</td>
-        <td>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">เปิดลิงก์</a>` : "-"}</td>
+        <td>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>` : "-"}</td>
         <td>
           <button class="btn btn-ghost btn-sm"
             data-action="edit"
@@ -2483,8 +2488,300 @@
     }
   }
 
+  /* =========================
+  Request Sub Types UI
+========================= */
+  const requestSubTypeEls = {
+    section: $("#section-request-sub-types"),
+    tbody: $("#request-sub-type-tbody"),
+    search: $("#request-sub-type-search"),
+    limit: $("#request-sub-type-limit"),
+    refresh: $("#request-sub-type-refresh"),
+    pagination: $("#request-sub-type-pagination"),
+    total: $("#request-sub-type-total"),
+
+    btnAdd: $("#btn-add-request-sub-type"),
+
+    modal: $("#request-sub-type-modal"),
+    form: $("#request-sub-type-form"),
+    modalTitle: $("#request-sub-type-modal-title"),
+    submitText: $("#request-sub-type-submit-text"),
+
+    inputId: $("#request-sub-type-id"),
+    inputName: $("#request-sub-type-name"),
+    selectType: $("#request-sub-type-of"),
+    inputDesc: $("#request-sub-type-desc"),
+    filterType: $("#request-sub-type-filter-type"),
+
+    formError: $("#request-sub-type-form-error"),
+  };
+
+  const requestSubTypeState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    subtype_of: 0,
+    total: 0,
+    totalPages: 1,
+    loading: false,
+    refsLoaded: false,
+  };
+
+  function renderRequestSubTypeRows(items = []) {
+    if (!requestSubTypeEls.tbody) return;
+
+    if (!items.length) {
+      requestSubTypeEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    requestSubTypeEls.tbody.innerHTML = items.map((row) => {
+      const id = row.request_sub_type_id ?? row.id ?? "";
+      const name = row.name ?? row.sub_type_name ?? "";
+      const desc = row.discription ?? row.description ?? ""; // ✅ ยึด discription
+      const parentName = row.request_type_name ?? "-";
+
+
+      const parentId = row.subtype_of ?? row.request_type_id ?? "";
+
+      return `
+      <tr data-id="${escapeHtml(id)}">
+        <td>${escapeHtml(id)}</td>
+        <td>${escapeHtml(name)}</td>
+        <td>${escapeHtml(parentName)}</td>
+        <td class="muted">${escapeHtml(desc)}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm"
+            data-action="edit"
+            data-id="${escapeHtml(id)}"
+            data-name="${escapeHtml(name)}"
+            data-desc="${escapeHtml(desc)}"
+            data-parent="${escapeHtml(parentId)}">
+            แก้ไข
+          </button>
+          <button class="btn btn-danger btn-sm"
+            data-action="delete"
+            data-id="${escapeHtml(id)}">
+            ลบ
+          </button>
+        </td>
+      </tr>
+    `;
+    }).join("");
+  }
+
+  function renderRequestSubTypePagination() {
+    if (!requestSubTypeEls.pagination) return;
+
+    const { page, totalPages } = requestSubTypeState;
+    if (totalPages <= 1) {
+      requestSubTypeEls.pagination.innerHTML = "";
+      return;
+    }
+
+    const pages = [];
+    const push = (p) => pages.push(p);
+
+    push(1);
+    if (page - 2 > 2) push("…");
+    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
+    if (page + 2 < totalPages - 1) push("…");
+    if (totalPages > 1) push(totalPages);
+
+    requestSubTypeEls.pagination.innerHTML = `
+    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
+    ${pages.map((p) => {
+      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
+      const active = p === page ? "is-active" : "";
+      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
+    }).join("")}
+    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
+  `;
+  }
+
+  function renderRequestSubTypeTotal() {
+    if (!requestSubTypeEls.total) return;
+    requestSubTypeEls.total.textContent = `ทั้งหมด ${requestSubTypeState.total} รายการ`;
+  }
+
+  async function loadRequestSubTypeRefs({ force = false } = {}) {
+    refreshRequestSubTypeEls();
+
+    const selectEl = requestSubTypeEls.selectType;   // modal: #request-sub-type-of
+    const filterEl = requestSubTypeEls.filterType;   // list filter: #request-sub-type-filter-type
+
+    // ถ้าไม่มี element อะไรเลย ก็ไม่ต้องทำ
+    if (!selectEl && !filterEl) return;
+
+    // ถ้าโหลดแล้ว และไม่ force และ element ทั้งสองมีอยู่ -> ข้ามได้
+    if (!force && requestSubTypeState.refsLoaded && selectEl && filterEl) return;
+
+    if (selectEl) selectEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
+    if (filterEl) filterEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
+
+    try {
+      const api = window.RequestTypesAPI || window.requestTypesApi;
+      if (!api?.list) throw new Error("RequestTypesAPI.list not found");
+
+      const res = await api.list({ q: "", page: 1, limit: 500 });
+
+      // รองรับหลาย format
+      const items =
+        Array.isArray(res?.data) ? res.data :
+          Array.isArray(res?.data?.data) ? res.data.data :
+            Array.isArray(res?.data?.items) ? res.data.items :
+              Array.isArray(res?.items) ? res.items :
+                [];
+
+      // ---- สร้าง options สำหรับ FILTER (ทุกประเภท) ----
+      const filterOptions = [
+        `<option value="">ทุกประเภทคำขอหลัก</option>`,
+        ...items.map((it) => {
+          const id = it.request_type_id ?? it.id ?? "";
+          const label = it.type_name ?? it.name ?? "-";
+          return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
+        }),
+      ].join("");
+
+      // ---- สร้าง options สำหรับ MODAL (เลือก) ----
+      const modalOptions = [
+        `<option value="">เลือกประเภทคำขอหลัก</option>`,
+        ...items.map((it) => {
+          const id = it.request_type_id ?? it.id ?? "";
+          const label = it.type_name ?? it.name ?? "-";
+          return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
+        }),
+      ].join("");
+
+      if (filterEl) filterEl.innerHTML = filterOptions;
+      if (selectEl) selectEl.innerHTML = modalOptions;
+
+      requestSubTypeState.refsLoaded = true;
+    } catch (e) {
+      console.warn("load request types refs failed:", e);
+      if (selectEl) selectEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
+      if (filterEl) filterEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
+    }
+  }
+
+  async function loadRequestSubTypes() {
+    refreshRequestSubTypeEls(); // ✅ สำคัญมาก
+
+    if (requestSubTypeState.loading) return;
+    requestSubTypeState.loading = true;
+
+    try {
+      if (!requestSubTypeEls.tbody) {
+        console.warn("[request-sub-types] tbody not found (DOM not ready yet)");
+        return;
+      }
+
+      requestSubTypeEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">กำลังโหลด...</td></tr>`;
+
+      const api = window.RequestSubTypesAPI || window.requestSubTypesApi;
+      if (!api?.list) throw new Error("RequestSubTypesAPI.list not found (check include request-sub-types.api.js)");
+
+      const res = await api.list({
+        q: requestSubTypeState.q,
+        page: requestSubTypeState.page,
+        limit: requestSubTypeState.limit,
+        subtype_of: requestSubTypeState.subtype_of,
+      });
+
+      // ✅ รองรับหลายรูปแบบ (กัน api.list คืนมาเป็น data ตรงๆ)
+      const items =
+        Array.isArray(res) ? res :
+          Array.isArray(res?.data) ? res.data :
+            Array.isArray(res?.data?.items) ? res.data.items :
+              Array.isArray(res?.items) ? res.items :
+                [];
+
+      const pg = res?.pagination ?? res?.data?.pagination ?? {};
+      requestSubTypeState.total = Number(pg.total ?? items.length ?? 0);
+      requestSubTypeState.totalPages =
+        Number(pg.total_pages ?? pg.totalPages ?? 0) ||
+        Math.max(1, Math.ceil(requestSubTypeState.total / Math.max(1, requestSubTypeState.limit)));
+
+      renderRequestSubTypeRows(items);
+      renderRequestSubTypePagination();
+      renderRequestSubTypeTotal();
+    } catch (err) {
+      console.error(err);
+      if (requestSubTypeEls.tbody) {
+        requestSubTypeEls.tbody.innerHTML =
+          `<tr><td colspan="5" class="muted">${escapeHtml(err.message || err)}</td></tr>`;
+      }
+    } finally {
+      requestSubTypeState.loading = false;
+    }
+  }
+
+
+  function refreshRequestSubTypeEls() {
+    requestSubTypeEls.section = $("#section-request-sub-types");
+    requestSubTypeEls.tbody = $("#request-sub-type-tbody");
+    requestSubTypeEls.search = $("#request-sub-type-search");
+    requestSubTypeEls.limit = $("#request-sub-type-limit");
+    requestSubTypeEls.refresh = $("#request-sub-type-refresh");
+    requestSubTypeEls.pagination = $("#request-sub-type-pagination");
+    requestSubTypeEls.total = $("#request-sub-type-total");
+
+    requestSubTypeEls.modal = $("#request-sub-type-modal");
+    requestSubTypeEls.form = $("#request-sub-type-form");
+    requestSubTypeEls.modalTitle = $("#request-sub-type-modal-title");
+    requestSubTypeEls.submitText = $("#request-sub-type-submit-text");
+
+    requestSubTypeEls.inputId = $("#request-sub-type-id");
+    requestSubTypeEls.inputName = $("#request-sub-type-name");
+    requestSubTypeEls.selectType = $("#request-sub-type-of");
+    requestSubTypeEls.inputDesc = $("#request-sub-type-desc");
+
+    requestSubTypeEls.filterType = $("#request-sub-type-filter-type");
+    requestSubTypeEls.formError = $("#request-sub-type-form-error");
+  }
+
+
+
 
   /* ===== Modal helpers ===== */
+
+  function openRequestSubTypeModal({ mode, row = null } = {}) {
+    if (!requestSubTypeEls.modal) return;
+
+    if (requestSubTypeEls.formError) {
+      requestSubTypeEls.formError.textContent = "";
+      hide(requestSubTypeEls.formError);
+    }
+
+    const isEdit = mode === "edit";
+    if (requestSubTypeEls.modalTitle) requestSubTypeEls.modalTitle.textContent = isEdit ? "แก้ไขประเภทคำขอย่อย" : "เพิ่มประเภทคำขอย่อย";
+    if (requestSubTypeEls.submitText) requestSubTypeEls.submitText.textContent = isEdit ? "บันทึกการแก้ไข" : "บันทึก";
+
+    const id = row?.request_sub_type_id ?? row?.id ?? "";
+    const name = row?.name ?? row?.sub_type_name ?? "";
+    const desc = row?.discription ?? row?.description ?? ""; // ✅ ยึด discription
+    const parent = row?.subtype_of ?? row?.request_type_id ?? "";
+
+    if (requestSubTypeEls.inputId) requestSubTypeEls.inputId.value = isEdit ? String(id) : "";
+    if (requestSubTypeEls.inputName) requestSubTypeEls.inputName.value = String(name || "");
+    if (requestSubTypeEls.inputDesc) requestSubTypeEls.inputDesc.value = String(desc || "");
+
+    // dropdown refs ก่อนค่อย set ค่า
+    loadRequestSubTypeRefs().then(() => {
+      if (requestSubTypeEls.selectType) requestSubTypeEls.selectType.value = parent ? String(parent) : "";
+    });
+
+    show(requestSubTypeEls.modal);
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeRequestSubTypeModal() {
+    if (!requestSubTypeEls.modal) return;
+    hide(requestSubTypeEls.modal);
+    document.body.style.overflow = "";
+  }
+
+
   function openRequestTypeModal({ mode, row = null } = {}) {
     if (!requestTypeEls.modal) return;
 
@@ -2758,6 +3055,11 @@
     if (closeId === "request-type-modal") closeRequestTypeModal();
   });
 
+  document.addEventListener("click", (e) => {
+    const closeId = e.target?.getAttribute?.("data-close");
+    if (closeId === "request-sub-type-modal") closeRequestSubTypeModal();
+  });
+
 
   // กด ESC ปิด
   document.addEventListener("keydown", (e) => {
@@ -2814,7 +3116,11 @@
     }
   });
 
-
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && requestSubTypeEls.modal && !requestSubTypeEls.modal.hidden) {
+      closeRequestSubTypeModal();
+    }
+  });
   // คลิกเมนูซ้ายที่มี data-section
   document.addEventListener("click", async (e) => {
     const a = e.target.closest("a[data-section]");
@@ -2915,6 +3221,17 @@
       await loadRequestTypes();
     }
 
+    if (sectionKey === "request-sub-types") {
+      requestSubTypeState.page = 1;
+      requestSubTypeState.q = (requestSubTypeEls.search?.value || "").trim();
+      requestSubTypeState.limit = Number(requestSubTypeEls.limit?.value || 50);
+
+      await loadRequestSubTypeRefs({ force: true }); // ✅ บังคับ sync DOM + options
+      requestSubTypeState.subtype_of = Number(requestSubTypeEls.filterType?.value || 0);
+
+      await loadRequestSubTypes();
+    }
+
 
 
 
@@ -2956,6 +3273,11 @@
 
   requestTypeEls.btnAdd?.addEventListener("click", () => {
     openRequestTypeModal({ mode: "create" });
+  });
+
+  requestSubTypeEls.btnAdd?.addEventListener("click", async () => {
+    await loadRequestSubTypeRefs();
+    openRequestSubTypeModal({ mode: "create" });
   });
 
   // ค้นหา
@@ -3022,6 +3344,13 @@
     loadRequestTypes();
   });
 
+  requestSubTypeEls.search?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    requestSubTypeState.page = 1;
+    requestSubTypeState.q = (requestSubTypeEls.search.value || "").trim();
+    loadRequestSubTypes();
+  });
+
 
   // เปลี่ยน limit
   orgTypeEls.limit?.addEventListener("change", () => {
@@ -3078,6 +3407,11 @@
     loadRequestTypes();
   });
 
+  requestSubTypeEls.limit?.addEventListener("change", () => {
+    requestSubTypeState.page = 1;
+    requestSubTypeState.limit = Number(requestSubTypeEls.limit.value || 50);
+    loadRequestSubTypes();
+  });
 
   // รีเฟรช
   orgTypeEls.refresh?.addEventListener("click", () => {
@@ -3114,6 +3448,10 @@
 
   requestTypeEls.refresh?.addEventListener("click", () => {
     loadRequestTypes();
+  });
+
+  requestSubTypeEls.refresh?.addEventListener("click", () => {
+    loadRequestSubTypes();
   });
 
 
@@ -3217,6 +3555,16 @@
     loadRequestTypes();
   });
 
+  requestSubTypeEls.pagination?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-page]");
+    if (!btn || btn.disabled) return;
+
+    const next = Number(btn.getAttribute("data-page"));
+    if (!next || next < 1 || next > requestSubTypeState.totalPages) return;
+
+    requestSubTypeState.page = next;
+    loadRequestSubTypes();
+  });
 
   // คลิก edit/delete ในตาราง
   orgTypeEls.tbody?.addEventListener("click", async (e) => {
@@ -3591,6 +3939,46 @@
     }
   });
 
+  requestSubTypeEls.tbody?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+
+    const action = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id") || "";
+
+    const api = window.RequestSubTypesAPI || window.requestSubTypesApi;
+    if (!api) return alert("RequestSubTypesAPI not found");
+
+    if (action === "edit") {
+      const row = {
+        request_sub_type_id: id,
+        name: btn.getAttribute("data-name") || "",
+        discription: btn.getAttribute("data-desc") || "", // ✅ discription
+        subtype_of: btn.getAttribute("data-parent") || "",
+      };
+      await loadRequestSubTypeRefs();
+      openRequestSubTypeModal({ mode: "edit", row });
+      return;
+    }
+
+    if (action === "delete") {
+      if (!confirm(`ต้องการลบประเภทคำขอย่อย ID ${id} ใช่ไหม?`)) return;
+
+      try {
+        if (!api.remove) throw new Error("RequestSubTypesAPI.remove not found");
+        await api.remove(id);
+
+        await loadRequestSubTypes();
+        if (requestSubTypeState.page > requestSubTypeState.totalPages) {
+          requestSubTypeState.page = requestSubTypeState.totalPages;
+          await loadRequestSubTypes();
+        }
+      } catch (err) {
+        alert(`ลบไม่สำเร็จ: ${err.message || err}`);
+      }
+    }
+  });
+
 
   // submit form (create/update)
   orgTypeEls.form?.addEventListener("submit", async (e) => {
@@ -3946,9 +4334,53 @@
     }
   });
 
+  requestSubTypeEls.form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
+    const id = (requestSubTypeEls.inputId?.value || "").trim();
+    const name = (requestSubTypeEls.inputName?.value || "").trim();
+    const subtype_of = (requestSubTypeEls.selectType?.value || "").trim();
+    const discription = (requestSubTypeEls.inputDesc?.value || "").trim(); // ✅ discription
 
+    if (!name || !subtype_of) {
+      if (requestSubTypeEls.formError) {
+        requestSubTypeEls.formError.textContent = "กรุณากรอกชื่อประเภทคำขอย่อย และเลือกประเภทคำขอหลัก";
+        show(requestSubTypeEls.formError);
+      }
+      return;
+    }
 
+    try {
+      if (requestSubTypeEls.formError) hide(requestSubTypeEls.formError);
+
+      const api = window.RequestSubTypesAPI || window.requestSubTypesApi;
+      if (!api) throw new Error("RequestSubTypesAPI not found");
+
+      const payload = {
+        name,
+        subtype_of: Number(subtype_of),
+        discription, // ✅ ส่งชื่อ discription
+      };
+
+      if (id) {
+        if (!api.update) throw new Error("RequestSubTypesAPI.update not found");
+        await api.update(id, payload);
+      } else {
+        if (!api.create) throw new Error("RequestSubTypesAPI.create not found");
+        await api.create(payload);
+      }
+
+      closeRequestSubTypeModal();
+      await loadRequestSubTypes();
+    } catch (err) {
+      if (requestSubTypeEls.formError) {
+        requestSubTypeEls.formError.textContent = err.message || "บันทึกไม่สำเร็จ";
+        show(requestSubTypeEls.formError);
+      } else {
+        alert(err.message || "บันทึกไม่สำเร็จ");
+      }
+    }
+  });
 
   // FILTER: หน่วยงาน
   departmentEls.filterOrg?.addEventListener("change", async () => {
@@ -3984,6 +4416,12 @@
     await loadPositionTitleDepartmentsByOrg(positionTitleState.organization_id, { target: "filter" });
 
     await loadPositionTitles();
+  });
+
+  requestSubTypeEls.filterType?.addEventListener("change", async () => {
+    requestSubTypeState.page = 1;
+    requestSubTypeState.subtype_of = Number(requestSubTypeEls.filterType.value || 0);
+    await loadRequestSubTypes();
   });
 
 
@@ -4031,6 +4469,8 @@
   });
 
 
+
+
   // MODAL: เปลี่ยนหน่วยงาน -> โหลดฝ่ายใหม่ตามหน่วยงาน
   positionTitleEls.selectOrg?.addEventListener("change", async () => {
     const orgId = positionTitleEls.selectOrg.value || "";
@@ -4067,6 +4507,8 @@
   hide(document.getElementById("btn-add-position-title"));
   hide(document.getElementById("btn-add-user-role"));
   hide(document.getElementById("btn-add-request-type"));
+  hide(document.getElementById("btn-add-request-sub-type"));
+
 
 
   activateSection("default");
