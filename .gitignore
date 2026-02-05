@@ -3,3 +3,5 @@
 # ignore backend
 backend/.env
 ิbackend/public/uploads/
+
+assets/image
