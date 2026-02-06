@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/ict/assets/image/logo_หน่วย8.png" />
+    <title>แจ้งเสีย/ซ่อมอุปกรณ์</title>
+
+    <!-- include head -->
+    <script src="/ict/backend/public/config.js.php"></script>
+    <script src="/ict/assets/js/api/http.js"></script>
+    <script src="/ict/assets/js/api/requests.api.js"></script>
+
+    <!-- CSS หน้านี้ -->
+    <link rel="stylesheet" href="/ict/assets/css/request-form.css" />
+
+    <script src="/ict/assets/js/include.js" defer></script>
+    <script src="/ict/assets/js/auth.js" defer></script>
+    <script src="/ict/assets/js/main.js" defer></script>
+
+    <!-- Page JS (ไว้ทำ submit ทีหลัง) -->
+    <!-- <script src="/ict/assets/js/request-repair.js" defer></script> -->
+</head>
+
+<body>
+    <header id="header-form"></header>
+
+    <main class="request-form-page">
+        <div class="request-form-container">
+
+            <section class="request-form-card">
+                <div class="request-form-card-header">
+                    <div class="request-form-card-title">แจ้งเสีย/ซ่อมอุปกรณ์</div>
+                </div>
+
+                <form id="request-repair-form" class="request-form-form">
+                    <div class="request-form-grid">
+
+                        <!-- subject -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="subject">
+                                หัวข้อการแจ้ง <span class="request-form-req">*</span>
+                            </label>
+                            <input class="request-form-input" id="subject" name="subject" type="text"
+                                placeholder="เช่น แจ้งซ่อมคอมพิวเตอร์ห้องธุรการ / แจ้งเสีย Printer ชั้น 2" required />
+                        </div>
+
+                        <!-- type_of_device -->
+                        <div class="request-form-field">
+                            <label class="request-form-label" for="type_of_device">
+                                ประเภทอุปกรณ์ <span class="request-form-req">*</span>
+                            </label>
+                            <select class="request-form-select" id="type_of_device" name="type_of_device" required>
+                                <option value="">-- กรุณาเลือก --</option>
+                            </select>
+                        </div>
+
+                        <!-- device_name -->
+                        <div class="request-form-field">
+                            <label class="request-form-label" for="device_name">ชื่ออุปกรณ์<span
+                                    class="request-form-req">*</span></label>
+
+                            <select class="request-form-select" name="device_name" id="device_name" required>
+                                <option value="">-- กรุณาเลือก --</option>
+                            </select>
+                        </div>
+
+                        <!-- ip address (ถ้ามีจะกรอกเองอัตโนมัติ) -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="ip_address">
+                                IP Address (ถ้ามี)
+                            </label>
+                            <input class="request-form-input" id="ip_address" name="ip_address" type="text"
+                                placeholder="เช่น 192.168.1.10" />
+                            <div class="request-form-hint">ถ้าไม่มี IP ให้เว้นว่าง</div>
+                        </div>
+
+                        <!-- location -->
+                        <div class="request-form-field">
+                            <label class="request-form-label" for="location">
+                                สถานที่ <span class="request-form-req">*</span>
+                            </label>
+                            <input class="request-form-input" id="location" name="location" type="text" />
+                        </div>
+
+                        <!-- province (จะกรอกเองอัตโนมัติ)-->
+                        <div class="request-form-field">
+                            <label class="request-form-label" for="province">
+                                จังหวัด <span class="request-form-req">*</span>
+                            </label>
+                            <input class="request-form-input" id="province" name="province" type="text" />
+                        </div>
+
+                        <!-- detail -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="detail">
+                                รายละเอียดเพิ่มเติม <span class="request-form-req">*</span>
+                            </label>
+                            <textarea class="request-form-textarea" id="detail" name="detail" rows="7" required
+                                placeholder="อธิบายเพิ่มเติมโดยละเอียด เช่น เปิดเครื่องแล้วมีเสียงดัง/หน้าจอดับ, ขึ้น error อะไร, เริ่มมีปัญหาตั้งแต่เมื่อไร, ได้ลองทำอะไรไปแล้วบ้าง"></textarea>
+                        </div>
+
+                        <!-- attachments -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="attachments">
+                                แนบเอกสารประกอบ (หนังสือ/กำหนดการ/เอกสาร/รูปภาพ) รวมเป็นไฟล์เดียว (ถ้ามี)
+                            </label>
+
+                            <input class="request-form-file" id="attachments" name="attachments" type="file" multiple
+                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" />
+
+                            <div class="request-form-hint">
+                                รองรับ PDF, รูปภาพ, Word, Excel
+                            </div>
+
+                            <ul id="attachments-preview" class="request-form-file-list"></ul>
+                        </div>
+
+                    </div>
+
+                    <div class="request-form-actions">
+                        <button id="btn-submit-request" class="request-form-btn request-form-btn-primary" type="submit">
+                            ส่งแจ้งซ่อม
+                        </button>
+                    </div>
+
+                    <div class="request-form-footer-note" id="request-form-message" style="display:none;"></div>
+                </form>
+            </section>
+
+        </div>
+    </main>
+
+    <footer id="footer-index"></footer>
+</body>
+
+</html>

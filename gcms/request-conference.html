@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/ict/assets/image/logo_หน่วย8.png" />
+    <title>ขอสนับสนุนห้องประชุม</title>
+
+    <!-- include head -->
+    <script src="/ict/backend/public/config.js.php"></script>
+    <script src="/ict/assets/js/api/http.js"></script>
+    <script src="/ict/assets/js/api/requests.api.js"></script>
+    <script src="/ict/assets/js/api/provinces.api.js"></script>
+
+
+    <!-- CSS หน้านี้ -->
+    <link rel="stylesheet" href="/ict/assets/css/request-form.css" />
+
+    <script src="/ict/assets/js/include.js" defer></script>
+    <script src="/ict/assets/js/auth.js" defer></script>
+    <script src="/ict/assets/js/main.js" defer></script>
+
+    <!-- Page JS (เดี๋ยวเราสร้างไฟล์นี้ขั้นถัดไปเพื่อ submit) -->
+    <script src="/ict/assets/js/request-conference.js" defer></script>
+</head>
+
+<body>
+    <header id="header-form"></header>
+
+    <main class="request-form-page">
+        <div class="request-form-container">
+
+            <section class="request-form-card">
+                <div class="request-form-card-header">
+                    <div class="request-form-card-title">ขอสนับสนุนห้องประชุม</div>
+                </div>
+
+                <!-- optional info box -->
+                <div class="request-form-info-box">
+                    <div class="request-form-info-title">หมายเหตุ</div>
+                    <ul class="request-form-info-list">
+                        <li>ระบบจะบันทึกคำขอและรอการอนุมัติตามขั้นตอน</li>
+                    </ul>
+                </div>
+
+                <form id="requestConferenceForm" class="request-form-form" enctype="multipart/form-data">
+
+                    <div class="request-form-grid">
+
+                        <!-- subject -->
+                        <div class="request-form-field">
+                            <label class="request-form-label" for="subject">
+                                หัวข้อคำขอ (เรื่อง)<span class="request-form-req">*</span>
+                            </label>
+                            <input class="request-form-input" id="subject" name="subject" type="text"
+                                placeholder="เช่น ขอจองห้องประชุมออนไลน์ผ่าน Webex สำหรับประชุมประจำเดือน" required />
+                            <div class="request-form-hint">หัวข้อสั้น กระชับ (ไม่เกิน 255 ตัวอักษร)</div>
+                        </div>
+
+                        <!-- meeting platform -->
+                        <div class="request-form-field">
+                            <label class="request-form-label" for="meeting_platform">
+                                ระบบประชุมที่ต้องการ <span class="request-form-req">*</span>
+                            </label>
+                            <select class="request-form-select" id="request_sub_type" name="request_sub_type" required>
+                                <option value="">-- กรุณาเลือก --</option>
+                            </select>
+                        </div>
+
+                        <!-- start datetime -->
+                        <div class="request-form-field">
+                            <label class="request-form-label" for="start_date_time">
+                                วัน-เวลาเริ่มต้น <span class="request-form-req">*</span>
+                            </label>
+                            <input class="request-form-input" id="start_date_time" name="start_date_time"
+                                type="datetime-local" required />
+                            <div class="request-form-hint">เลือกวันและเวลาเริ่มใช้งาน</div>
+                        </div>
+
+                        <!-- end datetime -->
+                        <div class="request-form-field">
+                            <label class="request-form-label" for="end_date_time">
+                                วัน-เวลาสิ้นสุด <span class="request-form-req">*</span>
+                            </label>
+                            <input class="request-form-input" id="end_date_time" name="end_date_time"
+                                type="datetime-local" required />
+                            <div class="request-form-hint">เลือกวันและเวลาสิ้นสุด</div>
+                        </div>
+
+                        <div class="request-form-field ">
+                            <label class="request-form-label" for="province">
+                                จังหวัด <span class="request-form-req">*</span>
+                            </label>
+                            <select class="request-form-select" id="province" name="province_id" required>
+                                <option value="">-- กรุณาเลือก --</option>
+                            </select>
+
+                        </div>
+
+                        <!-- detail -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="detail">
+                                รายละเอียดเพิ่มเติม
+                            </label>
+                            <textarea class="request-form-textarea" id="detail" name="detail" rows="6"
+                                placeholder="เช่น ชื่อหน่วยงาน/ผู้ประสานงาน, วัตถุประสงค์การประชุม, ต้องการลิงก์เข้าร่วม, ต้องการบันทึกการประชุม ฯลฯ"></textarea>
+
+                        </div>
+
+                        <!-- attachments -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="attachments">
+                                แนบเอกสารประกอบ (หนังสือ/กำหนดการ/เอกสาร) รวมเป็นไฟล์เดียว (ถ้ามี)
+                            </label>
+
+                            <input class="request-form-file" id="attachment" name="attachment" type="file"
+                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" />
+
+
+                            <div class="request-form-hint">
+                                รองรับ PDF, รูปภาพ, Word, Excel
+                            </div>
+
+                            <!-- preview filename -->
+                            <ul id="attachments-preview" class="request-form-file-list"></ul>
+                        </div>
+
+                    </div>
+                    
+                    <input type="hidden" id="request_type" name="request_type" value="2">
+
+                    <div class="request-form-actions">
+                        <button id="btn-submit-request" class="request-form-btn request-form-btn-primary" type="submit">
+                            ส่งคำขอ
+                        </button>
+                    </div>
+
+                    <div class="request-form-footer-note" id="request-form-message" style="display:none;"></div>
+                </form>
+            </section>
+
+        </div>
+    </main>
+
+    <footer id="footer-index"></footer>
+</body>
+
+</html>

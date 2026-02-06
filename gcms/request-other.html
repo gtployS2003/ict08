@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/ict/assets/image/logo_หน่วย8.png" />
+    <title>ขอใช้บริการอื่น ๆ ของหน่วยงาน</title>
+
+    <!-- include head -->
+    <script src="/ict/backend/public/config.js.php"></script>
+    <script src="/ict/assets/js/api/http.js"></script>
+    <script src="/ict/assets/js/api/requests.api.js"></script>
+
+    <!-- CSS หน้านี้ -->
+    <link rel="stylesheet" href="/ict/assets/css/request-form.css" />
+
+    <script src="/ict/assets/js/include.js" defer></script>
+    <script src="/ict/assets/js/auth.js" defer></script>
+    <script src="/ict/assets/js/main.js" defer></script>
+
+    <!-- Page JS (ไว้ทำ submit ทีหลัง) -->
+
+    <script src="/ict/assets/js/request-other.js" defer></script>
+</head>
+
+<body>
+    <header id="header-form"></header>
+
+    <main class="request-form-page">
+        <div class="request-form-container">
+
+            <section class="request-form-card">
+                <div class="request-form-card-header">
+                    <div class="request-form-card-title">ขอใช้บริการอื่น ๆ ของหน่วยงาน</div>
+                    <div class="request-form-card-subtitle">
+                        สำหรับบริการอื่น ๆ ตามภารกิจของหน่วยงาน
+                    </div>
+                </div>
+
+                <form id="request-other-form" class="request-form-form">
+                    <div class="request-form-grid">
+
+                        <!-- service type -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="service_type">
+                                ประเภทบริการ <span class="request-form-req">*</span>
+                            </label>
+                            <select class="request-form-select" id="request_sub_type" name="request_sub_type" required>
+                                <option value="">-- กรุณาเลือก --</option>
+                            </select>
+                        </div>
+
+                        <!-- subject -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="subject">
+                                หัวข้อคำขอ <span class="request-form-req">*</span>
+                            </label>
+                            <input class="request-form-input" id="subject" name="subject" type="text"
+                                placeholder="เช่น ขอสนับสนุนรถดาวเทียมสำหรับภารกิจในพื้นที่..." required />
+                        </div>
+
+                        <!-- start datetime -->
+                        <div class="request-form-field">
+                            <label class="request-form-label" for="start_date_time">
+                                วัน-เวลาเริ่มต้น <span class="request-form-req">*</span>
+                            </label>
+                            <input class="request-form-input" id="start_date_time" name="start_date_time"
+                                type="datetime-local" required />
+                            <div class="request-form-hint">วันและเวลาเริ่มให้บริการ/เริ่มปฏิบัติงาน</div>
+                        </div>
+
+                        <!-- end datetime -->
+                        <div class="request-form-field">
+                            <label class="request-form-label" for="end_date_time">
+                                วัน-เวลาสิ้นสุด <span class="request-form-req">*</span>
+                            </label>
+                            <input class="request-form-input" id="end_date_time" name="end_date_time"
+                                type="datetime-local" required />
+                            <div class="request-form-hint">วันและเวลาสิ้นสุดให้บริการ/สิ้นสุดปฏิบัติงาน</div>
+                        </div>
+
+                        <!-- location -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="location">
+                                สถานที่/พื้นที่ปฏิบัติงาน <span class="request-form-req">*</span>
+                            </label>
+                            <input class="request-form-input" id="location" name="location" type="text"
+                                placeholder="เช่น จังหวัด/อำเภอ/สถานที่จัดงาน หรือจุดปฏิบัติการ" required />
+                        </div>
+
+                        <!-- province -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="province">
+                                จังหวัด <span class="request-form-req">*</span>
+                            </label>
+                            <select class="request-form-select" id="province_id" name="province_id" required>
+                                <option value="">-- กรุณาเลือก --</option>
+                            </select>
+                        </div>
+
+                        <!-- detail -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="detail">
+                                รายละเอียดเพิ่มเติม <span class="request-form-req">*</span>
+                            </label>
+                            <textarea class="request-form-textarea" id="detail" name="detail" rows="8" required
+                                placeholder="อธิบายรายละเอียดบริการที่ต้องการ เช่น วัตถุประสงค์, รายการสนับสนุน, จำนวนคน/อุปกรณ์, กำหนดการ, เงื่อนไขพิเศษ ฯลฯ"></textarea>
+                            <div class="request-form-hint">ยิ่งละเอียด ยิ่งช่วยให้จัดเตรียมได้ถูกต้อง</div>
+                        </div>
+
+                        <!-- attachments -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="attachments">
+                                แนบเอกสารประกอบ (หนังสือ/กำหนดการ/เอกสาร) รวมเป็นไฟล์เดียว (ถ้ามี)
+                            </label>
+
+                            <input class="request-form-file" id="attachments" name="attachments[]" type="file" multiple
+                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" />
+
+                            <div class="request-form-hint">
+                                รองรับ PDF, รูปภาพ, Word, Excel
+                            </div>
+
+                            <ul id="attachments-preview" class="request-form-file-list"></ul>
+                        </div>
+
+                        <!-- hidden: request_type/sub_type (ไว้ให้ JS ใส่ตอน submit) -->
+                        <input type="hidden" id="request_type" name="request_type" value="4">
+
+                    </div>
+
+                    <div class="request-form-actions">
+                        <button id="btn-submit-request" class="request-form-btn request-form-btn-primary" type="submit">
+                            ส่งคำขอ
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+        </div>
+    </main>
+
+    <footer id="footer-index"></footer>
+
+</body>
+
+</html>

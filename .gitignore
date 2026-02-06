@@ -2,6 +2,7 @@
 
 # ignore backend
 backend/.env
-ิbackend/public/uploads/
+backend/public/uploads/
+backend/public/uploads/profiles
 
 assets/image

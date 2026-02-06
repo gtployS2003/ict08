@@ -87,22 +87,28 @@ window.apiFetch = async function apiFetch(
 ) {
   const url = `${API_BASE}${path}`;
 
+  const baseHeaders = getAuthHeaders({ skipAuth });
+
   const opts = {
     method,
     headers: {
-      ...getAuthHeaders({ skipAuth }), // ✅ ส่ง flag เข้าไป
+      ...baseHeaders,
       ...headers,
     },
   };
 
-  if (body !== undefined) {
+  // ✅ ถ้าเป็น FormData
+  if (body instanceof FormData) {
+    delete opts.headers["Content-Type"]; // browser set boundary เอง
+    opts.body = body;
+  } else if (body !== undefined) {
     opts.body = JSON.stringify(body);
   }
 
   const res = await fetch(url, opts);
   const json = await handleJson(res);
 
-  if (!res.ok || json?.success === false || json?.ok === false) {
+  if (!res.ok || json?.success === false || json?.ok === false || json?.error === true) {
     const msg = json?.message || json?.error || `Request failed (${res.status})`;
     const err = new Error(msg);
     err.status = res.status;
@@ -112,6 +118,7 @@ window.apiFetch = async function apiFetch(
 
   return json;
 };
+
 
 
 

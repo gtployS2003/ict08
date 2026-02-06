@@ -69,4 +69,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadHtml("gcms-nav", "/assets/include/nav-gcms.html");
   await loadHtml("header-gcms", "/assets/include/header-gcms.html");
+
+  await loadHtml("header-form", "/assets/include/header-form.html");
 });

@@ -1,0 +1,296 @@
+/* assets/css/request-form.css */
+
+/* Base */
+:root{
+  --purple: #532274;
+  --bg: #f5f5f5;
+  --request-form-card: #ffffff;
+  --text: #111;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --shadow: 0 10px 25px rgba(0,0,0,.08);
+  --radius: 16px;
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body{
+  font-family: "Inter","Noto Sans Thai",sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Page layout */
+.request-form-page{
+  padding-top: 120px; /* เผื่อ header fixed */
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 24px;
+  flex: 1;
+}
+
+.request-form-container{
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.request-form-card{
+  background: var(--request-form-card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.request-form-card-header{
+  padding: 18px 18px 10px 18px;
+}
+
+.request-form-card-title{
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.request-form-card-subtitle{
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Info box */
+.request-form-info-box{
+  margin: 0 18px 12px 18px;
+  border: 1px dashed var(--border);
+  background: #fafafa;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.request-form-info-title{
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.request-form-info-list{
+  margin: 0;
+  padding-left: 18px;
+  color: #444;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Form */
+.request-form-form{
+  padding: 0 18px 18px 18px;
+}
+
+.request-form-grid{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.request-form-field{
+  display: flex;
+  flex-direction: column;
+}
+
+.request-form-label{
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.request-form-req{ color: #dc2626; }
+
+.request-form-input,
+.request-form-select,
+.request-form-textarea{
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 12px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+}
+
+.request-form-textarea{
+  resize: vertical;
+  min-height: 120px;
+}
+
+.request-form-input:focus,
+.request-form-select:focus,
+.request-form-textarea:focus{
+  border-color: rgba(83,34,116,.55);
+  box-shadow: 0 0 0 4px rgba(83,34,116,.12);
+}
+
+.request-form-hint{
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.request-form-divider{
+  height: 1px;
+  background: var(--border);
+  margin: 16px 0;
+}
+
+/* Actions */
+.request-form-actions{
+  padding-top: 15px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.request-form-btn{
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.request-form-btn-primary{
+  background: var(--purple);
+  color: #fff;
+}
+
+.request-form-btn-primary:disabled{
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.request-form-btn-ghost{
+  background: #fff;
+  border-color: var(--border);
+  color: #111;
+}
+
+.request-form-footer-note{
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ===== File Upload ===== */
+
+.request-form-file{
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fafafa;
+  cursor: pointer;
+}
+
+.request-form-file:hover{
+  border-color: rgba(83,34,116,.5);
+}
+
+.request-form-file-list{
+  margin: 8px 0 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #444;
+}
+
+.request-form-file-list li{
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+
+
+/* Desktop / Tablet */
+@media (min-width: 768px){
+  .request-form-page{
+    padding-top: 150px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .request-form-card-header{
+    padding: 22px 22px 12px 22px;
+  }
+
+  .request-form-form{
+    padding: 0 22px 22px 22px;
+  }
+
+  .request-form-grid{
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .request-form-span-2{ grid-column: span 2; }
+
+  .request-form-card-title{ font-size: 22px; }
+
+  .request-form-btn{ width: 100%; }
+  .request-form-actions{ justify-content: stretch; }
+}
+
+/* Small phones */
+@media (max-width: 360px){
+  .request-form-btn{ width: 100%; }
+  .request-form-actions{ justify-content: stretch; }
+}
+
+/* ===== Fix overflow / ตกขอบ ===== */
+
+/* กันล้นแนวนอนทั้งหน้า */
+html, body{
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* บังคับให้ส่วน page และ container ไม่เกินจอ */
+.request-form-page{
+  width: 100%;
+  max-width: 100%;
+}
+
+.request-form-container{
+  width: 100%;
+  max-width: 980px;   /* ของเดิม */
+}
+
+/* การ์ดต้องไม่ดันกว้างเกิน */
+.request-form-card{
+  width: 100%;
+  max-width: 100%;
+}
+
+/* สำคัญ: ให้ลูกใน grid หดได้ ไม่ดันล้น */
+.request-form-grid,
+.request-form-field{
+  min-width: 0;
+}
+
+.request-form-input,
+.request-form-select,
+.request-form-textarea{
+  min-width: 0;
+}
+
