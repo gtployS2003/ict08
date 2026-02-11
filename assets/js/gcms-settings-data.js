@@ -85,7 +85,7 @@
     hide($("#btn-add-position-title"));
     hide($("#btn-add-user-role"));
     hide($("#btn-add-request-type"));
-    hide($("#btn-add-request-sub-type"));
+    hide($("#btn-add-request-status"))
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -151,6 +151,12 @@
         show($("#section-request-sub-types"));
         show($("#btn-add-request-sub-type"));
         setTitle("ประเภทคำขอย่อย");
+        break;
+
+      case "request-status":
+        show($("#section-request-status"));
+        show($("#btn-add-request-status"));
+        setTitle("ตั้งค่าสถานะคำขอ");
         break;
 
       default:
@@ -2716,7 +2722,6 @@
     }
   }
 
-
   function refreshRequestSubTypeEls() {
     requestSubTypeEls.section = $("#section-request-sub-types");
     requestSubTypeEls.tbody = $("#request-sub-type-tbody");
@@ -2740,6 +2745,259 @@
     requestSubTypeEls.formError = $("#request-sub-type-form-error");
   }
 
+  /* =========================
+    Request Status UI
+    - filter ตามประเภทคำขอหลัก (request_type_id)
+  ========================= */
+  const requestStatusEls = {
+    section: $("#section-request-status"),
+    tbody: $("#request-status-tbody"),
+    search: $("#request-status-search"),
+    limit: $("#request-status-limit"),
+    refresh: $("#request-status-refresh"),
+    pagination: $("#request-status-pagination"),
+    total: $("#request-status-total"),
+
+    filterType: $("#request-status-filter-type"), // ✅ filter ประเภทคำขอหลัก
+
+    btnAdd: $("#btn-add-request-status"), // optional
+    // modal/form (optional ถ้าคุณมี CRUD)
+    modal: $("#request-status-modal"),
+    form: $("#request-status-form"),
+    modalTitle: $("#request-status-modal-title"),
+    submitText: $("#request-status-submit-text"),
+
+    inputId: $("#request-status-id"),
+    inputName: $("#request-status-name"),
+    inputCode: $("#request-status-code"),
+    inputDesc: $("#request-status-desc"),
+    inputSort: $("#request-status-sort"),
+    selectType: $("#request-status-request-type"), // dropdown ใน modal (optional)
+
+    formError: $("#request-status-form-error"),
+  };
+
+  const requestStatusState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    request_type_id: 0, // ✅ filter หลัก
+    total: 0,
+    totalPages: 1,
+    loading: false,
+    refsLoaded: false,
+  };
+
+  function refreshRequestStatusEls() {
+    requestStatusEls.section = $("#section-request-status");
+    requestStatusEls.tbody = $("#request-status-tbody");
+    requestStatusEls.search = $("#request-status-search");
+    requestStatusEls.limit = $("#request-status-limit");
+    requestStatusEls.refresh = $("#request-status-refresh");
+    requestStatusEls.pagination = $("#request-status-pagination");
+    requestStatusEls.total = $("#request-status-total");
+
+    requestStatusEls.filterType = $("#request-status-filter-type");
+
+    requestStatusEls.btnAdd = $("#btn-add-request-status");
+
+    requestStatusEls.modal = $("#request-status-modal");
+    requestStatusEls.form = $("#request-status-form");
+    requestStatusEls.modalTitle = $("#request-status-modal-title");
+    requestStatusEls.submitText = $("#request-status-submit-text");
+
+    requestStatusEls.inputId = $("#request-status-id");
+    requestStatusEls.inputName = $("#request-status-name");
+    requestStatusEls.inputCode = $("#request-status-code");
+    requestStatusEls.inputDesc = $("#request-status-desc");
+    requestStatusEls.inputSort = $("#request-status-sort");
+    requestStatusEls.selectType = $("#request-status-request-type");
+
+    requestStatusEls.formError = $("#request-status-form-error");
+  }
+
+  function renderRequestStatusRows(items = []) {
+    if (!requestStatusEls.tbody) return;
+
+    if (!items.length) {
+      requestStatusEls.tbody.innerHTML = `<tr><td colspan="7" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    requestStatusEls.tbody.innerHTML = items.map((row) => {
+      const id = row.status_id ?? row.request_status_id ?? row.id ?? "";
+      const typeName = row.type_name ?? row.request_type_name ?? "-";
+      const sortOrder = row.sort_order ?? row.order_no ?? "-";
+      const code = row.status_code ?? row.request_status_code ?? "-";
+      const name = row.status_name ?? row.request_status_name ?? "-";
+      const meaning = row.meaning ?? row.description ?? row.discription ?? "-";
+
+      const typeId = row.request_type_id ?? row.type_id ?? "";
+
+      return `
+      <tr data-id="${escapeHtml(String(id))}">
+        <td>${escapeHtml(String(id))}</td>
+        <td>${escapeHtml(String(typeName))}</td>
+        <td>${escapeHtml(String(sortOrder))}</td>
+        <td>${escapeHtml(String(code))}</td>
+        <td>${escapeHtml(String(name))}</td>
+        <td class="muted">${escapeHtml(String(meaning))}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" type="button"
+            data-action="edit"
+            data-id="${escapeHtml(String(id))}"
+            data-type="${escapeHtml(String(typeId))}"
+            data-sort="${escapeHtml(String(sortOrder))}"
+            data-code="${escapeHtml(String(code))}"
+            data-name="${escapeHtml(String(name))}"
+            data-meaning="${escapeHtml(String(meaning))}"
+          >แก้ไข</button>
+          <button class="btn btn-danger btn-sm" type="button"
+            data-action="delete"
+            data-id="${escapeHtml(String(id))}"
+          >ลบ</button>
+        </td>
+      </tr>
+    `;
+    }).join("");
+  }
+
+
+  function renderRequestStatusPagination() {
+    if (!requestStatusEls.pagination) return;
+
+    const { page, totalPages } = requestStatusState;
+    if (totalPages <= 1) {
+      requestStatusEls.pagination.innerHTML = "";
+      return;
+    }
+
+    const pages = [];
+    const push = (p) => pages.push(p);
+
+    push(1);
+    if (page - 2 > 2) push("…");
+    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
+    if (page + 2 < totalPages - 1) push("…");
+    if (totalPages > 1) push(totalPages);
+
+    requestStatusEls.pagination.innerHTML = `
+    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
+    ${pages.map((p) => {
+      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
+      const active = p === page ? "is-active" : "";
+      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
+    }).join("")}
+    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
+  `;
+  }
+
+  function renderRequestStatusTotal() {
+    if (!requestStatusEls.total) return;
+    requestStatusEls.total.textContent = `ทั้งหมด ${requestStatusState.total} รายการ`;
+  }
+
+  /** โหลด dropdown ประเภทคำขอหลัก ให้ filter + modal (ถ้ามี) */
+  async function loadRequestStatusTypeRefs({ force = false } = {}) {
+    refreshRequestStatusEls();
+
+    const filterEl = requestStatusEls.filterType; // บนตาราง
+    const modalEl = requestStatusEls.selectType;  // ใน modal (optional)
+
+    if (!filterEl && !modalEl) return;
+    if (!force && requestStatusState.refsLoaded && filterEl && modalEl) return;
+
+    if (filterEl) filterEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
+    if (modalEl) modalEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
+
+    try {
+      const api = window.RequestTypesAPI || window.requestTypesApi;
+      if (!api?.list) throw new Error("RequestTypesAPI.list not found");
+
+      const res = await api.list({ q: "", page: 1, limit: 500 });
+
+      const items =
+        Array.isArray(res?.data) ? res.data :
+          Array.isArray(res?.data?.items) ? res.data.items :
+            Array.isArray(res?.items) ? res.items :
+              [];
+
+      const optAll = [`<option value="">ทุกประเภทคำขอหลัก</option>`]
+        .concat(items.map((it) => {
+          const id = it.request_type_id ?? it.id ?? "";
+          const label = it.type_name ?? it.name ?? "-";
+          return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
+        }))
+        .join("");
+
+      const optPick = [`<option value="">เลือกประเภทคำขอหลัก</option>`]
+        .concat(items.map((it) => {
+          const id = it.request_type_id ?? it.id ?? "";
+          const label = it.type_name ?? it.name ?? "-";
+          return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
+        }))
+        .join("");
+
+      if (filterEl) filterEl.innerHTML = optAll;
+      if (modalEl) modalEl.innerHTML = optPick;
+
+      requestStatusState.refsLoaded = true;
+    } catch (e) {
+      console.warn("load request type refs for status failed:", e);
+      if (filterEl) filterEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
+      if (modalEl) modalEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
+    }
+  }
+
+  /** โหลดรายการสถานะ */
+  async function loadRequestStatuses() {
+    refreshRequestStatusEls();
+    if (requestStatusState.loading) return;
+    requestStatusState.loading = true;
+
+    try {
+      if (!requestStatusEls.tbody) return;
+
+      requestStatusEls.tbody.innerHTML = `<tr><td colspan="7" class="muted">กำลังโหลด...</td></tr>`;
+
+      const api = window.RequestStatusAPI || window.requestStatusApi;
+      if (!api?.list) throw new Error("RequestStatusAPI.list not found (check include request-status.api.js)");
+
+
+      const res = await api.list({
+        q: requestStatusState.q,
+        page: requestStatusState.page,
+        limit: requestStatusState.limit,
+        request_type_id: requestStatusState.request_type_id, // ✅ filter ตามประเภทหลัก
+        // ถ้า backend ใช้ชื่ออื่น เช่น request_type / type_id ให้เปลี่ยนตรงนี้
+      });
+
+      const items =
+        Array.isArray(res) ? res :
+          Array.isArray(res?.data) ? res.data :
+            Array.isArray(res?.data?.items) ? res.data.items :
+              Array.isArray(res?.items) ? res.items :
+                [];
+
+      const pg = res?.pagination ?? res?.data?.pagination ?? {};
+      requestStatusState.total = Number(pg.total ?? res?.total ?? items.length ?? 0);
+      requestStatusState.totalPages =
+        Number(pg.total_pages ?? pg.totalPages ?? res?.total_pages ?? 0) ||
+        Math.max(1, Math.ceil(requestStatusState.total / Math.max(1, requestStatusState.limit)));
+
+      renderRequestStatusRows(items);
+      renderRequestStatusPagination();
+      renderRequestStatusTotal();
+    } catch (err) {
+      console.error(err);
+      if (requestStatusEls.tbody) {
+        requestStatusEls.tbody.innerHTML = `<tr><td colspan="7" class="muted">กำลังโหลด...</td></tr>`;
+
+      }
+    } finally {
+      requestStatusState.loading = false;
+    }
+  }
 
 
 
@@ -3007,6 +3265,51 @@
     document.body.style.overflow = "";
   }
 
+  function openRequestStatusModal({ mode, row = null } = {}) {
+    if (!requestStatusEls.modal) return;
+
+    if (requestStatusEls.formError) {
+      requestStatusEls.formError.textContent = "";
+      hide(requestStatusEls.formError);
+    }
+
+    const isEdit = mode === "edit";
+    if (requestStatusEls.modalTitle) requestStatusEls.modalTitle.textContent = isEdit ? "แก้ไขสถานะคำขอ" : "เพิ่มสถานะคำขอ";
+    if (requestStatusEls.submitText) requestStatusEls.submitText.textContent = isEdit ? "บันทึกการแก้ไข" : "บันทึก";
+
+    if (requestStatusEls.inputId)
+      requestStatusEls.inputId.value = isEdit ? String(row?.status_id ?? "") : "";
+
+    if (requestStatusEls.inputCode)
+      requestStatusEls.inputCode.value = isEdit ? String(row?.status_code ?? "") : "";
+
+    if (requestStatusEls.inputName)
+      requestStatusEls.inputName.value = isEdit ? String(row?.status_name ?? "") : "";
+
+    if (requestStatusEls.inputDesc)
+      requestStatusEls.inputDesc.value = isEdit ? String(row?.meaning ?? "") : "";
+
+    if (requestStatusEls.selectType)
+      requestStatusEls.selectType.value = isEdit
+        ? String(row?.request_type_id ?? "")
+        : "";
+
+    if (requestStatusEls.inputSort)
+      requestStatusEls.inputSort.value = isEdit
+        ? String(row?.sort_order ?? 1)
+        : "1";
+
+
+    show(requestStatusEls.modal);
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeRequestStatusModal() {
+    if (!requestStatusEls.modal) return;
+    hide(requestStatusEls.modal);
+    document.body.style.overflow = "";
+  }
+
   // ปิด modal เมื่อคลิกที่ overlay 
   document.addEventListener("click", (e) => {
     const closeId = e.target?.getAttribute?.("data-close");
@@ -3058,6 +3361,11 @@
   document.addEventListener("click", (e) => {
     const closeId = e.target?.getAttribute?.("data-close");
     if (closeId === "request-sub-type-modal") closeRequestSubTypeModal();
+  });
+
+  document.addEventListener("click", (e) => {
+    const closeId = e.target?.getAttribute?.("data-close");
+    if (closeId === "request-status-modal") closeRequestStatusModal();
   });
 
 
@@ -3121,6 +3429,13 @@
       closeRequestSubTypeModal();
     }
   });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && requestStatusEls.modal && !requestStatusEls.modal.hidden) {
+      closeRequestStatusModal();
+    }
+  });
+
   // คลิกเมนูซ้ายที่มี data-section
   document.addEventListener("click", async (e) => {
     const a = e.target.closest("a[data-section]");
@@ -3226,11 +3541,24 @@
       requestSubTypeState.q = (requestSubTypeEls.search?.value || "").trim();
       requestSubTypeState.limit = Number(requestSubTypeEls.limit?.value || 50);
 
-      await loadRequestSubTypeRefs({ force: true }); // ✅ บังคับ sync DOM + options
+      await loadRequestSubTypeRefs({ force: true });
       requestSubTypeState.subtype_of = Number(requestSubTypeEls.filterType?.value || 0);
 
       await loadRequestSubTypes();
     }
+
+    if (sectionKey === "request-status") {
+      requestStatusState.page = 1;
+      requestStatusState.q = (requestStatusEls.search?.value || "").trim();
+      requestStatusState.limit = Number(requestStatusEls.limit?.value || 50);
+
+      await loadRequestStatusTypeRefs({ force: true });
+      requestStatusState.request_type_id = Number(requestStatusEls.filterType?.value || 0);
+
+      await loadRequestStatuses();
+    }
+
+
 
 
 
@@ -3279,6 +3607,13 @@
     await loadRequestSubTypeRefs();
     openRequestSubTypeModal({ mode: "create" });
   });
+
+  requestStatusEls.btnAdd?.addEventListener("click", async () => {
+    await loadRequestStatusTypeRefs();
+    openRequestStatusModal({ mode: "create" });
+  });
+
+
 
   // ค้นหา
   orgTypeEls.search?.addEventListener("keydown", (e) => {
@@ -3351,6 +3686,13 @@
     loadRequestSubTypes();
   });
 
+  requestStatusEls.search?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    requestStatusState.page = 1;
+    requestStatusState.q = (requestStatusEls.search.value || "").trim();
+    loadRequestStatuses();
+  });
+
 
   // เปลี่ยน limit
   orgTypeEls.limit?.addEventListener("change", () => {
@@ -3413,6 +3755,12 @@
     loadRequestSubTypes();
   });
 
+  requestStatusEls.limit?.addEventListener("change", () => {
+    requestStatusState.page = 1;
+    requestStatusState.limit = Number(requestStatusEls.limit.value || 50);
+    loadRequestStatuses();
+  });
+
   // รีเฟรช
   orgTypeEls.refresh?.addEventListener("click", () => {
     loadOrgTypes();
@@ -3452,6 +3800,10 @@
 
   requestSubTypeEls.refresh?.addEventListener("click", () => {
     loadRequestSubTypes();
+  });
+
+  requestStatusEls.refresh?.addEventListener("click", () => {
+    loadRequestStatuses();
   });
 
 
@@ -3564,6 +3916,17 @@
 
     requestSubTypeState.page = next;
     loadRequestSubTypes();
+  });
+
+  requestStatusEls.pagination?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-page]");
+    if (!btn || btn.disabled) return;
+
+    const next = Number(btn.getAttribute("data-page"));
+    if (!next || next < 1 || next > requestStatusState.totalPages) return;
+
+    requestStatusState.page = next;
+    loadRequestStatuses();
   });
 
   // คลิก edit/delete ในตาราง
@@ -3979,6 +4342,53 @@
     }
   });
 
+  requestStatusEls.tbody?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+
+    const action = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id") || "";
+
+    const api = window.RequestStatusAPI || window.requestStatusApi;
+    if (!api) return alert("RequestStatusAPI not found");
+
+
+    if (action === "edit") {
+      await loadRequestStatusTypeRefs(); // ให้ dropdown ใน modal มี option ก่อน
+
+      const row = {
+        status_id: Number(btn.getAttribute("data-id") || 0),
+        request_type_id: Number(btn.getAttribute("data-type") || 0),
+        sort_order: Number(btn.getAttribute("data-sort") || 1),
+        status_code: btn.getAttribute("data-code") || "",
+        status_name: btn.getAttribute("data-name") || "",
+        meaning: btn.getAttribute("data-meaning") || "",
+      };
+
+      openRequestStatusModal({ mode: "edit", row });
+      return;
+    }
+
+
+    if (action === "delete") {
+      if (!confirm(`ต้องการลบสถานะคำขอ ID ${id} ใช่ไหม?`)) return;
+
+      try {
+        if (!api.remove) throw new Error("RequestStatusAPI.remove not found");
+        await api.remove(id);
+
+        await loadRequestStatuses();
+        if (requestStatusState.page > requestStatusState.totalPages) {
+          requestStatusState.page = requestStatusState.totalPages;
+          await loadRequestStatuses();
+        }
+      } catch (err) {
+        alert(`ลบไม่สำเร็จ: ${err.message || err}`);
+      }
+    }
+  });
+
+
 
   // submit form (create/update)
   orgTypeEls.form?.addEventListener("submit", async (e) => {
@@ -4382,6 +4792,51 @@
     }
   });
 
+  requestStatusEls.form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    try {
+      const api = window.RequestStatusAPI || window.requestStatusApi;
+      if (!api) throw new Error("RequestStatusAPI not found");
+
+      const isEdit = String(requestStatusEls.inputId?.value || "").trim() !== "";
+      const id = String(requestStatusEls.inputId?.value || "").trim();
+
+      // ✅ อ่านค่าจากฟอร์ม
+      const payload = {
+        status_name: String(requestStatusEls.inputName?.value || "").trim(),
+        status_code: String(requestStatusEls.inputCode?.value || "").trim(),
+        meaning: String(requestStatusEls.inputDesc?.value || "").trim(),
+        request_type_id: Number(requestStatusEls.selectType?.value || 0),
+        sort_order: Number(requestStatusEls.inputSort?.value || 1),
+      };
+
+      // ✅ validate ขั้นต่ำ
+      if (!payload.status_name) throw new Error("กรุณากรอกชื่อสถานะ");
+      if (!payload.status_code) throw new Error("กรุณากรอกรหัสสถานะ");
+      if (!payload.request_type_id) throw new Error("กรุณาเลือกประเภทคำขอหลัก");
+
+      // ✅ ยิง API
+      if (isEdit) {
+        await api.update(id, payload);
+      } else {
+        await api.create(payload);
+      }
+
+      closeRequestStatusModal();
+      await loadRequestStatuses();
+    } catch (err) {
+      console.error(err);
+      if (requestStatusEls.formError) {
+        requestStatusEls.formError.textContent = err.message || String(err);
+        show(requestStatusEls.formError);
+      } else {
+        alert(err.message || err);
+      }
+    }
+  });
+
+
   // FILTER: หน่วยงาน
   departmentEls.filterOrg?.addEventListener("change", async () => {
     departmentState.page = 1;
@@ -4468,6 +4923,12 @@
     await loadUsers();
   });
 
+  requestStatusEls.filterType?.addEventListener("change", () => {
+    requestStatusState.page = 1;
+    requestStatusState.request_type_id = Number(requestStatusEls.filterType.value || 0);
+    loadRequestStatuses();
+  });
+
 
 
 
@@ -4508,8 +4969,7 @@
   hide(document.getElementById("btn-add-user-role"));
   hide(document.getElementById("btn-add-request-type"));
   hide(document.getElementById("btn-add-request-sub-type"));
-
-
+  hide(document.getElementById("btn-add-request-status"));
 
   activateSection("default");
 
