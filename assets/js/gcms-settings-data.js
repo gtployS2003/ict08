@@ -85,7 +85,9 @@
     hide($("#btn-add-position-title"));
     hide($("#btn-add-user-role"));
     hide($("#btn-add-request-type"));
-    hide($("#btn-add-request-status"))
+    hide($("#btn-add-request-sub-type"));
+    hide($("#btn-add-request-status"));
+    hide($("#btn-add-notification-type"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -158,6 +160,13 @@
         show($("#btn-add-request-status"));
         setTitle("ตั้งค่าสถานะคำขอ");
         break;
+
+      case "notification-type":
+        show($("#section-notification-type"));
+        show($("#btn-add-notification-type"));
+        setTitle("ตั้งค่าประเภทการแจ้งเตือน");
+        loadNotificationTypes();
+        break;  
 
       default:
         show($("#section-default"));
@@ -2999,6 +3008,109 @@
     }
   }
 
+  /* ========================= Notification Type UI - CRUD notification_type ========================= */
+  const notificationTypeEls = {
+    section: $("#section-notification-type"),
+    tbody: $("#notification-type-tbody"),
+    search: $("#notification-type-search"),
+    limit: $("#notification-type-limit"),
+    refresh: $("#notification-type-refresh"),
+    btnAdd: $("#btn-add-notification-type"),
+
+    modal: $("#notification-type-modal"),
+    form: $("#notification-type-form"),
+    modalTitle: $("#notification-type-modal-title"),
+    submitText: $("#notification-type-submit-text"),
+
+    inputId: $("#notification-type-id"),
+    inputName: $("#notification-type-name"),
+    inputDesc: $("#notification-type-desc"),
+
+    formError: $("#notification-type-form-error"),
+  };
+
+  const notificationTypeState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    loading: false,
+  };
+
+  async function loadNotificationTypes() {
+    if (notificationTypeState.loading) return;
+    notificationTypeState.loading = true;
+
+    try {
+      if (!notificationTypeEls.tbody) {
+        console.warn("[notification-types] tbody not found");
+        return;
+      }
+
+      notificationTypeEls.tbody.innerHTML =
+        `<tr><td colspan="4" class="muted">กำลังโหลด...</td></tr>`;
+
+      const api = window.NotificationTypesAPI || window.notificationTypesApi;
+      if (!api) throw new Error("NotificationTypesAPI not found");
+
+      const res = await api.list({
+        q: notificationTypeState.q,
+        page: notificationTypeState.page,
+        limit: notificationTypeState.limit,
+      });
+
+      const items = Array.isArray(res?.data) ? res.data : [];
+
+      renderNotificationTypeRows(items);
+
+    } catch (err) {
+      console.error(err);
+      if (notificationTypeEls.tbody) {
+        notificationTypeEls.tbody.innerHTML =
+          `<tr><td colspan="4" class="muted">โหลดข้อมูลไม่สำเร็จ</td></tr>`;
+      }
+    } finally {
+      notificationTypeState.loading = false;
+    }
+  }
+
+  function renderNotificationTypeRows(items = []) {
+    if (!notificationTypeEls.tbody) return;
+
+    if (!items.length) {
+      notificationTypeEls.tbody.innerHTML =
+        `<tr><td colspan="4" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    notificationTypeEls.tbody.innerHTML = items.map((row) => {
+      const id = row.notification_type_id ?? "";
+      const name = row.notification_type ?? "";
+      const desc = row.meaning ?? "";
+
+      return `
+      <tr>
+        <td>${escapeHtml(id)}</td>
+        <td>${escapeHtml(name)}</td>
+        <td class="muted">${escapeHtml(desc || "-")}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm"
+            data-action="edit"
+            data-id="${id}"
+            data-name="${escapeHtml(name)}"
+            data-desc="${escapeHtml(desc)}">
+            แก้ไข
+          </button>
+          <button class="btn btn-danger btn-sm"
+            data-action="delete"
+            data-id="${id}">
+            ลบ
+          </button>
+        </td>
+      </tr>
+    `;
+    }).join("");
+  }
+
 
 
   /* ===== Modal helpers ===== */
@@ -3310,6 +3422,50 @@
     document.body.style.overflow = "";
   }
 
+  function openNotificationTypeModal(mode, row = null) {
+    if (notificationTypeEls.formError) notificationTypeEls.formError.hidden = true;
+    if (notificationTypeEls.form) notificationTypeEls.form.reset();
+
+    const isEdit = mode === "edit";
+
+    if (notificationTypeEls.modalTitle) {
+      notificationTypeEls.modalTitle.textContent =
+        isEdit ? "แก้ไขประเภทการแจ้งเตือน" : "เพิ่มประเภทการแจ้งเตือน";
+    }
+
+    if (notificationTypeEls.submitText) {
+      notificationTypeEls.submitText.textContent =
+        isEdit ? "บันทึกการแก้ไข" : "บันทึก";
+    }
+
+    if (notificationTypeEls.inputId) {
+      notificationTypeEls.inputId.value =
+        isEdit ? (row?.notification_type_id ?? row?.id ?? "") : "";
+    }
+
+    if (notificationTypeEls.inputName) {
+      notificationTypeEls.inputName.value =
+        isEdit ? (row?.notification_type ?? row?.name ?? "") : "";
+    }
+
+    if (notificationTypeEls.inputDesc) {
+      notificationTypeEls.inputDesc.value =
+        isEdit ? (row?.meaning ?? row?.description ?? row?.desc ?? "") : "";
+    }
+
+    if (notificationTypeEls.modal) {
+      notificationTypeEls.modal.hidden = false;
+      document.body.style.overflow = "hidden";
+    }
+  }
+
+  function closeNotificationTypeModal() {
+    if (notificationTypeEls.modal) {
+      notificationTypeEls.modal.hidden = true;
+      document.body.style.overflow = "";
+    }
+  }
+
   // ปิด modal เมื่อคลิกที่ overlay 
   document.addEventListener("click", (e) => {
     const closeId = e.target?.getAttribute?.("data-close");
@@ -3366,6 +3522,11 @@
   document.addEventListener("click", (e) => {
     const closeId = e.target?.getAttribute?.("data-close");
     if (closeId === "request-status-modal") closeRequestStatusModal();
+  });
+
+  document.addEventListener("click", (e) => {
+    const closeId = e.target?.getAttribute?.("data-close");
+    if (closeId === "notification-type-modal") closeNotificationTypeModal();
   });
 
 
@@ -3433,6 +3594,12 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && requestStatusEls.modal && !requestStatusEls.modal.hidden) {
       closeRequestStatusModal();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && notificationTypeEls.modal && !notificationTypeEls.modal.hidden) {
+      closeNotificationTypeModal();
     }
   });
 
@@ -3558,6 +3725,14 @@
       await loadRequestStatuses();
     }
 
+    if (sectionKey === "notification-type") {
+      notificationTypeState.page = 1;
+      notificationTypeState.q = (notificationTypeEls.search?.value || "").trim();
+      notificationTypeState.limit = Number(notificationTypeEls.limit?.value || 50);
+      loadNotificationTypes();
+    }
+
+
 
 
 
@@ -3611,6 +3786,10 @@
   requestStatusEls.btnAdd?.addEventListener("click", async () => {
     await loadRequestStatusTypeRefs();
     openRequestStatusModal({ mode: "create" });
+  });
+
+  notificationTypeEls.btnAdd?.addEventListener("click", () => {
+    openNotificationTypeModal("create");
   });
 
 
@@ -3693,6 +3872,13 @@
     loadRequestStatuses();
   });
 
+  notificationTypeEls.search?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    notificationTypeState.page = 1;
+    notificationTypeState.q = (notificationTypeEls.search.value || "").trim();
+    loadNotificationTypes();
+  });
+
 
   // เปลี่ยน limit
   orgTypeEls.limit?.addEventListener("change", () => {
@@ -3761,6 +3947,12 @@
     loadRequestStatuses();
   });
 
+  notificationTypeEls.limit?.addEventListener("change", () => {
+    notificationTypeState.page = 1;
+    notificationTypeState.limit = Number(notificationTypeEls.limit.value || 50);
+    loadNotificationTypes();
+  });
+
   // รีเฟรช
   orgTypeEls.refresh?.addEventListener("click", () => {
     loadOrgTypes();
@@ -3804,6 +3996,10 @@
 
   requestStatusEls.refresh?.addEventListener("click", () => {
     loadRequestStatuses();
+  });
+
+  notificationTypeEls.refresh?.addEventListener("click", () => {
+    loadNotificationTypes();
   });
 
 
@@ -3927,6 +4123,17 @@
 
     requestStatusState.page = next;
     loadRequestStatuses();
+  });
+
+  notificationTypeEls.pagination?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-page]");
+    if (!btn || btn.disabled) return;
+
+    const next = Number(btn.getAttribute("data-page"));
+    if (!next || next < 1 || next > notificationTypeState.totalPages) return;
+
+    notificationTypeState.page = next;
+    loadNotificationTypes();
   });
 
   // คลิก edit/delete ในตาราง
@@ -4388,7 +4595,36 @@
     }
   });
 
+  notificationTypeEls.tbody?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
 
+    const action = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id") || "";
+
+    if (action === "edit") {
+      const name = btn.getAttribute("data-name") || "";
+      const description = btn.getAttribute("data-desc") || "";
+      openNotificationTypeModal("edit", { id, name, description });
+      return;
+    }
+
+    if (action === "delete") {
+      if (!confirm(`ต้องการลบประเภทการแจ้งเตือน ID ${id} ใช่ไหม?`)) return;
+
+      try {
+        await apiFetch(`/notification-types/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+        await loadNotificationTypes();
+        if (notificationTypeState.page > notificationTypeState.totalPages) {
+          notificationTypeState.page = notificationTypeState.totalPages;
+          await loadNotificationTypes();
+        }
+      } catch (err) {
+        alert(`ลบไม่สำเร็จ: ${err.message || err}`);
+      }
+    }
+  });
 
   // submit form (create/update)
   orgTypeEls.form?.addEventListener("submit", async (e) => {
@@ -4832,6 +5068,50 @@
         show(requestStatusEls.formError);
       } else {
         alert(err.message || err);
+      }
+    }
+  });
+
+  notificationTypeEls.form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const id = (notificationTypeEls.inputId?.value || "").trim();
+    const name = (notificationTypeEls.inputName?.value || "").trim();
+    const description = (notificationTypeEls.inputDesc?.value || "").trim();
+
+    if (!name) {
+      if (notificationTypeEls.formError) {
+        notificationTypeEls.formError.textContent = "กรุณากรอกชื่อประเภทการแจ้งเตือน";
+        show(notificationTypeEls.formError);
+      }
+      return;
+    }
+
+    try {
+      if (notificationTypeEls.formError) hide(notificationTypeEls.formError);
+
+      const payload = { notification_type: name, meaning: description };
+
+      if (id) {
+        await apiFetch(`/notification-types/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          body: payload,
+        });
+      } else {
+        await apiFetch(`/notification-types`, {
+          method: "POST",
+          body: payload,
+        });
+      }
+
+      closeNotificationTypeModal();
+      await loadNotificationTypes();
+    } catch (err) {
+      if (notificationTypeEls.formError) {
+        notificationTypeEls.formError.textContent = err.message || "บันทึกไม่สำเร็จ";
+        show(notificationTypeEls.formError);
+      } else {
+        alert(err.message || "บันทึกไม่สำเร็จ");
       }
     }
   });
