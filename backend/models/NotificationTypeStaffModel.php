@@ -322,19 +322,19 @@ final class NotificationTypeStaffModel
 
     /**
      * (Optional) Search persons (staff) to add into notification_type_staff
-     * - ดึงจากตาราง person (is_active = 1)
+     * - ดึงจากตาราง person JOIN user (is_active = 1 AND user_role_id IN (2, 3))
      * - ค้นหาจาก display_name
      *
      * @return array<int, array<string, mixed>>
      */
-    public function searchUsers(string $q = '', int $page = 1, int $limit = 20): array
+    public function searchUsers(string $q = '', int $page = 1, int $limit = 500): array
     {
         $page = max(1, $page);
-        $limit = max(1, min(200, $limit));
+        $limit = max(1, min(500, $limit));
         $offset = ($page - 1) * $limit;
         $q = trim($q);
 
-        $where = "WHERE p.is_active = 1";
+        $where = "WHERE p.is_active = 1 AND u.user_role_id IN (2, 3)";
         if ($q !== '') {
             $where .= " AND (p.display_name LIKE :q1 OR p.first_name_th LIKE :q2 OR p.last_name_th LIKE :q3)";
         }
@@ -345,8 +345,11 @@ final class NotificationTypeStaffModel
                 p.display_name AS name,
                 p.person_id,
                 p.display_name,
-                p.is_active
+                p.is_active,
+                u.user_id,
+                u.user_role_id
             FROM person p
+            INNER JOIN user u ON u.person_id = p.person_id
             $where
             ORDER BY p.display_name ASC
             LIMIT :limit OFFSET :offset

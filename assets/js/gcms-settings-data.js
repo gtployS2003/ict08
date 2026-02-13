@@ -3124,83 +3124,83 @@
    Notification Type Staff UI
 ========================= */
 
-const notificationTypeStaffEls = {
-  section: document.querySelector("#section-notification-type-staff"),
-  tbody: document.querySelector("#notification-type-staff-tbody"),
+  const notificationTypeStaffEls = {
+    section: document.querySelector("#section-notification-type-staff"),
+    tbody: document.querySelector("#notification-type-staff-tbody"),
 
-  search: document.querySelector("#notification-type-staff-search"),
-  filterType: document.querySelector("#notification-type-staff-filter-type"),
-  limit: document.querySelector("#notification-type-staff-limit"),
-  refresh: document.querySelector("#notification-type-staff-refresh"),
-  pagination: document.querySelector("#notification-type-staff-pagination"),
-  total: document.querySelector("#notification-type-staff-total"),
+    search: document.querySelector("#notification-type-staff-search"),
+    filterType: document.querySelector("#notification-type-staff-filter-type"),
+    limit: document.querySelector("#notification-type-staff-limit"),
+    refresh: document.querySelector("#notification-type-staff-refresh"),
+    pagination: document.querySelector("#notification-type-staff-pagination"),
+    total: document.querySelector("#notification-type-staff-total"),
 
-  btnAdd: document.querySelector("#btn-add-notification-type-staff"),
+    btnAdd: document.querySelector("#btn-add-notification-type-staff"),
 
-  modal: document.querySelector("#notification-type-staff"),
-  form: document.querySelector("#notification-type-staff-form"),
-  modalTitle: document.querySelector("#notification-type-staff-title"),
-  formError: document.querySelector("#notification-type-staff-form-error"),
+    modal: document.querySelector("#notification-type-staff"),
+    form: document.querySelector("#notification-type-staff-form"),
+    modalTitle: document.querySelector("#notification-type-staff-title"),
+    formError: document.querySelector("#notification-type-staff-form-error"),
 
-  inputId: document.querySelector("#notification-type-staff-id"),
-  selectType: document.querySelector("#notification-type-staff-type"),
-  selectPerson: document.querySelector("#notification-type-staff-person"),
+    inputId: document.querySelector("#notification-type-staff-id"),
+    selectType: document.querySelector("#notification-type-staff-type"),
+    selectPerson: document.querySelector("#notification-type-staff-person"),
 
-  toggleEnabled: document.querySelector("#nts-enabled"),
-  toggleText: document.querySelector("#nts-enabled-text"),
-};
+    toggleEnabled: document.querySelector("#nts-enabled"),
+    toggleText: document.querySelector("#nts-enabled-text"),
+  };
 
-const notificationTypeStaffState = {
-  page: 1,
-  limit: 50,
-  q: "",
-  notification_type_id: 0,
-  total: 0,
-  totalPages: 1,
-  loading: false,
-  refsLoaded: false,
-};
+  const notificationTypeStaffState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    notification_type_id: 0,
+    total: 0,
+    totalPages: 1,
+    loading: false,
+    refsLoaded: false,
+  };
 
-function refreshNotificationTypeStaffEls() {
-  notificationTypeStaffEls.section = document.querySelector("#section-notification-type-staff");
-  notificationTypeStaffEls.tbody = document.querySelector("#notification-type-staff-tbody");
+  function refreshNotificationTypeStaffEls() {
+    notificationTypeStaffEls.section = document.querySelector("#section-notification-type-staff");
+    notificationTypeStaffEls.tbody = document.querySelector("#notification-type-staff-tbody");
 
-  notificationTypeStaffEls.search = document.querySelector("#notification-type-staff-search");
-  notificationTypeStaffEls.filterType = document.querySelector("#notification-type-staff-filter-type");
-  notificationTypeStaffEls.limit = document.querySelector("#notification-type-staff-limit");
-  notificationTypeStaffEls.refresh = document.querySelector("#notification-type-staff-refresh");
-  notificationTypeStaffEls.pagination = document.querySelector("#notification-type-staff-pagination");
-  notificationTypeStaffEls.total = document.querySelector("#notification-type-staff-total");
+    notificationTypeStaffEls.search = document.querySelector("#notification-type-staff-search");
+    notificationTypeStaffEls.filterType = document.querySelector("#notification-type-staff-filter-type");
+    notificationTypeStaffEls.limit = document.querySelector("#notification-type-staff-limit");
+    notificationTypeStaffEls.refresh = document.querySelector("#notification-type-staff-refresh");
+    notificationTypeStaffEls.pagination = document.querySelector("#notification-type-staff-pagination");
+    notificationTypeStaffEls.total = document.querySelector("#notification-type-staff-total");
 
-  notificationTypeStaffEls.btnAdd = document.querySelector("#btn-add-notification-type-staff");
+    notificationTypeStaffEls.btnAdd = document.querySelector("#btn-add-notification-type-staff");
 
-  notificationTypeStaffEls.modal = document.querySelector("#notification-type-staff");
-  notificationTypeStaffEls.form = document.querySelector("#notification-type-staff-form");
-  notificationTypeStaffEls.modalTitle = document.querySelector("#notification-type-staff-title");
-  notificationTypeStaffEls.formError = document.querySelector("#notification-type-staff-form-error");
+    notificationTypeStaffEls.modal = document.querySelector("#notification-type-staff");
+    notificationTypeStaffEls.form = document.querySelector("#notification-type-staff-form");
+    notificationTypeStaffEls.modalTitle = document.querySelector("#notification-type-staff-title");
+    notificationTypeStaffEls.formError = document.querySelector("#notification-type-staff-form-error");
 
-  notificationTypeStaffEls.inputId = document.querySelector("#notification-type-staff-id");
-  notificationTypeStaffEls.selectType = document.querySelector("#notification-type-staff-type");
-  notificationTypeStaffEls.selectPerson = document.querySelector("#notification-type-staff-person");
+    notificationTypeStaffEls.inputId = document.querySelector("#notification-type-staff-id");
+    notificationTypeStaffEls.selectType = document.querySelector("#notification-type-staff-type");
+    notificationTypeStaffEls.selectPerson = document.querySelector("#notification-type-staff-person");
 
-  notificationTypeStaffEls.toggleEnabled = document.querySelector("#nts-enabled");
-  notificationTypeStaffEls.toggleText = document.querySelector("#nts-enabled-text");
-}
-
-function renderNotificationTypeStaffRows(items = []) {
-  if (!notificationTypeStaffEls.tbody) return;
-
-  if (!items.length) {
-    notificationTypeStaffEls.tbody.innerHTML = `<tr><td colspan="4" class="muted">ไม่พบข้อมูล</td></tr>`;
-    return;
+    notificationTypeStaffEls.toggleEnabled = document.querySelector("#nts-enabled");
+    notificationTypeStaffEls.toggleText = document.querySelector("#nts-enabled-text");
   }
 
-  notificationTypeStaffEls.tbody.innerHTML = items.map((row) => {
-    const id = row.id ?? row.notification_type_staff_id ?? "";
-    const typeName = row.notification_type_name ?? "-";
-    const personName = row.person_name ?? "-";
+  function renderNotificationTypeStaffRows(items = []) {
+    if (!notificationTypeStaffEls.tbody) return;
 
-    return `
+    if (!items.length) {
+      notificationTypeStaffEls.tbody.innerHTML = `<tr><td colspan="4" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    notificationTypeStaffEls.tbody.innerHTML = items.map((row) => {
+      const id = row.id ?? row.notification_type_staff_id ?? "";
+      const typeName = row.notification_type_name ?? "-";
+      const personName = row.person_name ?? "-";
+
+      return `
       <tr data-id="${escapeHtml(String(id))}">
         <td>${escapeHtml(String(id))}</td>
         <td>${escapeHtml(String(typeName))}</td>
@@ -3220,28 +3220,28 @@ function renderNotificationTypeStaffRows(items = []) {
         </td>
       </tr>
     `;
-  }).join("");
-}
-
-function renderNotificationTypeStaffPagination() {
-  if (!notificationTypeStaffEls.pagination) return;
-
-  const { page, totalPages } = notificationTypeStaffState;
-  if (totalPages <= 1) {
-    notificationTypeStaffEls.pagination.innerHTML = "";
-    return;
+    }).join("");
   }
 
-  const pages = [];
-  const push = (p) => pages.push(p);
+  function renderNotificationTypeStaffPagination() {
+    if (!notificationTypeStaffEls.pagination) return;
 
-  push(1);
-  if (page - 2 > 2) push("…");
-  for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
-  if (page + 2 < totalPages - 1) push("…");
-  if (totalPages > 1) push(totalPages);
+    const { page, totalPages } = notificationTypeStaffState;
+    if (totalPages <= 1) {
+      notificationTypeStaffEls.pagination.innerHTML = "";
+      return;
+    }
 
-  notificationTypeStaffEls.pagination.innerHTML = `
+    const pages = [];
+    const push = (p) => pages.push(p);
+
+    push(1);
+    if (page - 2 > 2) push("…");
+    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
+    if (page + 2 < totalPages - 1) push("…");
+    if (totalPages > 1) push(totalPages);
+
+    notificationTypeStaffEls.pagination.innerHTML = `
     <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
     ${pages.map((p) => {
       if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
@@ -3250,160 +3250,151 @@ function renderNotificationTypeStaffPagination() {
     }).join("")}
     <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
   `;
-}
-
-function renderNotificationTypeStaffTotal() {
-  if (!notificationTypeStaffEls.total) return;
-  notificationTypeStaffEls.total.textContent = `ทั้งหมด ${notificationTypeStaffState.total} รายการ`;
-}
-
-async function loadNotificationRef({ force = false } = {}) {
-  refreshNotificationTypeStaffEls();
-
-  const filterEl = notificationTypeStaffEls.filterType; // บนตาราง
-  const modalEl = notificationTypeStaffEls.selectType;  // ใน modal
-
-  if (!filterEl && !modalEl) return;
-  if (!force && notificationTypeStaffState.refsLoaded && filterEl && modalEl) return;
-
-  if (filterEl) filterEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
-  if (modalEl) modalEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
-
-  try {
-    const api = window.NotificationTypesAPI || window.notificationTypesApi;
-    if (!api?.list) throw new Error("NotificationTypesAPI.list not found");
-
-    const res = await api.list({ q: "", page: 1, limit: 500 });
-
-    const items =
-      Array.isArray(res?.data) ? res.data :
-        Array.isArray(res?.data?.items) ? res.data.items :
-          Array.isArray(res?.items) ? res.items :
-            [];
-
-    const optAll = [`<option value="">ทุกประเภทการแจ้งเตือน</option>`]
-      .concat(items.map((it) => {
-        const id = it.notification_type_id ?? it.id ?? "";
-        const label = it.notification_type ?? "-";
-        return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
-      }))
-      .join("");
-
-    const optPick = [`<option value="">เลือกประเภทการแจ้งเตือน</option>`]
-      .concat(items.map((it) => {
-        const id = it.notification_type_id ?? it.id ?? "";
-        const label = it.notification_type ?? "-";
-        return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
-      }))
-      .join("");
-
-    if (filterEl) filterEl.innerHTML = optAll;
-    if (modalEl) modalEl.innerHTML = optPick;
-
-    notificationTypeStaffState.refsLoaded = true;
-  } catch (e) {
-    console.warn("load notification type refs for staff failed:", e);
-    if (filterEl) filterEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
-    if (modalEl) modalEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
   }
-}
 
-/**
- * Alias for loadNotificationRef (for compatibility with callers)
- * Also loads user/person dropdown
- */
-async function loadNotificationTypeStaffRefs() {
-  // First load notification types
-  await loadNotificationRef({ force: false });
-
-  // Then load persons (users) for the modal
-  refreshNotificationTypeStaffEls();
-  const personSelectEl = notificationTypeStaffEls.selectPerson;
-
-  if (!personSelectEl) return;
-
-  personSelectEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
-
-  try {
-    const api = window.NotificationTypeStaffAPI || window.notificationTypeStaffApi;
-    if (!api?.searchUsers) throw new Error("NotificationTypeStaffAPI.searchUsers not found");
-
-    const res = await api.searchUsers({ q: "", page: 1, limit: 500 });
-
-    const items =
-      Array.isArray(res?.data) ? res.data :
-        Array.isArray(res?.data?.items) ? res.data.items :
-          Array.isArray(res?.items) ? res.items :
-            [];
-
-    const optPick = [`<option value="">เลือกเจ้าหน้าที่</option>`]
-      .concat(items.map((it) => {
-        const id = it.user_id ?? it.id ?? "";
-        const name = it.name ?? it.fullname ?? it.username ?? "-";
-        return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(name))}</option>`;
-      }))
-      .join("");
-
-    personSelectEl.innerHTML = optPick;
-  } catch (e) {
-    console.warn("load user/person list for staff notification failed:", e);
-    personSelectEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
+  function renderNotificationTypeStaffTotal() {
+    if (!notificationTypeStaffEls.total) return;
+    notificationTypeStaffEls.total.textContent = `ทั้งหมด ${notificationTypeStaffState.total} รายการ`;
   }
-}
 
-/**
- * Load notification type staff data with pagination
- */
-async function loadNotificationTypeStaff() {
-  refreshNotificationTypeStaffEls();
-  if (notificationTypeStaffState.loading) return;
-  notificationTypeStaffState.loading = true;
+  async function loadNotificationRef({ force = false } = {}) {
+    refreshNotificationTypeStaffEls();
 
-  try {
-    if (!notificationTypeStaffEls.tbody) {
-      console.warn("[notification-type-staff] tbody not found");
-      return;
+    const filterEl = notificationTypeStaffEls.filterType; // บนตาราง
+    const modalEl = notificationTypeStaffEls.selectType;  // ใน modal
+
+    if (!filterEl && !modalEl) return;
+    if (!force && notificationTypeStaffState.refsLoaded && filterEl && modalEl) return;
+
+    if (filterEl) filterEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
+    if (modalEl) modalEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
+
+    try {
+      const api = window.NotificationTypesAPI || window.notificationTypesApi;
+      if (!api?.list) throw new Error("NotificationTypesAPI.list not found");
+
+      const res = await api.list({ q: "", page: 1, limit: 500 });
+
+      const items =
+        Array.isArray(res?.data) ? res.data :
+          Array.isArray(res?.data?.items) ? res.data.items :
+            Array.isArray(res?.items) ? res.items :
+              [];
+
+      const optAll = [`<option value="">ทุกประเภทการแจ้งเตือน</option>`]
+        .concat(items.map((it) => {
+          const id = it.notification_type_id ?? it.id ?? "";
+          const label = it.notification_type ?? "-";
+          return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
+        }))
+        .join("");
+
+      const optPick = [`<option value="">เลือกประเภทการแจ้งเตือน</option>`]
+        .concat(items.map((it) => {
+          const id = it.notification_type_id ?? it.id ?? "";
+          const label = it.notification_type ?? "-";
+          return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
+        }))
+        .join("");
+
+      if (filterEl) filterEl.innerHTML = optAll;
+      if (modalEl) modalEl.innerHTML = optPick;
+
+      notificationTypeStaffState.refsLoaded = true;
+    } catch (e) {
+      console.warn("load notification type refs for staff failed:", e);
+      if (filterEl) filterEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
+      if (modalEl) modalEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
     }
+  }
 
-    notificationTypeStaffEls.tbody.innerHTML =
-      `<tr><td colspan="4" class="muted">กำลังโหลด...</td></tr>`;
+  /**
+   * Alias for loadNotificationRef (for compatibility with callers)
+   * Also loads user/person dropdown
+   */
+  async function loadNotificationTypeStaffRefs() {
+    // First load notification types
+    await loadNotificationRef({ force: false });
 
-    const api = window.NotificationTypeStaffAPI || window.notificationTypeStaffApi;
-    if (!api?.list) throw new Error("NotificationTypeStaffAPI.list not found");
+    // Then load persons (users) for the modal
+    refreshNotificationTypeStaffEls();
 
-    const res = await api.list({
-      notification_type_id: notificationTypeStaffState.notification_type_id || 0,
-      q: notificationTypeStaffState.q,
-      page: notificationTypeStaffState.page,
-      limit: notificationTypeStaffState.limit,
-    });
+    try {
+      const api = window.NotificationTypeStaffAPI || window.notificationTypeStaffApi;
+      if (!api?.searchUsers) throw new Error("NotificationTypeStaffAPI.searchUsers not found");
 
-    const items =
-      Array.isArray(res?.data) ? res.data :
-        Array.isArray(res?.data?.items) ? res.data.items :
-          Array.isArray(res?.items) ? res.items :
-            [];
+      const res = await api.searchUsers({ q: "", page: 1, limit: 500 });
 
-    const pg = res?.pagination ?? res?.data?.pagination ?? {};
-    notificationTypeStaffState.total = Number(pg.total ?? res?.total ?? items.length ?? 0);
-    notificationTypeStaffState.totalPages =
-      Number(pg.total_pages ?? pg.totalPages ?? res?.total_pages ?? 0) ||
-      Math.max(1, Math.ceil(notificationTypeStaffState.total / Math.max(1, notificationTypeStaffState.limit)));
+      const items =
+        Array.isArray(res?.data) ? res.data :
+          Array.isArray(res?.data?.items) ? res.data.items :
+            Array.isArray(res?.items) ? res.items :
+              [];
 
-    renderNotificationTypeStaffRows(items);
-    renderNotificationTypeStaffPagination();
-    renderNotificationTypeStaffTotal();
+      // Initialize checkbox multi-select with loaded users
+      window.ntsMultiSelectInstance = initNtsMultiSelectCheckbox(items);
+    } catch (e) {
+      console.warn("load user/person list for staff notification failed:", e);
+      const menu = document.getElementById("nts-person-menu");
+      if (menu) {
+        menu.innerHTML = `<div class="muted" style="padding: 10px;">โหลดไม่สำเร็จ</div>`;
+      }
+    }
+  }
 
-  } catch (err) {
-    console.error(err);
-    if (notificationTypeStaffEls.tbody) {
+  /**
+   * Load notification type staff data with pagination
+   */
+  async function loadNotificationTypeStaff() {
+    refreshNotificationTypeStaffEls();
+    if (notificationTypeStaffState.loading) return;
+    notificationTypeStaffState.loading = true;
+
+    try {
+      if (!notificationTypeStaffEls.tbody) {
+        console.warn("[notification-type-staff] tbody not found");
+        return;
+      }
+
       notificationTypeStaffEls.tbody.innerHTML =
-        `<tr><td colspan="4" class="muted">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</td></tr>`;
+        `<tr><td colspan="4" class="muted">กำลังโหลด...</td></tr>`;
+
+      const api = window.NotificationTypeStaffAPI || window.notificationTypeStaffApi;
+      if (!api?.list) throw new Error("NotificationTypeStaffAPI.list not found");
+
+      const res = await api.list({
+        notification_type_id: notificationTypeStaffState.notification_type_id || 0,
+        q: notificationTypeStaffState.q,
+        page: notificationTypeStaffState.page,
+        limit: notificationTypeStaffState.limit,
+      });
+
+      const items =
+        Array.isArray(res?.data) ? res.data :
+          Array.isArray(res?.data?.items) ? res.data.items :
+            Array.isArray(res?.items) ? res.items :
+              [];
+
+      const pg = res?.pagination ?? res?.data?.pagination ?? {};
+      notificationTypeStaffState.total = Number(pg.total ?? res?.total ?? items.length ?? 0);
+      notificationTypeStaffState.totalPages =
+        Number(pg.total_pages ?? pg.totalPages ?? res?.total_pages ?? 0) ||
+        Math.max(1, Math.ceil(notificationTypeStaffState.total / Math.max(1, notificationTypeStaffState.limit)));
+
+      renderNotificationTypeStaffRows(items);
+      renderNotificationTypeStaffPagination();
+      renderNotificationTypeStaffTotal();
+
+    } catch (err) {
+      console.error(err);
+      if (notificationTypeStaffEls.tbody) {
+        notificationTypeStaffEls.tbody.innerHTML =
+          `<tr><td colspan="4" class="muted">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</td></tr>`;
+      }
+    } finally {
+      notificationTypeStaffState.loading = false;
     }
-  } finally {
-    notificationTypeStaffState.loading = false;
   }
-}
 
   /* =========================
 
@@ -3773,30 +3764,56 @@ async function loadNotificationTypeStaff() {
     }
 
     const isEdit = mode === "edit";
-    if (notificationTypeStaffEls.modalTitle) notificationTypeStaffEls.modalTitle.textContent = isEdit ? "แก้ไขการตั้งค่าการแจ้งเตือนสำหรับพนักงาน" : "เพิ่มการตั้งค่าการแจ้งเตือนสำหรับพนักงาน";
+    if (notificationTypeStaffEls.modalTitle)
+      notificationTypeStaffEls.modalTitle.textContent = isEdit
+        ? "แก้ไขการตั้งค่าการแจ้งเตือนสำหรับพนักงาน"
+        : "เพิ่มการตั้งค่าการแจ้งเตือนสำหรับพนักงาน";
 
-    if (notificationTypeStaffEls.inputId) notificationTypeStaffEls.inputId.value = isEdit ? String(row?.id ?? row?.notification_type_staff_id ?? "") : "";
+    if (notificationTypeStaffEls.inputId)
+      notificationTypeStaffEls.inputId.value = isEdit
+        ? String(row?.id ?? row?.notification_type_staff_id ?? "")
+        : "";
 
-    // โหลด refs ก่อนค่อย set ค่า
-    loadNotificationTypeStaffRefs().then(() => {
-      if (notificationTypeStaffEls.selectType) notificationTypeStaffEls.selectType.value = isEdit ? String(row?.notification_type_id ?? "") : "";
-      if (notificationTypeStaffEls.selectPerson) notificationTypeStaffEls.selectPerson.value = isEdit ? String(row?.person_id ?? "") : "";
-    });
-
-    if (notificationTypeStaffEls.toggleEnabled) {
-      const enabled = isEdit ? Boolean(row?.enabled) : true;
-      notificationTypeStaffEls.toggleEnabled.checked = enabled;
-      notificationTypeStaffEls.toggleText.textContent = enabled ? "ใช้งาน" : "ไม่ใช้งาน";
-    }
-
+    // ✅ เปิด modal ก่อน (optional แต่ช่วยให้ element มีอยู่แน่ ๆ)
     show(notificationTypeStaffEls.modal);
     document.body.style.overflow = "hidden";
+
+    // ✅ โหลด refs ก่อนค่อย set ค่า
+    loadNotificationTypeStaffRefs().then(async () => {
+      // 1) set notification type
+      if (notificationTypeStaffEls.selectType)
+        notificationTypeStaffEls.selectType.value = isEdit ? String(row?.notification_type_id ?? "") : "";
+
+      // 2) ใช้ instance ที่สร้างไว้ใน loadNotificationTypeStaffRefs
+      const multiSelectInstance = window.ntsMultiSelectInstance;
+
+      // 3) set selected users (รองรับหลายคน)
+      // รองรับ row.user_ids เป็น array หรือ row.user_id เดี่ยว
+      const ids =
+        Array.isArray(row?.user_ids) ? row.user_ids :
+          Array.isArray(row?.user_id) ? row.user_id :
+            (row?.user_id ? [row.user_id] : []);
+
+      multiSelectInstance?.setSelectedValues(ids.map(String));
+    });
+
+    // toggle
+    if (notificationTypeStaffEls.toggleEnabled) {
+      const enabled = isEdit ? Boolean(row?.is_enabled || row?.enabled) : true;
+      notificationTypeStaffEls.toggleEnabled.checked = enabled;
+      if (notificationTypeStaffEls.toggleText)
+        notificationTypeStaffEls.toggleText.textContent = enabled ? "เปิดการใช้งาน" : "ปิดการใช้งาน";
+    }
   }
+
 
   function closeNotificationTypeStaffModal() {
     if (!notificationTypeStaffEls.modal) return;
     hide(notificationTypeStaffEls.modal);
     document.body.style.overflow = "";
+    
+    // Clear checkbox selection when closing modal
+    window.ntsMultiSelectInstance?.clearSelection();
   }
 
   // ปิด modal เมื่อคลิกที่ overlay 
@@ -4510,7 +4527,7 @@ async function loadNotificationTypeStaff() {
     loadNotificationTypes();
   });
 
-  notificationTypeStaffEls.pagination?.addEventListener("click", (e) => { 
+  notificationTypeStaffEls.pagination?.addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-page]");
     if (!btn || btn.disabled) return;
 
@@ -5040,7 +5057,7 @@ async function loadNotificationTypeStaff() {
       try {
         const api = window.NotificationTypeStaffAPI || window.notificationTypeStaffApi;
         if (!api?.remove) throw new Error("NotificationTypeStaffAPI.remove not found");
-        
+
         await api.remove(Number(id));
 
         await loadNotificationTypeStaff();
@@ -5549,12 +5566,11 @@ async function loadNotificationTypeStaff() {
 
     const id = (notificationTypeStaffEls.inputId?.value || "").trim();
     const notification_type_id = (notificationTypeStaffEls.selectType?.value || "").trim();
-    const selectEl = notificationTypeStaffEls.selectPerson;
     const is_enabled = notificationTypeStaffEls.toggleEnabled?.checked ? 1 : 0;
 
-    // Get selected user IDs from multiple select
-    const selectedOptions = Array.from(selectEl?.options || []).filter(opt => opt.selected && opt.value);
-    const user_ids = selectedOptions.map(opt => opt.value);
+    // Get selected user IDs from checkbox multi-select
+    const multiSelectInstance = window.ntsMultiSelectInstance;
+    const user_ids = multiSelectInstance?.getSelectedValues?.() || [];
 
     if (!notification_type_id || user_ids.length === 0) {
       if (notificationTypeStaffEls.formError) {
@@ -5739,16 +5755,129 @@ async function loadNotificationTypeStaff() {
   console.log("gcms-settings-data.js loaded");
 })();
 
-function syncNtsToggle(){
-  const cb  = document.getElementById("nts-enabled");
+function syncNtsToggle() {
+  const cb = document.getElementById("nts-enabled");
   const txt = document.getElementById("nts-enabled-text");
-  if(!cb || !txt) return;
+  if (!cb || !txt) return;
 
   txt.textContent = cb.checked ? "เปิดการใช้งาน" : "ปิดการใช้งาน";
 }
 
 document.getElementById("nts-enabled")
-?.addEventListener("change", syncNtsToggle);
+  ?.addEventListener("change", syncNtsToggle);
 
 syncNtsToggle();
 
+function initNtsMultiSelectCheckbox(users = []) {
+  const root = document.getElementById("notification-type-staff-person-ui");
+  const btn = root?.querySelector(".ms-dd__btn");
+  const labelEl = document.getElementById("nts-person-label");
+  const menu = document.getElementById("nts-person-menu");
+  const sel = document.getElementById("notification-type-staff-person");
+
+  if (!root || !btn || !labelEl || !menu || !sel) return;
+
+  // เติม option ให้ hidden select (ใช้ user_id เพราะเป็นตัวที่บันทึกในDB)
+  sel.innerHTML = "";
+  users.forEach(u => {
+    const opt = document.createElement("option");
+    opt.value = String(u.user_id ?? u.id ?? "");
+    opt.textContent = u.display_name || u.full_name || u.name || `ID ${u.user_id ?? u.id}`;
+    sel.appendChild(opt);
+  });
+
+  function getSelectedValues() {
+    return Array.from(sel.selectedOptions).map(o => o.value);
+  }
+
+  function setSelectedValues(values) {
+    const set = new Set(values.map(String));
+    Array.from(sel.options).forEach(o => (o.selected = set.has(o.value)));
+    renderLabel();
+    renderMenu(); // sync check state
+  }
+
+  function clearSelection() {
+    setSelectedValues([]);
+  }
+
+  function openMenu() {
+    menu.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+  }
+  function closeMenu() {
+    menu.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+  }
+  function toggleMenu() {
+    if (menu.hidden) openMenu();
+    else closeMenu();
+  }
+
+  function renderLabel() {
+    const selected = getSelectedValues();
+    if (!selected.length) {
+      labelEl.textContent = "เลือกเจ้าหน้าที่";
+      return;
+    }
+    // แสดงสรุปแบบ "เลือกแล้ว X คน" (ไม่ยาวเกิน)
+    labelEl.textContent = `เลือกแล้ว ${selected.length} คน`;
+  }
+
+  function renderMenu() {
+    const selectedSet = new Set(getSelectedValues());
+    menu.innerHTML = "";
+
+    if (!sel.options.length) {
+      const empty = document.createElement("div");
+      empty.className = "muted";
+      empty.style.padding = "10px";
+      empty.textContent = "ไม่พบข้อมูล";
+      menu.appendChild(empty);
+      return;
+    }
+
+    Array.from(sel.options).forEach(opt => {
+      const row = document.createElement("label");
+      row.className = "ms-dd__item";
+      row.innerHTML = `
+        <input type="checkbox" value="${escapeHtml(opt.value)}" />
+        <span class="ms-dd__name">${escapeHtml(opt.textContent || "")}</span>
+      `;
+
+      const cb = row.querySelector("input");
+      cb.checked = selectedSet.has(opt.value);
+
+      // click checkbox -> sync to hidden select
+      cb.addEventListener("change", () => {
+        const current = new Set(getSelectedValues());
+        if (cb.checked) current.add(opt.value);
+        else current.delete(opt.value);
+
+        setSelectedValues([...current]);
+      });
+
+      menu.appendChild(row);
+    });
+  }
+
+  // events
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    toggleMenu();
+    renderMenu();
+  });
+
+  // close outside
+  document.addEventListener("click", (e) => {
+    if (!root.contains(e.target)) closeMenu();
+  });
+
+  // init
+  renderLabel();
+  renderMenu();
+  closeMenu();
+
+  // public API (เวลา edit record)
+  return { setSelectedValues, getSelectedValues, openMenu, closeMenu, renderMenu, renderLabel, clearSelection };
+}
