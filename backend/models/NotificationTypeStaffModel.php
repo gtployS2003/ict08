@@ -22,26 +22,35 @@ final class NotificationTypeStaffModel
 
     /**
      * List staff recipients by notification_type_id (with optional search)
+     * If $notificationTypeId = 0, list all records
      * @return array<int, array<string, mixed>>
      */
     public function listByType(int $notificationTypeId, string $q = '', int $page = 1, int $limit = 50): array
     {
-        $notificationTypeId = max(1, $notificationTypeId);
+        // ถ้า $notificationTypeId <= 0 = query ทั้งหมด
+        // ถ้า > 0 = filter ตาม type นั้น
         $page = max(1, $page);
         $limit = max(1, min(200, $limit));
         $offset = ($page - 1) * $limit;
 
         $q = trim($q);
-        $where = "WHERE nts.notification_type_id = :ntid";
+        
+        // Build WHERE clause
+        $where = "";
         $params = [
-            ':ntid' => $notificationTypeId,
             ':limit' => $limit,
             ':offset' => $offset,
         ];
 
+        if ($notificationTypeId > 0) {
+            $where = "WHERE nts.notification_type_id = :ntid";
+            $params[':ntid'] = $notificationTypeId;
+        }
+
         if ($q !== '') {
             // ตาราง user มี line_user_name เป็นหลัก (จาก schema ที่คุณส่ง)
-            $where .= " AND (u.line_user_name LIKE :q1 OR u.line_user_id LIKE :q2)";
+            $where .= ($where ? " AND " : "WHERE ");
+            $where .= "(u.line_user_name LIKE :q1 OR u.line_user_id LIKE :q2)";
             $like = '%' . $q . '%';
             $params[':q1'] = $like;
             $params[':q2'] = $like;
@@ -68,7 +77,9 @@ final class NotificationTypeStaffModel
         $stmt = $this->pdo->prepare($sql);
 
         // bind int เพื่อกันปัญหา LIMIT/OFFSET บนบาง env
-        $stmt->bindValue(':ntid', $params[':ntid'], PDO::PARAM_INT);
+        if ($notificationTypeId > 0) {
+            $stmt->bindValue(':ntid', $params[':ntid'], PDO::PARAM_INT);
+        }
         $stmt->bindValue(':limit', $params[':limit'], PDO::PARAM_INT);
         $stmt->bindValue(':offset', $params[':offset'], PDO::PARAM_INT);
 
@@ -83,14 +94,21 @@ final class NotificationTypeStaffModel
 
     public function countByType(int $notificationTypeId, string $q = ''): int
     {
-        $notificationTypeId = max(1, $notificationTypeId);
+        // ถ้า $notificationTypeId <= 0 = count ทั้งหมด
+        // ถ้า > 0 = count เฉพาะ type นั้น
         $q = trim($q);
 
-        $where = "WHERE nts.notification_type_id = :ntid";
-        $params = [':ntid' => $notificationTypeId];
+        $where = "";
+        $params = [];
+
+        if ($notificationTypeId > 0) {
+            $where = "WHERE nts.notification_type_id = :ntid";
+            $params[':ntid'] = $notificationTypeId;
+        }
 
         if ($q !== '') {
-            $where .= " AND (u.line_user_name LIKE :q1 OR u.line_user_id LIKE :q2)";
+            $where .= ($where ? " AND " : "WHERE ");
+            $where .= "(u.line_user_name LIKE :q1 OR u.line_user_id LIKE :q2)";
             $like = '%' . $q . '%';
             $params[':q1'] = $like;
             $params[':q2'] = $like;
@@ -104,7 +122,9 @@ final class NotificationTypeStaffModel
         ";
 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':ntid', $params[':ntid'], PDO::PARAM_INT);
+        if ($notificationTypeId > 0) {
+            $stmt->bindValue(':ntid', $params[':ntid'], PDO::PARAM_INT);
+        }
 
         if ($q !== '') {
             $stmt->bindValue(':q1', $params[':q1'], PDO::PARAM_STR);

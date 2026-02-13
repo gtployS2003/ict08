@@ -28,17 +28,19 @@ final class NotificationTypeStaffController
             $page = (int)($_GET['page'] ?? 1);
             $limit = (int)($_GET['limit'] ?? 50);
 
-            if ($notificationTypeId <= 0) {
-                json_response([
-                    'error' => true,
-                    'message' => 'notification_type_id is required',
-                ], 400);
-                return;
+            // ถ้าไม่มี notification_type_id ให้ query ทั้งหมด (ไม่ filter)
+            if ($notificationTypeId > 0) {
+                $model = new NotificationTypeStaffModel($this->pdo);
+                $items = $model->listByType($notificationTypeId, $q, $page, $limit);
+                $total = $model->countByType($notificationTypeId, $q);
+            } else {
+                // Query ทั้งหมดถ้าไม่มี filter
+                $model = new NotificationTypeStaffModel($this->pdo);
+                // ใช้ listByType แต่ให้ 0 = query ทั้งหมด
+                // หรือเขียน query ใหม่ให้ listAll
+                $items = $model->listByType(0, $q, $page, $limit) ?: [];
+                $total = $model->countByType(0, $q) ?: 0;
             }
-
-            $model = new NotificationTypeStaffModel($this->pdo);
-            $items = $model->listByType($notificationTypeId, $q, $page, $limit);
-            $total = $model->countByType($notificationTypeId, $q);
 
             json_response([
                 'error' => false,
