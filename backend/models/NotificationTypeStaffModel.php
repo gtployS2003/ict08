@@ -71,7 +71,7 @@ final class NotificationTypeStaffModel
             INNER JOIN notification_type nt ON nt.notification_type_id = nts.notification_type_id
             INNER JOIN person p ON p.person_user_id = nts.user_id
             $where
-            ORDER BY nts.id DESC
+            ORDER BY nts.id ASC
             LIMIT :limit OFFSET :offset
         ";
 

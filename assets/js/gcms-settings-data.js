@@ -3199,18 +3199,28 @@
       const id = row.id ?? row.notification_type_staff_id ?? "";
       const typeName = row.notification_type ?? "-";
       const personName = row.display_name ?? "-";
+      const isEnabled = Number(row.is_enabled) === 1;
+      const statusText = row.is_enabled ? "เปิดการใช้งาน" : "ปิดการใช้งาน";
+      const statusClass = isEnabled ? "status-badge--on" : "status-badge--off";
+       
 
       return `
       <tr data-id="${escapeHtml(String(id))}">
         <td>${escapeHtml(String(id))}</td>
         <td>${escapeHtml(String(typeName))}</td>
         <td>${escapeHtml(String(personName))}</td>
+        <td class="status-cell">
+          <span class="status-badge ${statusClass}">
+            ${escapeHtml(statusText)}
+          </span>
+        </td>
         <td>
           <button class="btn btn-ghost btn-sm" type="button"
             data-action="edit"
             data-id="${escapeHtml(String(id))}"
             data-type="${escapeHtml(String(row.notification_type_id ?? ""))}"
-            data-person="${escapeHtml(String(row.user_id ?? ""))}"
+            data-user-id="${escapeHtml(String(row.user_id ?? ""))}"
+            data-person-name="${escapeHtml(String(row.display_name ?? "-"))}"
             data-enabled="${escapeHtml(String(row.is_enabled ? "1" : "0"))}"
           >แก้ไข</button>
           <button class="btn btn-danger btn-sm" type="button"
@@ -3791,7 +3801,9 @@
       if (selectPersonUi) hide(selectPersonUi);
       if (displayPersonDiv) {
         show(displayPersonDiv);
-        displayPersonName.textContent = row?.display_name || "-";
+        // Get person name from row object
+        const personName = row?.display_name || "-";
+        if (displayPersonName) displayPersonName.textContent = personName;
       }
     } else {
       // Create mode: show select, hide display
@@ -5057,15 +5069,17 @@
 
     if (action === "edit") {
       const type = btn.getAttribute("data-type") || "";
-      const person = btn.getAttribute("data-person") || "";
+      const userId = btn.getAttribute("data-user-id") || "";
+      const personName = btn.getAttribute("data-person-name") || "-";
       const enabled = btn.getAttribute("data-enabled") || "1";
       openNotificationTypeStaffModal({
         mode: "edit",
         row: {
           id,
           notification_type_id: type,
-          person_id: person,
-          enabled: enabled === "1",
+          user_id: userId,
+          display_name: personName,
+          is_enabled: enabled === "1",
         }
       });
       return;
