@@ -3197,8 +3197,8 @@
 
     notificationTypeStaffEls.tbody.innerHTML = items.map((row) => {
       const id = row.id ?? row.notification_type_staff_id ?? "";
-      const typeName = row.notification_type_name ?? "-";
-      const personName = row.person_name ?? "-";
+      const typeName = row.notification_type ?? "-";
+      const personName = row.display_name ?? "-";
 
       return `
       <tr data-id="${escapeHtml(String(id))}">
@@ -3210,8 +3210,8 @@
             data-action="edit"
             data-id="${escapeHtml(String(id))}"
             data-type="${escapeHtml(String(row.notification_type_id ?? ""))}"
-            data-person="${escapeHtml(String(row.person_id ?? ""))}"
-            data-enabled="${escapeHtml(String(row.enabled ? "1" : "0"))}"
+            data-person="${escapeHtml(String(row.user_id ?? ""))}"
+            data-enabled="${escapeHtml(String(row.is_enabled ? "1" : "0"))}"
           >แก้ไข</button>
           <button class="btn btn-danger btn-sm" type="button"
             data-action="delete"
@@ -3758,6 +3758,9 @@
   function openNotificationTypeStaffModal({ mode, row = null } = {}) {
     if (!notificationTypeStaffEls.modal) return;
 
+    // Store current row for edit mode
+    notificationTypeStaffEls.currentEditRow = row;
+
     if (notificationTypeStaffEls.formError) {
       notificationTypeStaffEls.formError.textContent = "";
       hide(notificationTypeStaffEls.formError);
@@ -3778,24 +3781,41 @@
     show(notificationTypeStaffEls.modal);
     document.body.style.overflow = "hidden";
 
+    // Mode selection: create = show checkbox, edit = show display only
+    const selectPersonUi = document.getElementById("notification-type-staff-person-ui");
+    const displayPersonDiv = document.getElementById("nts-person-display");
+    const displayPersonName = document.getElementById("nts-person-display-name");
+
+    if (isEdit) {
+      // Edit mode: show display only, hide select
+      if (selectPersonUi) hide(selectPersonUi);
+      if (displayPersonDiv) {
+        show(displayPersonDiv);
+        displayPersonName.textContent = row?.display_name || "-";
+      }
+    } else {
+      // Create mode: show select, hide display
+      if (selectPersonUi) show(selectPersonUi);
+      if (displayPersonDiv) hide(displayPersonDiv);
+    }
+
     // ✅ โหลด refs ก่อนค่อย set ค่า
-    loadNotificationTypeStaffRefs().then(async () => {
-      // 1) set notification type
-      if (notificationTypeStaffEls.selectType)
-        notificationTypeStaffEls.selectType.value = isEdit ? String(row?.notification_type_id ?? "") : "";
-
-      // 2) ใช้ instance ที่สร้างไว้ใน loadNotificationTypeStaffRefs
-      const multiSelectInstance = window.ntsMultiSelectInstance;
-
-      // 3) set selected users (รองรับหลายคน)
-      // รองรับ row.user_ids เป็น array หรือ row.user_id เดี่ยว
-      const ids =
-        Array.isArray(row?.user_ids) ? row.user_ids :
-          Array.isArray(row?.user_id) ? row.user_id :
-            (row?.user_id ? [row.user_id] : []);
-
-      multiSelectInstance?.setSelectedValues(ids.map(String));
-    });
+    if (!isEdit) {
+      // Only load checkbox list for create mode
+      loadNotificationTypeStaffRefs().then(async () => {
+        // 1) set notification type
+        if (notificationTypeStaffEls.selectType) {
+          notificationTypeStaffEls.selectType.value = "";
+          notificationTypeStaffEls.selectType.disabled = false; // ✅ enable for create
+        }
+      });
+    } else {
+      // For edit mode, just set the notification type (read-only)
+      if (notificationTypeStaffEls.selectType) {
+        notificationTypeStaffEls.selectType.value = String(row?.notification_type_id ?? "");
+        notificationTypeStaffEls.selectType.disabled = true;
+      }
+    }
 
     // toggle
     if (notificationTypeStaffEls.toggleEnabled) {
@@ -5568,13 +5588,24 @@
     const notification_type_id = (notificationTypeStaffEls.selectType?.value || "").trim();
     const is_enabled = notificationTypeStaffEls.toggleEnabled?.checked ? 1 : 0;
 
-    // Get selected user IDs from checkbox multi-select
-    const multiSelectInstance = window.ntsMultiSelectInstance;
-    const user_ids = multiSelectInstance?.getSelectedValues?.() || [];
+    const isEdit = Boolean(id);
 
-    if (!notification_type_id || user_ids.length === 0) {
+    // Get selected user IDs from checkbox multi-select (only for create mode)
+    const multiSelectInstance = window.ntsMultiSelectInstance;
+    const user_ids = isEdit ? [] : (multiSelectInstance?.getSelectedValues?.() || []);
+
+    // Validation: create mode needs type + users, edit mode needs type only
+    if (!notification_type_id) {
       if (notificationTypeStaffEls.formError) {
-        notificationTypeStaffEls.formError.textContent = "กรุณาเลือกประเภทการแจ้งเตือนและเจ้าหน้าที่อย่างน้อย 1 คน";
+        notificationTypeStaffEls.formError.textContent = "กรุณาเลือกประเภทการแจ้งเตือน";
+        show(notificationTypeStaffEls.formError);
+      }
+      return;
+    }
+
+    if (!isEdit && user_ids.length === 0) {
+      if (notificationTypeStaffEls.formError) {
+        notificationTypeStaffEls.formError.textContent = "กรุณาเลือกเจ้าหน้าที่อย่างน้อย 1 คน";
         show(notificationTypeStaffEls.formError);
       }
       return;
@@ -5586,13 +5617,25 @@
       const api = window.NotificationTypeStaffAPI || window.notificationTypeStaffApi;
       if (!api?.upsert) throw new Error("NotificationTypeStaffAPI.upsert not found");
 
-      // Save for each selected user
-      for (const user_id of user_ids) {
-        await api.upsert({
-          notification_type_id: Number(notification_type_id),
-          user_id: Number(user_id),
-          is_enabled: Number(is_enabled),
-        });
+      if (isEdit) {
+        // Edit mode: just update the is_enabled flag for the existing record
+        const row = notificationTypeStaffEls.currentEditRow;
+        if (row?.user_id) {
+          await api.upsert({
+            notification_type_id: Number(notification_type_id),
+            user_id: Number(row.user_id),
+            is_enabled: Number(is_enabled),
+          });
+        }
+      } else {
+        // Create mode: save for each selected user
+        for (const user_id of user_ids) {
+          await api.upsert({
+            notification_type_id: Number(notification_type_id),
+            user_id: Number(user_id),
+            is_enabled: Number(is_enabled),
+          });
+        }
       }
 
       closeNotificationTypeStaffModal();
@@ -5791,6 +5834,7 @@
     function openMenu() {
       menu.hidden = false;
       btn.setAttribute("aria-expanded", "true");
+      positionMenu(); // set position ให้ตรง button
     }
     function closeMenu() {
       menu.hidden = true;
@@ -5799,6 +5843,14 @@
     function toggleMenu() {
       if (menu.hidden) openMenu();
       else closeMenu();
+    }
+
+    function positionMenu() {
+      // Calculate button position
+      const btnRect = btn.getBoundingClientRect();
+      menu.style.left = btnRect.left + "px";
+      menu.style.top = (btnRect.bottom + 6) + "px";
+      menu.style.width = btnRect.width + "px";
     }
 
     function renderLabel() {
@@ -5842,6 +5894,7 @@
           else current.delete(opt.value);
 
           setSelectedValues([...current]);
+          renderLabel(); // ✅ explicitly call renderLabel after selection change
         });
 
         menu.appendChild(row);
@@ -5852,7 +5905,15 @@
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       toggleMenu();
+      if (!menu.hidden) {
+        setTimeout(() => positionMenu(), 0); // position after menu is shown
+      }
       renderMenu();
+    });
+
+    // reposition on window resize
+    window.addEventListener("resize", () => {
+      if (!menu.hidden) positionMenu();
     });
 
     // close outside

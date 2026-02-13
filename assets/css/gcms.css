@@ -719,6 +719,18 @@ select option {
   box-shadow: 0 0 0 4px rgba(83, 34, 116, 0.10);
 }
 
+.form-control-display {
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: #f5f5f5;
+  font-size: 14px;
+  color: #111;
+  display: flex;
+  align-items: center;
+}
+
 .form-error {
   margin-top: 12px;
   padding: 10px 12px;
@@ -1069,16 +1081,9 @@ select option {
   box-shadow: 0 0 0 4px rgba(83,34,116,0.10);
 }
 
-.ms-dd__caret{
-  opacity: .7;
-}
-
 .ms-dd__menu{
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 9999;
+  position: fixed;
+  z-index: 10001;
 
   background: #fff;
   border-radius: 12px;
@@ -1088,6 +1093,7 @@ select option {
   max-height: 400px;
   overflow: auto;
   padding: 8px;
+  min-width: 300px;
 }
 
 .ms-dd__item{

@@ -1739,7 +1739,13 @@
                     <div class="form-field full">
                         <label for="notification-type-staff-person-ui">เจ้าหน้าที่รับแจ้งเตือน</label>
 
-                        <div class="ms-dd" id="notification-type-staff-person-ui">
+                        <!-- Display mode (สำหรับแก้ไขเฉพาะสถานะ) -->
+                        <div id="nts-person-display" class="form-control-display" hidden>
+                            <span id="nts-person-display-name">-</span>
+                        </div>
+
+                        <!-- Select mode (สำหรับเพิ่มใหม่) -->
+                        <div class="ms-dd" id="notification-type-staff-person-ui" hidden>
                             <button type="button" class="ms-dd__btn" aria-haspopup="listbox" aria-expanded="false">
                                 <span id="nts-person-label">เลือกเจ้าหน้าที่</span>
                                 <span class="ms-dd__caret">▾</span>
@@ -1748,7 +1754,7 @@
                             <div class="ms-dd__menu" id="nts-person-menu" role="listbox" hidden></div>
                         </div>
 
-                        <select id="notification-type-staff-person" name="person_id[]" multiple required
+                        <select id="notification-type-staff-person" name="person_id[]" multiple
                             hidden></select>
                     </div>
 

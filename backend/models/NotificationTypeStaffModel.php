@@ -48,9 +48,9 @@ final class NotificationTypeStaffModel
         }
 
         if ($q !== '') {
-            // ตาราง user มี line_user_name เป็นหลัก (จาก schema ที่คุณส่ง)
+            // ค้นหาจาก display_name หรือ notification_type
             $where .= ($where ? " AND " : "WHERE ");
-            $where .= "(u.line_user_name LIKE :q1 OR u.line_user_id LIKE :q2)";
+            $where .= "(p.display_name LIKE :q1 OR nt.notification_type LIKE :q2)";
             $like = '%' . $q . '%';
             $params[':q1'] = $like;
             $params[':q2'] = $like;
@@ -64,11 +64,12 @@ final class NotificationTypeStaffModel
                 nts.is_enabled,
                 nts.created_at,
 
-                u.line_user_id,
-                u.line_user_name,
-                u.user_role_id
+                nt.notification_type,
+                p.display_name,
+                p.person_user_id
             FROM notification_type_staff nts
-            INNER JOIN user u ON u.user_id = nts.user_id
+            INNER JOIN notification_type nt ON nt.notification_type_id = nts.notification_type_id
+            INNER JOIN person p ON p.person_user_id = nts.user_id
             $where
             ORDER BY nts.id DESC
             LIMIT :limit OFFSET :offset
@@ -108,7 +109,7 @@ final class NotificationTypeStaffModel
 
         if ($q !== '') {
             $where .= ($where ? " AND " : "WHERE ");
-            $where .= "(u.line_user_name LIKE :q1 OR u.line_user_id LIKE :q2)";
+            $where .= "(p.display_name LIKE :q1 OR nt.notification_type LIKE :q2)";
             $like = '%' . $q . '%';
             $params[':q1'] = $like;
             $params[':q2'] = $like;
@@ -117,7 +118,8 @@ final class NotificationTypeStaffModel
         $sql = "
             SELECT COUNT(*) AS cnt
             FROM notification_type_staff nts
-            INNER JOIN user u ON u.user_id = nts.user_id
+            INNER JOIN notification_type nt ON nt.notification_type_id = nts.notification_type_id
+            INNER JOIN person p ON p.person_user_id = nts.user_id
             $where
         ";
 
