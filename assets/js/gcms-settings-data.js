@@ -5753,6 +5753,121 @@
   activateSection("default");
 
   console.log("gcms-settings-data.js loaded");
+
+  // ย้าย initNtsMultiSelectCheckbox เข้า IIFE เพื่อให้ access escapeHtml
+  window.initNtsMultiSelectCheckbox = function(users = []) {
+    const root = document.getElementById("notification-type-staff-person-ui");
+    const btn = root?.querySelector(".ms-dd__btn");
+    const labelEl = document.getElementById("nts-person-label");
+    const menu = document.getElementById("nts-person-menu");
+    const sel = document.getElementById("notification-type-staff-person");
+
+    if (!root || !btn || !labelEl || !menu || !sel) return;
+
+    // เติม option ให้ hidden select (ใช้ user_id เพราะเป็นตัวที่บันทึกในDB)
+    sel.innerHTML = "";
+    users.forEach(u => {
+      const opt = document.createElement("option");
+      opt.value = String(u.user_id ?? u.id ?? "");
+      opt.textContent = u.display_name || u.full_name || u.name || `ID ${u.user_id ?? u.id}`;
+      sel.appendChild(opt);
+    });
+
+    function getSelectedValues() {
+      return Array.from(sel.selectedOptions).map(o => o.value);
+    }
+
+    function setSelectedValues(values) {
+      const set = new Set(values.map(String));
+      Array.from(sel.options).forEach(o => (o.selected = set.has(o.value)));
+      renderLabel();
+      renderMenu(); // sync check state
+    }
+
+    function clearSelection() {
+      setSelectedValues([]);
+    }
+
+    function openMenu() {
+      menu.hidden = false;
+      btn.setAttribute("aria-expanded", "true");
+    }
+    function closeMenu() {
+      menu.hidden = true;
+      btn.setAttribute("aria-expanded", "false");
+    }
+    function toggleMenu() {
+      if (menu.hidden) openMenu();
+      else closeMenu();
+    }
+
+    function renderLabel() {
+      const selected = getSelectedValues();
+      if (!selected.length) {
+        labelEl.textContent = "เลือกเจ้าหน้าที่";
+        return;
+      }
+      // แสดงสรุปแบบ "เลือกแล้ว X คน" (ไม่ยาวเกิน)
+      labelEl.textContent = `เลือกแล้ว ${selected.length} คน`;
+    }
+
+    function renderMenu() {
+      const selectedSet = new Set(getSelectedValues());
+      menu.innerHTML = "";
+
+      if (!sel.options.length) {
+        const empty = document.createElement("div");
+        empty.className = "muted";
+        empty.style.padding = "10px";
+        empty.textContent = "ไม่พบข้อมูล";
+        menu.appendChild(empty);
+        return;
+      }
+
+      Array.from(sel.options).forEach(opt => {
+        const row = document.createElement("label");
+        row.className = "ms-dd__item";
+        row.innerHTML = `
+          <input type="checkbox" value="${escapeHtml(opt.value)}" />
+          <span class="ms-dd__name">${escapeHtml(opt.textContent || "")}</span>
+        `;
+
+        const cb = row.querySelector("input");
+        cb.checked = selectedSet.has(opt.value);
+
+        // click checkbox -> sync to hidden select
+        cb.addEventListener("change", () => {
+          const current = new Set(getSelectedValues());
+          if (cb.checked) current.add(opt.value);
+          else current.delete(opt.value);
+
+          setSelectedValues([...current]);
+        });
+
+        menu.appendChild(row);
+      });
+    }
+
+    // events
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      toggleMenu();
+      renderMenu();
+    });
+
+    // close outside
+    document.addEventListener("click", (e) => {
+      if (!root.contains(e.target)) closeMenu();
+    });
+
+    // init
+    renderLabel();
+    renderMenu();
+    closeMenu();
+
+    // public API (เวลา edit record)
+    return { setSelectedValues, getSelectedValues, openMenu, closeMenu, renderMenu, renderLabel, clearSelection };
+  };
 })();
 
 function syncNtsToggle() {
@@ -5767,117 +5882,3 @@ document.getElementById("nts-enabled")
   ?.addEventListener("change", syncNtsToggle);
 
 syncNtsToggle();
-
-function initNtsMultiSelectCheckbox(users = []) {
-  const root = document.getElementById("notification-type-staff-person-ui");
-  const btn = root?.querySelector(".ms-dd__btn");
-  const labelEl = document.getElementById("nts-person-label");
-  const menu = document.getElementById("nts-person-menu");
-  const sel = document.getElementById("notification-type-staff-person");
-
-  if (!root || !btn || !labelEl || !menu || !sel) return;
-
-  // เติม option ให้ hidden select (ใช้ user_id เพราะเป็นตัวที่บันทึกในDB)
-  sel.innerHTML = "";
-  users.forEach(u => {
-    const opt = document.createElement("option");
-    opt.value = String(u.user_id ?? u.id ?? "");
-    opt.textContent = u.display_name || u.full_name || u.name || `ID ${u.user_id ?? u.id}`;
-    sel.appendChild(opt);
-  });
-
-  function getSelectedValues() {
-    return Array.from(sel.selectedOptions).map(o => o.value);
-  }
-
-  function setSelectedValues(values) {
-    const set = new Set(values.map(String));
-    Array.from(sel.options).forEach(o => (o.selected = set.has(o.value)));
-    renderLabel();
-    renderMenu(); // sync check state
-  }
-
-  function clearSelection() {
-    setSelectedValues([]);
-  }
-
-  function openMenu() {
-    menu.hidden = false;
-    btn.setAttribute("aria-expanded", "true");
-  }
-  function closeMenu() {
-    menu.hidden = true;
-    btn.setAttribute("aria-expanded", "false");
-  }
-  function toggleMenu() {
-    if (menu.hidden) openMenu();
-    else closeMenu();
-  }
-
-  function renderLabel() {
-    const selected = getSelectedValues();
-    if (!selected.length) {
-      labelEl.textContent = "เลือกเจ้าหน้าที่";
-      return;
-    }
-    // แสดงสรุปแบบ "เลือกแล้ว X คน" (ไม่ยาวเกิน)
-    labelEl.textContent = `เลือกแล้ว ${selected.length} คน`;
-  }
-
-  function renderMenu() {
-    const selectedSet = new Set(getSelectedValues());
-    menu.innerHTML = "";
-
-    if (!sel.options.length) {
-      const empty = document.createElement("div");
-      empty.className = "muted";
-      empty.style.padding = "10px";
-      empty.textContent = "ไม่พบข้อมูล";
-      menu.appendChild(empty);
-      return;
-    }
-
-    Array.from(sel.options).forEach(opt => {
-      const row = document.createElement("label");
-      row.className = "ms-dd__item";
-      row.innerHTML = `
-        <input type="checkbox" value="${escapeHtml(opt.value)}" />
-        <span class="ms-dd__name">${escapeHtml(opt.textContent || "")}</span>
-      `;
-
-      const cb = row.querySelector("input");
-      cb.checked = selectedSet.has(opt.value);
-
-      // click checkbox -> sync to hidden select
-      cb.addEventListener("change", () => {
-        const current = new Set(getSelectedValues());
-        if (cb.checked) current.add(opt.value);
-        else current.delete(opt.value);
-
-        setSelectedValues([...current]);
-      });
-
-      menu.appendChild(row);
-    });
-  }
-
-  // events
-  btn.addEventListener("click", (e) => {
-    e.preventDefault();
-    toggleMenu();
-    renderMenu();
-  });
-
-  // close outside
-  document.addEventListener("click", (e) => {
-    if (!root.contains(e.target)) closeMenu();
-  });
-
-  // init
-  renderLabel();
-  renderMenu();
-  closeMenu();
-
-  // public API (เวลา edit record)
-  return { setSelectedValues, getSelectedValues, openMenu, closeMenu, renderMenu, renderLabel, clearSelection };
-}
