@@ -88,6 +88,7 @@
     hide($("#btn-add-request-sub-type"));
     hide($("#btn-add-request-status"));
     hide($("#btn-add-notification-type"));
+    hide($("#btn-add-notification-type-staff"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -166,7 +167,15 @@
         show($("#btn-add-notification-type"));
         setTitle("ตั้งค่าประเภทการแจ้งเตือน");
         loadNotificationTypes();
-        break;  
+        break;
+
+      case "notification-type-staff":
+        show($("#section-notification-type-staff"));
+        show($("#btn-add-notification-type-staff"));
+        setTitle("ตั้งค่าผู้รับการแจ้งเตือน");
+        loadNotificationTypeStaffRefs();
+        loadNotificationTypeStaff();
+        break;
 
       default:
         show($("#section-default"));
@@ -3111,6 +3120,295 @@
     }).join("");
   }
 
+  /* =========================
+   Notification Type Staff UI
+========================= */
+
+const notificationTypeStaffEls = {
+  section: document.querySelector("#section-notification-type-staff"),
+  tbody: document.querySelector("#notification-type-staff-tbody"),
+
+  search: document.querySelector("#notification-type-staff-search"),
+  filterType: document.querySelector("#notification-type-staff-filter-type"),
+  limit: document.querySelector("#notification-type-staff-limit"),
+  refresh: document.querySelector("#notification-type-staff-refresh"),
+  pagination: document.querySelector("#notification-type-staff-pagination"),
+  total: document.querySelector("#notification-type-staff-total"),
+
+  btnAdd: document.querySelector("#btn-add-notification-type-staff"),
+
+  modal: document.querySelector("#notification-type-staff"),
+  form: document.querySelector("#notification-type-staff-form"),
+  modalTitle: document.querySelector("#notification-type-staff-title"),
+  formError: document.querySelector("#notification-type-staff-form-error"),
+
+  inputId: document.querySelector("#notification-type-staff-id"),
+  selectType: document.querySelector("#notification-type-staff-type"),
+  selectPerson: document.querySelector("#notification-type-staff-person"),
+
+  toggleEnabled: document.querySelector("#nts-enabled"),
+  toggleText: document.querySelector("#nts-enabled-text"),
+};
+
+const notificationTypeStaffState = {
+  page: 1,
+  limit: 50,
+  q: "",
+  notification_type_id: 0,
+  total: 0,
+  totalPages: 1,
+  loading: false,
+  refsLoaded: false,
+};
+
+function refreshNotificationTypeStaffEls() {
+  notificationTypeStaffEls.section = document.querySelector("#section-notification-type-staff");
+  notificationTypeStaffEls.tbody = document.querySelector("#notification-type-staff-tbody");
+
+  notificationTypeStaffEls.search = document.querySelector("#notification-type-staff-search");
+  notificationTypeStaffEls.filterType = document.querySelector("#notification-type-staff-filter-type");
+  notificationTypeStaffEls.limit = document.querySelector("#notification-type-staff-limit");
+  notificationTypeStaffEls.refresh = document.querySelector("#notification-type-staff-refresh");
+  notificationTypeStaffEls.pagination = document.querySelector("#notification-type-staff-pagination");
+  notificationTypeStaffEls.total = document.querySelector("#notification-type-staff-total");
+
+  notificationTypeStaffEls.btnAdd = document.querySelector("#btn-add-notification-type-staff");
+
+  notificationTypeStaffEls.modal = document.querySelector("#notification-type-staff");
+  notificationTypeStaffEls.form = document.querySelector("#notification-type-staff-form");
+  notificationTypeStaffEls.modalTitle = document.querySelector("#notification-type-staff-title");
+  notificationTypeStaffEls.formError = document.querySelector("#notification-type-staff-form-error");
+
+  notificationTypeStaffEls.inputId = document.querySelector("#notification-type-staff-id");
+  notificationTypeStaffEls.selectType = document.querySelector("#notification-type-staff-type");
+  notificationTypeStaffEls.selectPerson = document.querySelector("#notification-type-staff-person");
+
+  notificationTypeStaffEls.toggleEnabled = document.querySelector("#nts-enabled");
+  notificationTypeStaffEls.toggleText = document.querySelector("#nts-enabled-text");
+}
+
+function renderNotificationTypeStaffRows(items = []) {
+  if (!notificationTypeStaffEls.tbody) return;
+
+  if (!items.length) {
+    notificationTypeStaffEls.tbody.innerHTML = `<tr><td colspan="4" class="muted">ไม่พบข้อมูล</td></tr>`;
+    return;
+  }
+
+  notificationTypeStaffEls.tbody.innerHTML = items.map((row) => {
+    const id = row.id ?? row.notification_type_staff_id ?? "";
+    const typeName = row.notification_type_name ?? "-";
+    const personName = row.person_name ?? "-";
+
+    return `
+      <tr data-id="${escapeHtml(String(id))}">
+        <td>${escapeHtml(String(id))}</td>
+        <td>${escapeHtml(String(typeName))}</td>
+        <td>${escapeHtml(String(personName))}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" type="button"
+            data-action="edit"
+            data-id="${escapeHtml(String(id))}"
+            data-type="${escapeHtml(String(row.notification_type_id ?? ""))}"
+            data-person="${escapeHtml(String(row.person_id ?? ""))}"
+            data-enabled="${escapeHtml(String(row.enabled ? "1" : "0"))}"
+          >แก้ไข</button>
+          <button class="btn btn-danger btn-sm" type="button"
+            data-action="delete"
+            data-id="${escapeHtml(String(id))}"
+          >ลบ</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderNotificationTypeStaffPagination() {
+  if (!notificationTypeStaffEls.pagination) return;
+
+  const { page, totalPages } = notificationTypeStaffState;
+  if (totalPages <= 1) {
+    notificationTypeStaffEls.pagination.innerHTML = "";
+    return;
+  }
+
+  const pages = [];
+  const push = (p) => pages.push(p);
+
+  push(1);
+  if (page - 2 > 2) push("…");
+  for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
+  if (page + 2 < totalPages - 1) push("…");
+  if (totalPages > 1) push(totalPages);
+
+  notificationTypeStaffEls.pagination.innerHTML = `
+    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
+    ${pages.map((p) => {
+      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
+      const active = p === page ? "is-active" : "";
+      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
+    }).join("")}
+    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
+  `;
+}
+
+function renderNotificationTypeStaffTotal() {
+  if (!notificationTypeStaffEls.total) return;
+  notificationTypeStaffEls.total.textContent = `ทั้งหมด ${notificationTypeStaffState.total} รายการ`;
+}
+
+async function loadNotificationRef({ force = false } = {}) {
+  refreshNotificationTypeStaffEls();
+
+  const filterEl = notificationTypeStaffEls.filterType; // บนตาราง
+  const modalEl = notificationTypeStaffEls.selectType;  // ใน modal
+
+  if (!filterEl && !modalEl) return;
+  if (!force && notificationTypeStaffState.refsLoaded && filterEl && modalEl) return;
+
+  if (filterEl) filterEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
+  if (modalEl) modalEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
+
+  try {
+    const api = window.NotificationTypesAPI || window.notificationTypesApi;
+    if (!api?.list) throw new Error("NotificationTypesAPI.list not found");
+
+    const res = await api.list({ q: "", page: 1, limit: 500 });
+
+    const items =
+      Array.isArray(res?.data) ? res.data :
+        Array.isArray(res?.data?.items) ? res.data.items :
+          Array.isArray(res?.items) ? res.items :
+            [];
+
+    const optAll = [`<option value="">ทุกประเภทการแจ้งเตือน</option>`]
+      .concat(items.map((it) => {
+        const id = it.notification_type_id ?? it.id ?? "";
+        const label = it.notification_type ?? "-";
+        return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
+      }))
+      .join("");
+
+    const optPick = [`<option value="">เลือกประเภทการแจ้งเตือน</option>`]
+      .concat(items.map((it) => {
+        const id = it.notification_type_id ?? it.id ?? "";
+        const label = it.notification_type ?? "-";
+        return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
+      }))
+      .join("");
+
+    if (filterEl) filterEl.innerHTML = optAll;
+    if (modalEl) modalEl.innerHTML = optPick;
+
+    notificationTypeStaffState.refsLoaded = true;
+  } catch (e) {
+    console.warn("load notification type refs for staff failed:", e);
+    if (filterEl) filterEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
+    if (modalEl) modalEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
+  }
+}
+
+/**
+ * Alias for loadNotificationRef (for compatibility with callers)
+ * Also loads user/person dropdown
+ */
+async function loadNotificationTypeStaffRefs() {
+  // First load notification types
+  await loadNotificationRef({ force: false });
+
+  // Then load persons (users) for the modal
+  refreshNotificationTypeStaffEls();
+  const personSelectEl = notificationTypeStaffEls.selectPerson;
+
+  if (!personSelectEl) return;
+
+  personSelectEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
+
+  try {
+    const api = window.NotificationTypeStaffAPI || window.notificationTypeStaffApi;
+    if (!api?.searchUsers) throw new Error("NotificationTypeStaffAPI.searchUsers not found");
+
+    const res = await api.searchUsers({ q: "", page: 1, limit: 500 });
+
+    const items =
+      Array.isArray(res?.data) ? res.data :
+        Array.isArray(res?.data?.items) ? res.data.items :
+          Array.isArray(res?.items) ? res.items :
+            [];
+
+    const optPick = [`<option value="">เลือกเจ้าหน้าที่</option>`]
+      .concat(items.map((it) => {
+        const id = it.user_id ?? it.id ?? "";
+        const name = it.name ?? it.fullname ?? it.username ?? "-";
+        return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(name))}</option>`;
+      }))
+      .join("");
+
+    personSelectEl.innerHTML = optPick;
+  } catch (e) {
+    console.warn("load user/person list for staff notification failed:", e);
+    personSelectEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
+  }
+}
+
+/**
+ * Load notification type staff data with pagination
+ */
+async function loadNotificationTypeStaff() {
+  refreshNotificationTypeStaffEls();
+  if (notificationTypeStaffState.loading) return;
+  notificationTypeStaffState.loading = true;
+
+  try {
+    if (!notificationTypeStaffEls.tbody) {
+      console.warn("[notification-type-staff] tbody not found");
+      return;
+    }
+
+    notificationTypeStaffEls.tbody.innerHTML =
+      `<tr><td colspan="4" class="muted">กำลังโหลด...</td></tr>`;
+
+    const api = window.NotificationTypeStaffAPI || window.notificationTypeStaffApi;
+    if (!api?.list) throw new Error("NotificationTypeStaffAPI.list not found");
+
+    const res = await api.list({
+      notification_type_id: notificationTypeStaffState.notification_type_id || 0,
+      q: notificationTypeStaffState.q,
+      page: notificationTypeStaffState.page,
+      limit: notificationTypeStaffState.limit,
+    });
+
+    const items =
+      Array.isArray(res?.data) ? res.data :
+        Array.isArray(res?.data?.items) ? res.data.items :
+          Array.isArray(res?.items) ? res.items :
+            [];
+
+    const pg = res?.pagination ?? res?.data?.pagination ?? {};
+    notificationTypeStaffState.total = Number(pg.total ?? res?.total ?? items.length ?? 0);
+    notificationTypeStaffState.totalPages =
+      Number(pg.total_pages ?? pg.totalPages ?? res?.total_pages ?? 0) ||
+      Math.max(1, Math.ceil(notificationTypeStaffState.total / Math.max(1, notificationTypeStaffState.limit)));
+
+    renderNotificationTypeStaffRows(items);
+    renderNotificationTypeStaffPagination();
+    renderNotificationTypeStaffTotal();
+
+  } catch (err) {
+    console.error(err);
+    if (notificationTypeStaffEls.tbody) {
+      notificationTypeStaffEls.tbody.innerHTML =
+        `<tr><td colspan="4" class="muted">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</td></tr>`;
+    }
+  } finally {
+    notificationTypeStaffState.loading = false;
+  }
+}
+
+  /* =========================
+
+
+
 
 
   /* ===== Modal helpers ===== */
@@ -3466,6 +3764,41 @@
     }
   }
 
+  function openNotificationTypeStaffModal({ mode, row = null } = {}) {
+    if (!notificationTypeStaffEls.modal) return;
+
+    if (notificationTypeStaffEls.formError) {
+      notificationTypeStaffEls.formError.textContent = "";
+      hide(notificationTypeStaffEls.formError);
+    }
+
+    const isEdit = mode === "edit";
+    if (notificationTypeStaffEls.modalTitle) notificationTypeStaffEls.modalTitle.textContent = isEdit ? "แก้ไขการตั้งค่าการแจ้งเตือนสำหรับพนักงาน" : "เพิ่มการตั้งค่าการแจ้งเตือนสำหรับพนักงาน";
+
+    if (notificationTypeStaffEls.inputId) notificationTypeStaffEls.inputId.value = isEdit ? String(row?.id ?? row?.notification_type_staff_id ?? "") : "";
+
+    // โหลด refs ก่อนค่อย set ค่า
+    loadNotificationTypeStaffRefs().then(() => {
+      if (notificationTypeStaffEls.selectType) notificationTypeStaffEls.selectType.value = isEdit ? String(row?.notification_type_id ?? "") : "";
+      if (notificationTypeStaffEls.selectPerson) notificationTypeStaffEls.selectPerson.value = isEdit ? String(row?.person_id ?? "") : "";
+    });
+
+    if (notificationTypeStaffEls.toggleEnabled) {
+      const enabled = isEdit ? Boolean(row?.enabled) : true;
+      notificationTypeStaffEls.toggleEnabled.checked = enabled;
+      notificationTypeStaffEls.toggleText.textContent = enabled ? "ใช้งาน" : "ไม่ใช้งาน";
+    }
+
+    show(notificationTypeStaffEls.modal);
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeNotificationTypeStaffModal() {
+    if (!notificationTypeStaffEls.modal) return;
+    hide(notificationTypeStaffEls.modal);
+    document.body.style.overflow = "";
+  }
+
   // ปิด modal เมื่อคลิกที่ overlay 
   document.addEventListener("click", (e) => {
     const closeId = e.target?.getAttribute?.("data-close");
@@ -3527,6 +3860,11 @@
   document.addEventListener("click", (e) => {
     const closeId = e.target?.getAttribute?.("data-close");
     if (closeId === "notification-type-modal") closeNotificationTypeModal();
+  });
+
+  document.addEventListener("click", (e) => {
+    const closeId = e.target?.getAttribute?.("data-close");
+    if (closeId === "notification-type-staff") closeNotificationTypeStaffModal();
   });
 
 
@@ -3600,6 +3938,12 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && notificationTypeEls.modal && !notificationTypeEls.modal.hidden) {
       closeNotificationTypeModal();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && notificationTypeStaffEls.modal && !notificationTypeStaffEls.modal.hidden) {
+      closeNotificationTypeStaffModal();
     }
   });
 
@@ -3732,6 +4076,14 @@
       loadNotificationTypes();
     }
 
+    if (sectionKey === "notification-type-staff") {
+      notificationTypeStaffState.page = 1;
+      notificationTypeStaffState.q = (notificationTypeStaffEls.search?.value || "").trim();
+      notificationTypeStaffState.limit = Number(notificationTypeStaffEls.limit?.value || 50);
+      notificationTypeStaffState.notification_type_id = notificationTypeStaffEls.filterType?.value || "";
+      loadNotificationTypeStaff();
+    }
+
 
 
 
@@ -3790,6 +4142,11 @@
 
   notificationTypeEls.btnAdd?.addEventListener("click", () => {
     openNotificationTypeModal("create");
+  });
+
+  notificationTypeStaffEls.btnAdd?.addEventListener("click", async () => {
+    await loadNotificationTypeStaffRefs();
+    openNotificationTypeStaffModal({ mode: "create" });
   });
 
 
@@ -3879,6 +4236,13 @@
     loadNotificationTypes();
   });
 
+  notificationTypeStaffEls.search?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    notificationTypeStaffState.page = 1;
+    notificationTypeStaffState.q = (notificationTypeStaffEls.search.value || "").trim();
+    loadNotificationTypeStaff();
+  });
+
 
   // เปลี่ยน limit
   orgTypeEls.limit?.addEventListener("change", () => {
@@ -3953,6 +4317,12 @@
     loadNotificationTypes();
   });
 
+  notificationTypeStaffEls.limit?.addEventListener("change", () => {
+    notificationTypeStaffState.page = 1;
+    notificationTypeStaffState.limit = Number(notificationTypeStaffEls.limit.value || 50);
+    loadNotificationTypeStaff();
+  });
+
   // รีเฟรช
   orgTypeEls.refresh?.addEventListener("click", () => {
     loadOrgTypes();
@@ -4000,6 +4370,10 @@
 
   notificationTypeEls.refresh?.addEventListener("click", () => {
     loadNotificationTypes();
+  });
+
+  notificationTypeStaffEls.refresh?.addEventListener("click", () => {
+    loadNotificationTypeStaff();
   });
 
 
@@ -4134,6 +4508,17 @@
 
     notificationTypeState.page = next;
     loadNotificationTypes();
+  });
+
+  notificationTypeStaffEls.pagination?.addEventListener("click", (e) => { 
+    const btn = e.target.closest("button[data-page]");
+    if (!btn || btn.disabled) return;
+
+    const next = Number(btn.getAttribute("data-page"));
+    if (!next || next < 1 || next > notificationTypeStaffState.totalPages) return;
+
+    notificationTypeStaffState.page = next;
+    loadNotificationTypeStaff();
   });
 
   // คลิก edit/delete ในตาราง
@@ -4619,6 +5004,49 @@
         if (notificationTypeState.page > notificationTypeState.totalPages) {
           notificationTypeState.page = notificationTypeState.totalPages;
           await loadNotificationTypes();
+        }
+      } catch (err) {
+        alert(`ลบไม่สำเร็จ: ${err.message || err}`);
+      }
+    }
+  });
+
+  notificationTypeStaffEls.tbody?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+
+    const action = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id") || "";
+
+    if (action === "edit") {
+      const type = btn.getAttribute("data-type") || "";
+      const person = btn.getAttribute("data-person") || "";
+      const enabled = btn.getAttribute("data-enabled") || "1";
+      openNotificationTypeStaffModal({
+        mode: "edit",
+        row: {
+          id,
+          notification_type_id: type,
+          person_id: person,
+          enabled: enabled === "1",
+        }
+      });
+      return;
+    }
+
+    if (action === "delete") {
+      if (!confirm(`ต้องการลบการตั้งค่า ID ${id} ใช่ไหม?`)) return;
+
+      try {
+        const api = window.NotificationTypeStaffAPI || window.notificationTypeStaffApi;
+        if (!api?.remove) throw new Error("NotificationTypeStaffAPI.remove not found");
+        
+        await api.remove(Number(id));
+
+        await loadNotificationTypeStaff();
+        if (notificationTypeStaffState.page > notificationTypeStaffState.totalPages) {
+          notificationTypeStaffState.page = notificationTypeStaffState.totalPages;
+          await loadNotificationTypeStaff();
         }
       } catch (err) {
         alert(`ลบไม่สำเร็จ: ${err.message || err}`);
@@ -5116,6 +5544,46 @@
     }
   });
 
+  notificationTypeStaffEls.form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const id = (notificationTypeStaffEls.inputId?.value || "").trim();
+    const notification_type_id = (notificationTypeStaffEls.selectType?.value || "").trim();
+    const user_id = (notificationTypeStaffEls.selectPerson?.value || "").trim();
+    const is_enabled = notificationTypeStaffEls.toggleEnabled?.checked ? 1 : 0;
+
+    if (!notification_type_id || !user_id) {
+      if (notificationTypeStaffEls.formError) {
+        notificationTypeStaffEls.formError.textContent = "กรุณาเลือกประเภทการแจ้งเตือนและเจ้าหน้าที่";
+        show(notificationTypeStaffEls.formError);
+      }
+      return;
+    }
+
+    try {
+      if (notificationTypeStaffEls.formError) hide(notificationTypeStaffEls.formError);
+
+      const api = window.NotificationTypeStaffAPI || window.notificationTypeStaffApi;
+      if (!api?.upsert) throw new Error("NotificationTypeStaffAPI.upsert not found");
+
+      await api.upsert({
+        notification_type_id: Number(notification_type_id),
+        user_id: Number(user_id),
+        is_enabled: Number(is_enabled),
+      });
+
+      closeNotificationTypeStaffModal();
+      await loadNotificationTypeStaff();
+    } catch (err) {
+      if (notificationTypeStaffEls.formError) {
+        notificationTypeStaffEls.formError.textContent = err.message || "บันทึกไม่สำเร็จ";
+        show(notificationTypeStaffEls.formError);
+      } else {
+        alert(err.message || "บันทึกไม่สำเร็จ");
+      }
+    }
+  });
+
 
   // FILTER: หน่วยงาน
   departmentEls.filterOrg?.addEventListener("change", async () => {
@@ -5209,6 +5677,12 @@
     loadRequestStatuses();
   });
 
+  notificationTypeStaffEls.filterType?.addEventListener("change", () => {
+    notificationTypeStaffState.page = 1;
+    notificationTypeStaffState.notification_type_id = notificationTypeStaffEls.filterType.value || "";
+    loadNotificationTypeStaff();
+  });
+
 
 
 
@@ -5250,6 +5724,8 @@
   hide(document.getElementById("btn-add-request-type"));
   hide(document.getElementById("btn-add-request-sub-type"));
   hide(document.getElementById("btn-add-request-status"));
+  hide(document.getElementById("btn-add-notification-type"));
+  hide(document.getElementById("btn-add-notification-type-staff"));
 
   activateSection("default");
 
