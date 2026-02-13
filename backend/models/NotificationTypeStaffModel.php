@@ -321,9 +321,9 @@ final class NotificationTypeStaffModel
     }
 
     /**
-     * (Optional) Search users (staff) to add into notification_type_staff
-     * - ใช้ในหน้า settings เพื่อค้นหา user จากชื่อหรือ line_user_id
-     * - คุณสามารถเพิ่ม filter ตาม role ได้ทีหลัง (เช่น user_role_id IN (...))
+     * (Optional) Search persons (staff) to add into notification_type_staff
+     * - ดึงจากตาราง person (is_active = 1)
+     * - ค้นหาจาก display_name
      *
      * @return array<int, array<string, mixed>>
      */
@@ -334,20 +334,21 @@ final class NotificationTypeStaffModel
         $offset = ($page - 1) * $limit;
         $q = trim($q);
 
-        $where = '';
+        $where = "WHERE p.is_active = 1";
         if ($q !== '') {
-            $where = "WHERE (u.line_user_name LIKE :q1 OR u.line_user_id LIKE :q2)";
+            $where .= " AND (p.display_name LIKE :q1 OR p.first_name_th LIKE :q2 OR p.last_name_th LIKE :q3)";
         }
 
         $sql = "
             SELECT
-                u.user_id,
-                u.line_user_id,
-                u.line_user_name,
-                u.user_role_id
-            FROM user u
+                p.person_id AS user_id,
+                p.display_name AS name,
+                p.person_id,
+                p.display_name,
+                p.is_active
+            FROM person p
             $where
-            ORDER BY u.user_id DESC
+            ORDER BY p.display_name ASC
             LIMIT :limit OFFSET :offset
         ";
 
@@ -359,6 +360,7 @@ final class NotificationTypeStaffModel
             $like = '%' . $q . '%';
             $stmt->bindValue(':q1', $like, PDO::PARAM_STR);
             $stmt->bindValue(':q2', $like, PDO::PARAM_STR);
+            $stmt->bindValue(':q3', $like, PDO::PARAM_STR);
         }
 
         $stmt->execute();

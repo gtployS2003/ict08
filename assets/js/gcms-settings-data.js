@@ -5549,12 +5549,16 @@ async function loadNotificationTypeStaff() {
 
     const id = (notificationTypeStaffEls.inputId?.value || "").trim();
     const notification_type_id = (notificationTypeStaffEls.selectType?.value || "").trim();
-    const user_id = (notificationTypeStaffEls.selectPerson?.value || "").trim();
+    const selectEl = notificationTypeStaffEls.selectPerson;
     const is_enabled = notificationTypeStaffEls.toggleEnabled?.checked ? 1 : 0;
 
-    if (!notification_type_id || !user_id) {
+    // Get selected user IDs from multiple select
+    const selectedOptions = Array.from(selectEl?.options || []).filter(opt => opt.selected && opt.value);
+    const user_ids = selectedOptions.map(opt => opt.value);
+
+    if (!notification_type_id || user_ids.length === 0) {
       if (notificationTypeStaffEls.formError) {
-        notificationTypeStaffEls.formError.textContent = "กรุณาเลือกประเภทการแจ้งเตือนและเจ้าหน้าที่";
+        notificationTypeStaffEls.formError.textContent = "กรุณาเลือกประเภทการแจ้งเตือนและเจ้าหน้าที่อย่างน้อย 1 คน";
         show(notificationTypeStaffEls.formError);
       }
       return;
@@ -5566,11 +5570,14 @@ async function loadNotificationTypeStaff() {
       const api = window.NotificationTypeStaffAPI || window.notificationTypeStaffApi;
       if (!api?.upsert) throw new Error("NotificationTypeStaffAPI.upsert not found");
 
-      await api.upsert({
-        notification_type_id: Number(notification_type_id),
-        user_id: Number(user_id),
-        is_enabled: Number(is_enabled),
-      });
+      // Save for each selected user
+      for (const user_id of user_ids) {
+        await api.upsert({
+          notification_type_id: Number(notification_type_id),
+          user_id: Number(user_id),
+          is_enabled: Number(is_enabled),
+        });
+      }
 
       closeNotificationTypeStaffModal();
       await loadNotificationTypeStaff();
@@ -5731,3 +5738,17 @@ async function loadNotificationTypeStaff() {
 
   console.log("gcms-settings-data.js loaded");
 })();
+
+function syncNtsToggle(){
+  const cb  = document.getElementById("nts-enabled");
+  const txt = document.getElementById("nts-enabled-text");
+  if(!cb || !txt) return;
+
+  txt.textContent = cb.checked ? "เปิดการใช้งาน" : "ปิดการใช้งาน";
+}
+
+document.getElementById("nts-enabled")
+?.addEventListener("change", syncNtsToggle);
+
+syncNtsToggle();
+

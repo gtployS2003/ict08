@@ -1738,22 +1738,29 @@
 
                     <div class="form-field full">
                         <label for="notification-type-staff-person">เจ้าหน้าที่รับแจ้งเตือน</label>
-                        <select id="notification-type-staff-person" name="person_id" required>
+                        <select id="notification-type-staff-person" name="person_id" multiple required>
                             <option value="">เลือกเจ้าหน้าที่</option>
                         </select>
                     </div>
 
-                    <div class="form-field form-field--toggle">
-                        <label for="nts-enabled">สถานะ</label>
+                    <div class="form-field form-field--toggle full">
+                        <span class="toggle-row__title">สถานะ</span>
+                        <label class="toggle-inline">
 
-                        <label class="toggle">
-                            <input id="nts-enabled" type="checkbox" name="is_enabled" checked />
-                            <span class="toggle__track" aria-hidden="true">
-                                <span class="toggle__thumb"></span>
+                            <span class="toggle toggle--gcms">
+                                <input id="nts-enabled" type="checkbox" name="is_enabled" checked />
+                                <span class="toggle__track">
+                                    <span class="toggle__thumb"></span>
+                                </span>
                             </span>
-                            <span class="toggle__text" id="nts-enabled-text">เปิดใช้งาน</span>
+
+                            <span class="toggle-inline__text" id="nts-enabled-text">
+                                เปิดการใช้งาน
+                            </span>
                         </label>
                     </div>
+
+
 
                 </div>
 
