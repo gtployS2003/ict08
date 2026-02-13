@@ -341,7 +341,7 @@ final class NotificationTypeStaffModel
 
         $sql = "
             SELECT
-                p.person_id AS user_id,
+                u.user_id,
                 p.display_name AS name,
                 p.person_id,
                 p.display_name,
@@ -349,7 +349,7 @@ final class NotificationTypeStaffModel
                 u.user_id,
                 u.user_role_id
             FROM person p
-            INNER JOIN user u ON u.person_id = p.person_id
+            INNER JOIN user u ON u.user_id = p.person_user_id
             $where
             ORDER BY p.display_name ASC
             LIMIT :limit OFFSET :offset
