@@ -29,6 +29,12 @@
       },
     };
 
+    // ✅ เพิ่ม Authorization token จาก localStorage
+    const token = localStorage.getItem("auth_token");
+    if (token) {
+      opts.headers["Authorization"] = `Bearer ${token}`;
+    }
+
     if (body !== undefined) {
       opts.headers["Content-Type"] = "application/json; charset=utf-8";
       opts.body = JSON.stringify(body);
@@ -89,6 +95,7 @@
     hide($("#btn-add-request-status"));
     hide($("#btn-add-notification-type"));
     hide($("#btn-add-notification-type-staff"));
+    hide($("#btn-add-channel"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -176,6 +183,15 @@
         loadNotificationTypeStaffRefs();
         loadNotificationTypeStaff();
         break;
+
+      case "channels":
+        show($("#section-channels"));
+        show($("#btn-add-channel"));
+        setTitle("ช่องทางแจ้งเตือน (Channel)");
+        // (ถ้าคุณมี loadChannelsRefs ก็เรียกได้ แต่ส่วนใหญ่ไม่จำเป็น)
+        loadChannels();
+        break;
+
 
       default:
         show($("#section-default"));
@@ -3202,7 +3218,7 @@
       const isEnabled = Number(row.is_enabled) === 1;
       const statusText = row.is_enabled ? "เปิดการใช้งาน" : "ปิดการใช้งาน";
       const statusClass = isEnabled ? "status-badge--on" : "status-badge--off";
-       
+
 
       return `
       <tr data-id="${escapeHtml(String(id))}">
@@ -3221,7 +3237,7 @@
             data-type="${escapeHtml(String(row.notification_type_id ?? ""))}"
             data-user-id="${escapeHtml(String(row.user_id ?? ""))}"
             data-person-name="${escapeHtml(String(row.display_name ?? "-"))}"
-            data-enabled="${escapeHtml(String(row.is_enabled ? "1" : "0"))}"
+            data-enabled="${isEnabled ? "1" : "0"}"
           >แก้ไข</button>
           <button class="btn btn-danger btn-sm" type="button"
             data-action="delete"
@@ -3373,7 +3389,7 @@
       if (!api?.list) throw new Error("NotificationTypeStaffAPI.list not found");
 
       const res = await api.list({
-        notification_type_id: notificationTypeStaffState.notification_type_id || 0,
+        notification_type_id: Number(notificationTypeStaffState.notification_type_id || 0),
         q: notificationTypeStaffState.q,
         page: notificationTypeStaffState.page,
         limit: notificationTypeStaffState.limit,
@@ -3407,6 +3423,672 @@
   }
 
   /* =========================
+   User Notification Channels UI (NEW)
+   - ใช้ section ที่มีจริงใน HTML:
+     #section-user-notification-channels
+     #unc-user-select, #unc-refresh, #unc-tbody, #unc-total
+   - Flow:
+     1) admin: เลือก user จาก dropdown -> bootstrap(user_id) -> list(user_id)
+     2) user: หา user_id จาก auth -> bootstrap(user_id) -> list(user_id)
+ ========================= */
+
+  const uncEls = {
+    section: document.querySelector("#section-user-notification-channels"),
+    userSelect: document.querySelector("#unc-user-select"),
+    refresh: document.querySelector("#unc-refresh"),
+    tbody: document.querySelector("#unc-tbody"),
+    total: document.querySelector("#unc-total"),
+  };
+
+  const uncState = {
+    userId: "",
+    isAdmin: false,
+    loading: false,
+  };
+
+  function refreshUncEls() {
+    uncEls.section = document.querySelector("#section-user-notification-channels");
+    uncEls.userSelect = document.querySelector("#unc-user-select");
+    uncEls.refresh = document.querySelector("#unc-refresh");
+    uncEls.tbody = document.querySelector("#unc-tbody");
+    uncEls.total = document.querySelector("#unc-total");
+  }
+
+  function getAuthSnapshot() {
+    // ✅ ปรับจุดนี้ให้ตรงกับระบบ auth ของคุณถ้าคุณมี global ชัดเจน
+    const fromWin = window.__AUTH__ || window.AUTH || null;
+    if (fromWin?.user) return fromWin.user;
+
+    try {
+      const raw = localStorage.getItem("auth_user") || localStorage.getItem("user") || "";
+      if (raw) return JSON.parse(raw);
+    } catch (_) { }
+
+    return null;
+  }
+
+  function detectRole() {
+    const u = getAuthSnapshot();
+    const roleId = Number(u?.user_role_id ?? u?.role_id ?? 0);
+    const userId = Number(u?.user_id ?? u?.id ?? 0);
+    return { roleId, userId, isAdmin: roleId === 1 };
+  }
+
+  async function uncBootstrap(userId) {
+    // POST /user-notification-channels/bootstrap
+    // controller ของคุณรองรับ user_id ว่าง (จะ resolve จาก auth)
+    if (!userId) {
+      console.warn("[unc] userId is empty, skipping bootstrap");
+      return { success: true };
+    }
+
+    return apiFetch(`/user-notification-channels/bootstrap`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: Number(userId) }),
+    });
+  }
+
+  async function uncFetchUsersForDropdown() {
+    // GET /user-notification-channels/users?q=&limit=
+    return apiFetch(`/user-notification-channels/users?limit=200`, { method: "GET" });
+  }
+
+  async function uncFetchList(userId) {
+    const qs = new URLSearchParams();
+    qs.set("user_id", String(userId));
+    qs.set("page", "1");
+    qs.set("limit", "200");
+    return apiFetch(`/user-notification-channels?${qs.toString()}`, { method: "GET" });
+  }
+
+  async function uncUpdateEnable(id, enable) {
+    return apiFetch(`/user-notification-channels/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enable: enable ? 1 : 0 }),
+    });
+  }
+
+  function renderUncRows(items = []) {
+    refreshUncEls();
+    if (!uncEls.tbody) return;
+
+    if (!items.length) {
+      uncEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    uncEls.tbody.innerHTML = items.map((it) => {
+      const id = it.user_notification_channel_id ?? "-";
+      const name = it.display_name ?? "-";
+      const channelName = it.channel_name ?? it.channel ?? "-";
+      const enable = Number(it.enable ?? 0) === 1;
+
+      // 🔒 ถ้าต้องการ “line ห้ามปิด” ให้ disable
+      const isLine = String(channelName).toLowerCase() === "line";
+      const disabled = isLine ? "disabled" : "";
+
+      return `
+      <tr data-unc-id="${escapeHtml(String(id))}">
+        <td>${escapeHtml(String(id))}</td>
+        <td>${escapeHtml(String(name))}</td>
+        <td>${escapeHtml(String(channelName))}</td>
+        <td style="width:200px">
+          <label class="toggle-inline">
+            <span class="toggle toggle--gcms">
+              <input class="unc-toggle" type="checkbox" ${enable ? "checked" : ""} ${disabled}/>
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+            </span>
+            <span class="toggle-inline__text">${enable ? "เปิดการใช้งาน" : "ปิดการใช้งาน"}</span>
+          </label>
+        </td>
+        <td><span class="muted">-</span></td>
+      </tr>
+    `;
+    }).join("");
+
+    // bind toggle change
+    uncEls.tbody.querySelectorAll(".unc-toggle").forEach((chk) => {
+      chk.addEventListener("change", async (e) => {
+        const tr = e.target.closest("tr");
+        const id = tr?.getAttribute("data-unc-id");
+        if (!id) return;
+
+        const nextEnable = e.target.checked;
+        const txt = tr.querySelector(".toggle-inline__text");
+        if (txt) txt.textContent = nextEnable ? "เปิดการใช้งาน" : "ปิดการใช้งาน";
+
+        try {
+          const res = await uncUpdateEnable(id, nextEnable);
+          if (res?.error) throw new Error(res?.message || "update failed");
+        } catch (err) {
+          // revert
+          e.target.checked = !nextEnable;
+          if (txt) txt.textContent = (!nextEnable) ? "เปิดการใช้งาน" : "ปิดการใช้งาน";
+          console.error("[unc] update error:", err);
+          alert("บันทึกสถานะไม่สำเร็จ");
+        }
+      });
+    });
+  }
+
+  async function loadUncForUser(userId) {
+    refreshUncEls();
+    if (uncState.loading) return;
+    uncState.loading = true;
+
+    try {
+      if (uncEls.tbody) uncEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">กำลังโหลด...</td></tr>`;
+
+      // ✅ 1) bootstrap อัตโนมัติ (สร้าง line/web ให้ครบตาม role)
+      const boot = await uncBootstrap(userId);
+      if (boot?.error) {
+        // ถ้า bootstrap พัง ก็ยังพยายาม list ต่อ (เผื่อมีข้อมูลอยู่แล้ว)
+        console.warn("[unc] bootstrap error:", boot?.message || boot);
+      }
+
+      // ✅ 2) list
+      const res = await uncFetchList(userId);
+      if (res?.error) throw new Error(res?.message || "Failed to load UNC");
+
+      const items = res?.data ?? [];
+      renderUncRows(items);
+
+      if (uncEls.total) uncEls.total.textContent = `ทั้งหมด ${items.length} รายการ`;
+    } catch (e) {
+      console.error("[unc] load error:", e);
+      if (uncEls.tbody) uncEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">โหลดไม่สำเร็จ</td></tr>`;
+      if (uncEls.total) uncEls.total.textContent = "";
+    } finally {
+      uncState.loading = false;
+    }
+  }
+
+  async function initUncSection() {
+    refreshUncEls();
+    if (!uncEls.section) return;
+
+    const { isAdmin, userId } = detectRole();
+    uncState.isAdmin = isAdmin;
+
+    // ปุ่ม refresh
+    uncEls.refresh?.addEventListener("click", () => {
+      if (!uncState.userId) return;
+      loadUncForUser(uncState.userId);
+    });
+
+    if (!isAdmin) {
+      // ✅ user ดูของตัวเอง: ไม่ต้องเลือก dropdown
+      if (uncEls.userSelect) uncEls.userSelect.style.display = "none";
+      uncState.userId = String(userId || "");
+      if (uncState.userId) await loadUncForUser(uncState.userId);
+      return;
+    }
+
+    // ✅ admin: โหลด dropdown users แล้วให้เลือก
+    if (uncEls.userSelect) {
+      uncEls.userSelect.innerHTML = `<option value="">เลือกผู้ใช้งาน...</option>`;
+      try {
+        const uRes = await uncFetchUsersForDropdown();
+        const users = uRes?.data ?? [];
+        uncEls.userSelect.innerHTML =
+          `<option value="">เลือกผู้ใช้งาน...</option>` +
+          users.map((u) =>
+            `<option value="${escapeHtml(String(u.user_id))}">${escapeHtml(String(u.display_name))}</option>`
+          ).join("");
+      } catch (e) {
+        console.error("[unc] load users error:", e);
+      }
+
+      uncEls.userSelect.addEventListener("change", () => {
+        const uid = String(uncEls.userSelect.value || "");
+        uncState.userId = uid;
+
+        if (!uid) {
+          uncEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">เลือกผู้ใช้งานเพื่อแสดงรายการช่องทาง</td></tr>`;
+          if (uncEls.total) uncEls.total.textContent = "";
+          return;
+        }
+
+        loadUncForUser(uid);
+      });
+    }
+  }
+
+  // ✅ เรียก initUncSection() ใน init หลักของไฟล์ gcms-settings-data.js ของคุณ
+
+
+
+
+
+
+
+
+  /* =========================
+    Channels (Master)
+    - GET /channels?q=&page=&limit=
+    - CRUD (ของคุณมีปุ่ม add แต่ถ้ายังไม่ทำ modal ก็ปล่อยไว้ได้)
+  ========================= */
+
+  const channelsEls = {
+    section: document.querySelector("#section-channels"),
+    tbody: document.querySelector("#channel-tbody"),
+    search: document.querySelector("#channel-search"),
+    limit: document.querySelector("#channel-limit"),
+    refresh: document.querySelector("#channel-refresh"),
+    pagination: document.querySelector("#channel-pagination"),
+    total: document.querySelector("#channel-total"),
+    btnAdd: document.querySelector("#btn-add-channel"),
+    modal: document.querySelector("#channel-modal"),
+    form: document.querySelector("#channel-form"),
+    modalTitle: document.querySelector("#channel-modal-title"),
+    submitText: document.querySelector("#channel-submit-text"),
+    inputId: document.querySelector("#channel-id"),
+    inputName: document.querySelector("#channel-name"),
+    formError: document.querySelector("#channel-form-error"),
+  };
+
+  const channelState = {
+    q: "",
+    page: 1,
+    limit: 50,
+    total: 0,
+    loading: false,
+  };
+
+  function debounce(fn, ms = 250) {
+    let t = null;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function renderPagination(container, { page, totalPages }, onPage) {
+    if (!container) return;
+    container.innerHTML = "";
+    if (totalPages <= 1) return;
+
+    const mkBtn = (label, p, disabled = false, active = false) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = `page-btn ${active ? "active" : ""}`;
+      b.textContent = label;
+      b.disabled = disabled;
+      b.addEventListener("click", () => onPage(p));
+      return b;
+    };
+
+    container.appendChild(mkBtn("«", 1, page <= 1));
+    container.appendChild(mkBtn("‹", Math.max(1, page - 1), page <= 1));
+
+    // แสดงรอบ ๆ หน้า current
+    const start = Math.max(1, page - 2);
+    const end = Math.min(totalPages, page + 2);
+    for (let p = start; p <= end; p++) {
+      container.appendChild(mkBtn(String(p), p, false, p === page));
+    }
+
+    container.appendChild(mkBtn("›", Math.min(totalPages, page + 1), page >= totalPages));
+    container.appendChild(mkBtn("»", totalPages, page >= totalPages));
+  }
+
+  async function channelsFetchList() {
+    const qs = new URLSearchParams();
+    if (channelState.q) qs.set("q", channelState.q);
+    qs.set("page", String(channelState.page));
+    qs.set("limit", String(channelState.limit));
+
+    // ใช้ apiFetch จาก http.js (คุณ include แล้ว)
+    return apiFetch(`/channels?${qs.toString()}`, { method: "GET" });
+  }
+
+  function renderChannelsRows(items = []) {
+    if (!channelsEls.tbody) return;
+
+    if (!items.length) {
+      channelsEls.tbody.innerHTML = `<tr><td colspan="3" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    channelsEls.tbody.innerHTML = items
+      .map((it) => {
+        const id = it.channel_id ?? it.id ?? "-";
+        const name = it.channel ?? it.channel_name ?? "-";
+
+        return `
+        <tr>
+          <td>${escapeHtml(id)}</td>
+          <td>${escapeHtml(name)}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm"
+              data-action="edit"
+              data-id="${escapeHtml(id)}"
+              data-name="${escapeHtml(name)}">
+              แก้ไข
+            </button>
+            <button class="btn btn-danger btn-sm"
+              data-action="delete"
+              data-id="${escapeHtml(id)}">
+              ลบ
+            </button>
+          </td>
+        </tr>
+      `;
+      })
+      .join("");
+  }
+
+  async function loadChannels() {
+    if (channelState.loading) return;
+    channelState.loading = true;
+
+    try {
+      if (channelsEls.tbody) {
+        channelsEls.tbody.innerHTML = `<tr><td colspan="3" class="muted">กำลังโหลด...</td></tr>`;
+      }
+
+      const res = await channelsFetchList();
+      if (res?.error) throw new Error(res?.message || "Failed to load channels");
+
+      const items = res?.data ?? res?.items ?? [];
+      const pg = res?.pagination ?? {};
+      const page = Number(pg.page ?? channelState.page);
+      const limit = Number(pg.limit ?? channelState.limit);
+      const total = Number(pg.total ?? items.length);
+      const totalPages = Number(pg.totalPages ?? Math.ceil(total / Math.max(1, limit)));
+
+      channelState.total = total;
+
+      renderChannelsRows(items);
+
+      if (channelsEls.total) channelsEls.total.textContent = `ทั้งหมด ${total} รายการ`;
+      renderPagination(channelsEls.pagination, { page, totalPages }, (p) => {
+        channelState.page = p;
+        loadChannels();
+      });
+    } catch (e) {
+      if (channelsEls.tbody) {
+        channelsEls.tbody.innerHTML = `<tr><td colspan="3" class="muted">โหลดข้อมูลไม่สำเร็จ</td></tr>`;
+      }
+      if (channelsEls.total) channelsEls.total.textContent = "";
+      console.error("[channels] load error:", e);
+    } finally {
+      channelState.loading = false;
+    }
+  }
+
+  function initChannelsSection() {
+    if (!channelsEls.section) return;
+
+    channelsEls.limit?.addEventListener("change", () => {
+      channelState.limit = Number(channelsEls.limit.value || 50);
+      channelState.page = 1;
+      loadChannels();
+    });
+
+    channelsEls.search?.addEventListener(
+      "input",
+      debounce(() => {
+        channelState.q = String(channelsEls.search.value || "").trim();
+        channelState.page = 1;
+        loadChannels();
+      }, 250)
+    );
+
+    channelsEls.refresh?.addEventListener("click", () => {
+      loadChannels();
+    });
+  }
+
+
+  function openChannelModal({ mode, row = null } = {}) {
+    if (!channelsEls.modal) return;
+
+    if (channelsEls.formError) {
+      channelsEls.formError.textContent = "";
+      hide(channelsEls.formError);
+    }
+
+    const isEdit = mode === "edit";
+    if (channelsEls.modalTitle) channelsEls.modalTitle.textContent = isEdit ? "แก้ไขช่องทางแจ้งเตือน" : "เพิ่มช่องทางแจ้งเตือน";
+    if (channelsEls.submitText) channelsEls.submitText.textContent = isEdit ? "บันทึกการแก้ไข" : "บันทึก";
+
+    if (channelsEls.inputId) channelsEls.inputId.value = isEdit ? String(row?.channel_id ?? "") : "";
+    if (channelsEls.inputName) channelsEls.inputName.value = isEdit ? String(row?.channel ?? "") : "";
+
+    show(channelsEls.modal);
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeChannelModal() {
+    if (!channelsEls.modal) return;
+    hide(channelsEls.modal);
+    document.body.style.overflow = "";
+  }
+
+  // helper: พยายามหา role ของคนที่ล็อกอิน (ถ้าหาไม่ได้ ให้ถือว่า admin=false)
+  function getAuthSnapshot() {
+    // ปรับตามของโปรเจกต์คุณได้ ถ้าคุณมี global ที่ชัดเจน
+    const fromWin = window.__AUTH__ || window.AUTH || null;
+    if (fromWin?.user) return fromWin.user;
+
+    // เผื่อคุณเก็บใน localStorage
+    try {
+      const raw = localStorage.getItem("auth_user") || localStorage.getItem("user") || "";
+      if (raw) return JSON.parse(raw);
+    } catch (_) { }
+
+    return null;
+  }
+
+  function detectIsAdmin() {
+    const u = getAuthSnapshot();
+    const roleId = Number(u?.user_role_id ?? u?.role_id ?? 0);
+    return roleId === 1;
+  }
+
+  async function uncFetchUsersForDropdown(q = "") {
+    const qs = new URLSearchParams();
+    if (q) qs.set("q", q);
+    qs.set("limit", "200");
+    return apiFetch(`/user-notification-channels/users?${qs.toString()}`, { method: "GET" });
+  }
+
+  async function uncFetchList(userId = "") {
+    const qs = new URLSearchParams();
+    // ถ้า backend ยังบังคับ user_id ต้องส่ง → ส่งไป
+    // ถ้า backend รองรับ me แล้ว → userId ว่างก็ไม่เป็นไร
+    if (userId) qs.set("user_id", String(userId));
+    qs.set("page", "1");
+    qs.set("limit", "200");
+    return apiFetch(`/user-notification-channels?${qs.toString()}`, { method: "GET" });
+  }
+
+  async function uncUpdateEnable(id, enable) {
+    return apiFetch(`/user-notification-channels/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enable: enable ? 1 : 0 }),
+    });
+  }
+
+  function renderUncRows(items = []) {
+    if (!uncEls.tbody) return;
+
+    if (!items.length) {
+      uncEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    uncEls.tbody.innerHTML = items
+      .map((it) => {
+        const id = it.user_notification_channel_id ?? "-";
+        const name = it.display_name ?? "-";
+        const channelName = it.channel_name ?? it.channel ?? "-";
+        const enable = Number(it.enable ?? 0) === 1;
+
+        // ถ้าคุณต้องการ "line ห้ามปิด" ให้ disable checkbox เมื่อเป็น line
+        const isLine = String(channelName).toLowerCase() === "line";
+        const disabled = isLine ? "disabled" : "";
+
+        return `
+      <tr data-unc-id="${escapeHtml(id)}">
+        <td>${escapeHtml(id)}</td>
+        <td>${escapeHtml(name)}</td>
+        <td>${escapeHtml(channelName)}</td>
+        <td>
+          <label class="toggle-inline">
+            <span class="toggle toggle--gcms">
+              <input class="unc-toggle" type="checkbox" ${enable ? "checked" : ""} ${disabled} />
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+            </span>
+            <span class="toggle-inline__text">${enable ? "เปิดการใช้งาน" : "ปิดการใช้งาน"}</span>
+          </label>
+        </td>
+        <td>
+          <span class="muted">-</span>
+        </td>
+      </tr>
+      `;
+      })
+      .join("");
+
+    // bind toggle
+    uncEls.tbody.querySelectorAll(".unc-toggle").forEach((chk) => {
+      chk.addEventListener("change", async (e) => {
+        const tr = e.target.closest("tr");
+        const id = tr?.getAttribute("data-unc-id");
+        if (!id) return;
+
+        const nextEnable = e.target.checked;
+
+        // optimistic UI text
+        const txt = tr.querySelector(".toggle-inline__text");
+        if (txt) txt.textContent = nextEnable ? "เปิดการใช้งาน" : "ปิดการใช้งาน";
+
+        try {
+          const res = await uncUpdateEnable(id, nextEnable);
+          if (res?.error) throw new Error(res?.message || "update failed");
+        } catch (err) {
+          // revert
+          e.target.checked = !nextEnable;
+          if (txt) txt.textContent = (!nextEnable) ? "เปิดการใช้งาน" : "ปิดการใช้งาน";
+          console.error("[unc] update error:", err);
+          alert("บันทึกสถานะไม่สำเร็จ");
+        }
+      });
+    });
+  }
+
+  async function loadUserNotificationChannels() {
+    if (uncState.loading) return;
+    uncState.loading = true;
+
+    try {
+      if (uncEls.tbody) {
+        uncEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">กำลังโหลด...</td></tr>`;
+      }
+
+      // ✅ 1) bootstrap อัตโนมัติ (สร้าง line/web ให้ครบตาม role)
+      if (uncState.userId) {
+        const boot = await uncBootstrap(uncState.userId);
+        if (boot?.error) {
+          // ถ้า bootstrap พัง ก็ยังพยายาม list ต่อ (เผื่อมีข้อมูลอยู่แล้ว)
+          console.warn("[unc] bootstrap error:", boot?.message || boot);
+        }
+      }
+
+      // ✅ 2) list
+      const res = await uncFetchList(uncState.userId);
+      if (res?.error) throw new Error(res?.message || "Failed to load user notification channels");
+
+      const items = res?.data ?? res?.items ?? [];
+      renderUncRows(items);
+
+      if (uncEls.total) uncEls.total.textContent = `ทั้งหมด ${items.length} รายการ`;
+    } catch (e) {
+      if (uncEls.tbody) {
+        uncEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(e.message)}</td></tr>`;
+      }
+      if (uncEls.total) uncEls.total.textContent = "";
+      console.error("[unc] load error:", e);
+    } finally {
+      uncState.loading = false;
+    }
+  }
+
+  async function initUncSection() {
+    if (!uncEls.section) return;
+
+    // detect role
+    uncState.isAdmin = detectIsAdmin();
+
+    // ถ้าไม่ใช่ admin: ซ่อน dropdown เลือกผู้ใช้ แล้วให้ backend ใช้ "me"
+    if (!uncState.isAdmin) {
+      if (uncEls.userSelect) {
+        uncEls.userSelect.closest(".search-box")?.classList.add("muted");
+        uncEls.userSelect.style.display = "none";
+      }
+      uncState.userId = ""; // ให้ backend resolve me
+      await loadUserNotificationChannels();
+    } else {
+      // admin: โหลดรายชื่อ user เข้า dropdown
+      if (uncEls.userSelect) {
+        uncEls.userSelect.innerHTML = `<option value="">เลือกผู้ใช้งาน...</option>`;
+        try {
+          const res = await uncFetchUsersForDropdown("");
+          if (!res?.error) {
+            const items = res?.data ?? [];
+            uncEls.userSelect.innerHTML =
+              `<option value="">เลือกผู้ใช้งาน...</option>` +
+              items
+                .map((u) => `<option value="${escapeHtml(u.user_id)}">${escapeHtml(u.display_name)}</option>`)
+                .join("");
+          }
+        } catch (e) {
+          console.error("[unc] load users error:", e);
+        }
+
+        uncEls.userSelect.addEventListener("change", () => {
+          uncState.userId = String(uncEls.userSelect.value || "");
+          if (!uncState.userId) {
+            uncEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">เลือกผู้ใช้งานเพื่อแสดงรายการช่องทาง</td></tr>`;
+            if (uncEls.total) uncEls.total.textContent = "";
+            return;
+          }
+          loadUserNotificationChannels();
+        });
+      }
+    }
+
+    uncEls.refresh?.addEventListener("click", () => {
+      loadUserNotificationChannels();
+    });
+  }
+
+  /* =========================
+    Hook เข้า init หลักของหน้า
+    - คุณมี init ของ gcms-settings-data.js อยู่แล้ว ให้เรียก 2 ตัวนี้เพิ่ม
+  ========================= */
+
+  // ถ้าไฟล์คุณมี DOMContentLoaded อยู่แล้ว ให้ "ไม่ต้อง" ซ้ำ
+  // แต่ถ้าไม่มี ให้ใส่ไว้ท้ายไฟล์ได้เลย:
+  document.addEventListener("DOMContentLoaded", () => {
+    initChannelsSection();
+    initUncSection();
+  });
+
 
 
 
@@ -3843,7 +4525,7 @@
     if (!notificationTypeStaffEls.modal) return;
     hide(notificationTypeStaffEls.modal);
     document.body.style.overflow = "";
-    
+
     // Clear checkbox selection when closing modal
     window.ntsMultiSelectInstance?.clearSelection();
   }
@@ -3914,6 +4596,11 @@
   document.addEventListener("click", (e) => {
     const closeId = e.target?.getAttribute?.("data-close");
     if (closeId === "notification-type-staff") closeNotificationTypeStaffModal();
+  });
+
+  document.addEventListener("click", (e) => {
+    const closeId = e.target?.getAttribute?.("data-close");
+    if (closeId === "channel-modal") closeChannelModal();
   });
 
 
@@ -3993,6 +4680,12 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && notificationTypeStaffEls.modal && !notificationTypeStaffEls.modal.hidden) {
       closeNotificationTypeStaffModal();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && channelsEls.modal && !channelsEls.modal.hidden) {
+      closeChannelModal();
     }
   });
 
@@ -4129,9 +4822,28 @@
       notificationTypeStaffState.page = 1;
       notificationTypeStaffState.q = (notificationTypeStaffEls.search?.value || "").trim();
       notificationTypeStaffState.limit = Number(notificationTypeStaffEls.limit?.value || 50);
-      notificationTypeStaffState.notification_type_id = notificationTypeStaffEls.filterType?.value || "";
+      notificationTypeStaffState.notification_type_id = Number(notificationTypeStaffEls.filterType?.value || 0);
+
       loadNotificationTypeStaff();
     }
+
+    if (sectionKey === "channels") {
+      channelState.page = 1;
+      channelState.q = (channelEls.search?.value || "").trim();
+      channelState.limit = Number(channelEls.limit?.value || 50);
+
+      await loadChannels(); // ต้องมีฟังก์ชันนี้อยู่แล้วในไฟล์คุณ
+    }
+
+    if (sectionKey === "user-notification-channels") {
+      // ให้ init section นี้ครั้งแรกตอนเปิดเมนู
+      await initUncSection();
+
+      // ถ้าเป็น user (ไม่ใช่ admin) initUncSection() จะโหลดของตัวเองให้แล้ว
+      // ถ้าเป็น admin จะรอให้เลือกผู้ใช้งานใน dropdown (#unc-user-select)
+    }
+
+
 
 
 
@@ -4198,6 +4910,9 @@
     openNotificationTypeStaffModal({ mode: "create" });
   });
 
+  channelsEls.btnAdd?.addEventListener("click", () => {
+    openChannelModal({ mode: "create" });
+  });
 
 
   // ค้นหา
@@ -5105,6 +5820,36 @@
     }
   });
 
+  channelsEls.tbody?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+
+    const action = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id") || "";
+
+    if (action === "edit") {
+      const name = btn.getAttribute("data-name") || "";
+      openChannelModal({ mode: "edit", row: { channel_id: id, channel: name } });
+      return;
+    }
+
+    if (action === "delete") {
+      if (!confirm(`ต้องการลบช่องทางแจ้งเตือน ID ${id} ใช่ไหม?`)) return;
+
+      try {
+        await apiFetch(`/channels/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+        await loadChannels();
+        if (channelState.page > channelState.totalPages) {
+          channelState.page = channelState.totalPages;
+          await loadChannels();
+        }
+      } catch (err) {
+        alert(`ลบไม่สำเร็จ: ${err.message || err}`);
+      }
+    }
+  });
+
   // submit form (create/update)
   orgTypeEls.form?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -5664,6 +6409,46 @@
     }
   });
 
+  channelsEls.form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const id = (channelsEls.inputId?.value || "").trim();
+    const channel = (channelsEls.inputName?.value || "").trim();
+
+    if (!channel) {
+      if (channelsEls.formError) {
+        channelsEls.formError.textContent = "กรุณากรอกชื่อช่องทางแจ้งเตือน";
+        show(channelsEls.formError);
+      }
+      return;
+    }
+
+    try {
+      if (channelsEls.formError) hide(channelsEls.formError);
+
+      if (id) {
+        await apiFetch(`/channels/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          body: { channel },
+        });
+      } else {
+        await apiFetch(`/channels`, {
+          method: "POST",
+          body: { channel },
+        });
+      }
+
+      closeChannelModal();
+      await loadChannels();
+    } catch (err) {
+      if (channelsEls.formError) {
+        channelsEls.formError.textContent = err.message || "บันทึกไม่สำเร็จ";
+        show(channelsEls.formError);
+      } else {
+        alert(err.message || "บันทึกไม่สำเร็จ");
+      }
+    }
+  });
 
   // FILTER: หน่วยงาน
   departmentEls.filterOrg?.addEventListener("change", async () => {
@@ -5806,13 +6591,14 @@
   hide(document.getElementById("btn-add-request-status"));
   hide(document.getElementById("btn-add-notification-type"));
   hide(document.getElementById("btn-add-notification-type-staff"));
+  hide(document.getElementById("btn-add-channel"));
 
   activateSection("default");
 
   console.log("gcms-settings-data.js loaded");
 
   // ย้าย initNtsMultiSelectCheckbox เข้า IIFE เพื่อให้ access escapeHtml
-  window.initNtsMultiSelectCheckbox = function(users = []) {
+  window.initNtsMultiSelectCheckbox = function (users = []) {
     const root = document.getElementById("notification-type-staff-person-ui");
     const btn = root?.querySelector(".ms-dd__btn");
     const labelEl = document.getElementById("nts-person-label");

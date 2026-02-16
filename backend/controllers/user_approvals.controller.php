@@ -11,6 +11,8 @@ require_once __DIR__ . '/../models/PersonModel.php';
 require_once __DIR__ . '/../models/UserModel.php';
 require_once __DIR__ . '/../models/UserRoleModel.php';
 require_once __DIR__ . '/../models/OrganizationModel.php';
+require_once __DIR__ . '/../models/UserNotificationChannelModel.php';
+
 
 class UserApprovalsController
 {
@@ -19,12 +21,16 @@ class UserApprovalsController
     private UserRoleModel $userRoleModel;
     private OrganizationModel $orgModel;
 
+    private UserNotificationChannelModel $userNotificationChannelModel;
+
     public function __construct(private PDO $pdo)
     {
         $this->personModel = new PersonModel($pdo);
         $this->userModel = new UserModel($pdo);
         $this->userRoleModel = new UserRoleModel($pdo);
         $this->orgModel = new OrganizationModel($pdo);
+        $this->userNotificationChannelModel = new UserNotificationChannelModel($pdo);
+
     }
 
     /**
@@ -130,6 +136,39 @@ class UserApprovalsController
                 fail('UPDATE_FAILED', 500, 'cannot approve person');
                 return;
             }
+
+
+        // ===== Auto create default notification channels (line/web) =====
+        // rule:
+        // - role 2 or 3 => web=1, line=1
+        // - role 1      => web=0, line=1
+        $effectiveRoleId = $roleId > 0
+            ? $roleId
+            : (int)($user['user_role_id'] ?? 0);
+
+        // กัน role ว่าง: treat เป็น admin-like
+        if ($effectiveRoleId <= 0) $effectiveRoleId = 1;
+
+        $channelBootstrapDebug = null;
+        try {
+            // ต้องมี $this->userNotificationChannelModel ใน controller แล้ว (new ใน __construct)
+            // และใน model ควรมี ensureDefaultsForUser() หรือใช้ bootstrapDefaults()
+            if (method_exists($this->userNotificationChannelModel, 'ensureDefaultsForUser')) {
+                $channelBootstrapDebug = $this->userNotificationChannelModel
+                    ->ensureDefaultsForUser($userId, $effectiveRoleId);
+            } else {
+                // fallback ใช้ bootstrapDefaults() (upsert อยู่แล้ว -> idempotent)
+                $channelBootstrapDebug = $this->userNotificationChannelModel
+                    ->bootstrapDefaults($userId, $effectiveRoleId);
+            }
+        } catch (Throwable $e) {
+            // ถ้าต้องการให้ approve ไม่ล้มเมื่อ channel master ยังไม่พร้อม ให้เลือก "ไม่ throw"
+            // แต่โดยปกติควร throw เพื่อไม่ให้ระบบ inconsistent
+            $this->pdo->rollBack();
+            fail('UPDATE_FAILED', 500, 'cannot bootstrap user notification channels: ' . $e->getMessage());
+            return;
+        }
+
 
             $this->pdo->commit();
 
