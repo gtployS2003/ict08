@@ -8,11 +8,20 @@
     window.__API_BASE__ ||
     "/ict/backend/public";
 
+  function getAuthToken() {
+  return String(
+    localStorage.getItem("auth_token") ||
+    sessionStorage.getItem("auth_token") ||
+    ""
+  ).trim();
+}
+
+
   async function apiFetch(path, { method = "GET", body, headers = {} } = {}) {
     const url = `${API_BASE}${path}`;
     const opts = {
       method,
-      headers: { ...headers },
+      headers: { ...getAuthHeaders(), ...headers },
     };
 
     if (body !== undefined) {
@@ -20,7 +29,10 @@
       opts.body = JSON.stringify(body);
     }
 
-    const res = await fetch(url, opts);
+    const res = await fetch(url, {
+      ...opts,
+      credentials: "include",
+    });
     const text = await res.text();
 
     let json;
@@ -35,8 +47,8 @@
       const extra = json?.detail
         ? `: ${json.detail}`
         : json?.data
-        ? `: ${JSON.stringify(json.data)}`
-        : "";
+          ? `: ${JSON.stringify(json.data)}`
+          : "";
       throw new Error(msg + extra);
     }
 
@@ -89,12 +101,12 @@
       const body =
         payload && typeof payload === "object"
           ? {
-              ...payload,
-              enable:
-                payload.enable !== undefined
-                  ? payload.enable
-                  : payload.is_enabled,
-            }
+            ...payload,
+            enable:
+              payload.enable !== undefined
+                ? payload.enable
+                : payload.is_enabled,
+          }
           : payload;
 
       return apiFetch(`/user-notification-channels/${encodeURIComponent(id)}`, {

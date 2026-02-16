@@ -6,7 +6,7 @@ let filteredDevices = [];
 // ฟังก์ชันโหลดข้อมูลจาก devices.json
 async function loadDevices() {
   try {
-    const res = await fetch("/assets/js/data-ex/devices.json");
+    const res = await fetch("/ict/assets/js/data-ex/devices.json");
     if (!res.ok) {
       throw new Error(
         "โหลด devices.json ไม่สำเร็จ (status " + res.status + ")"

@@ -209,6 +209,9 @@ final class UserNotificationChannelController
     public function update(int $id): void
     {
         try {
+            error_log("[UNC-UPDATE] Method: " . $_SERVER['REQUEST_METHOD']);
+            error_log("[UNC-UPDATE] Content-Type: " . ($_SERVER['CONTENT_TYPE'] ?? 'none'));
+            
             $me = require_auth($this->pdo);
             $myId = (int)($me['user_id'] ?? 0);
             $myRole = (int)($me['user_role_id'] ?? 0);
@@ -220,9 +223,24 @@ final class UserNotificationChannelController
             }
 
             $raw = (string)file_get_contents('php://input');
+            error_log("[UNC-DEBUG] raw input length: " . strlen($raw));
+            error_log("[UNC-DEBUG] raw input: " . $raw);
+            error_log("[UNC-DEBUG] raw type: " . gettype($raw));
+            
             $body = json_decode($raw, true);
+            
+            error_log("[UNC-DEBUG] json_decode result type: " . gettype($body));
+            if (is_array($body)) {
+                error_log("[UNC-DEBUG] body is array with keys: " . implode(',', array_keys($body)));
+                error_log("[UNC-DEBUG] body content: " . print_r($body, true));
+            } else {
+                error_log("[UNC-DEBUG] body NOT array, value: " . var_export($body, true));
+            }
+            error_log("[UNC-DEBUG] json_last_error: " . json_last_error() . " msg: " . json_last_error_msg());
+            
             if (!is_array($body)) {
-                parse_str($raw, $body);
+                json_response(['error' => true, 'message' => 'Invalid JSON body: ' . json_last_error_msg()], 400);
+                return;
             }
 
             $enableRaw = $body['enable'] ?? ($body['is_enabled'] ?? null);

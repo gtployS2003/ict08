@@ -20,7 +20,7 @@ function initSidebarTasks() {
     const today = new Date();
     todayLabelEl.textContent = formatThaiDate(today);
 
-    fetch('/assets/js/data-ex/tasks_with_time.json')
+    fetch('/ict/assets/js/data-ex/tasks_with_time.json')
         .then(res => res.json())
         .then(tasks => {
             allTasks = tasks;

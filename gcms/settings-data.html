@@ -31,7 +31,7 @@
     <script src="/ict/assets/js/auth.js" defer></script>
     <script src="/ict/assets/js/main.js" defer></script>
     <script src="/ict/assets/js/gcms-dashboard.js" defer></script>
-    <script src="/ict/assets/js/gcms-settings-data.js" defer></script>
+    <script src="/ict/assets/js/gcms-settings-data.js?v=2025-02-16" defer></script>
     <script defer src="/ict/assets/js/gcms-nav.js"></script>
 </head>
 
@@ -83,7 +83,6 @@
                             <li><a href="#" data-section="request-types">ประเภทคำขอ</a></li>
                             <li><a href="#" data-section="request-sub-types">ประเภทคำขอย่อย</a></li>
                             <li><a href="#" data-section="request-status">สถานะคำขอ</a></li>
-                            <li><a href="#">ช่องทางอนุมัติ/ช่องทาง</a></li>
                             <li><a href="#">ผู้รับผิดชอบตามประเภทย่อย</a></li>
                         </ul>
                     </div>
@@ -138,28 +137,18 @@
                             <span class="arrow">▾</span>
                         </button>
                         <ul id="menu-notification" class="testing-dropdown-menu" hidden>
-                            <li><a href="#">รายการแจ้งเตือน</a></li>
                             <li><a href="#" data-section="notification-type">ประเภทแจ้งเตือน</a></li>
                             <li><a href="#" data-section="notification-type-staff">ตั้งค่าผู้รับการแจ้งเตือน
                                     (เจ้าหน้าที่)</a></li>
                             <li><a href="#" data-section="channels">ช่องทางแจ้งเตือน (Channel)</a></li>
-                            <li><a href="#" data-section="user-notification-channels">ตั้งค่าช่องทางเริ่มต้นผู้ใช้</a>
+                            <li><a href="#"
+                                    data-section="user-notification-channels">ตั้งค่าช่องทางแจ้งเตือนของผู้ใช้</a>
                             </li>
 
                         </ul>
                     </div>
 
-                    <!-- 8) ไฟล์/ประเภทไฟล์ -->
-                    <div class="menu-group">
-                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-file">
-                            <i class="fa-solid fa-file"></i> การตั้งค่าไฟล์/ประเภทไฟล์
-                            <span class="arrow">▾</span>
-                        </button>
-                        <ul id="menu-file" class="testing-dropdown-menu" hidden>
-                            <li><a href="#">MIME Type</a></li>
-                            <li><a href="#">นามสกุลไฟล์</a></li>
-                        </ul>
-                    </div>
+                    
                 </div>
             </aside>
 
@@ -998,10 +987,8 @@
                     <section id="section-user-notification-channels" class="setting-section" hidden>
                         <div class="table-toolbar">
                             <div class="search-box">
-                                <i class="fa-solid fa-user"></i>
-                                <select id="unc-user-select" aria-label="เลือกผู้ใช้">
-                                    <option value="">เลือกผู้ใช้งาน...</option>
-                                </select>
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="search" id="unc-search" placeholder="ค้นหา..." />
                             </div>
 
                             <div class="toolbar-right">
@@ -1062,7 +1049,8 @@
                 <div class="form-grid">
                     <div class="form-field full">
                         <label for="channel-name">ชื่อช่องทาง</label>
-                        <input id="channel-name" name="channel" type="text" placeholder="เช่น LINE, Web, Email" required />
+                        <input id="channel-name" name="channel" type="text" placeholder="เช่น LINE, Web, Email"
+                            required />
                     </div>
                 </div>
 
