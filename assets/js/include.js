@@ -1,7 +1,7 @@
 function detectBasePath() {
   const script =
     document.currentScript ||
-    Array.from(document.scripts).find((s) => (s.src || "").includes("/ict8/assets/js/include.js"));
+    Array.from(document.scripts).find((s) => (s.src || "").includes("/assets/js/include.js"));
 
   if (!script || !script.src) return "";
 
