@@ -96,6 +96,7 @@
     hide($("#btn-add-notification-type"));
     hide($("#btn-add-notification-type-staff"));
     hide($("#btn-add-channel"));
+    hide($("#btn-add-type-of-device"))
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -196,6 +197,13 @@
         show($("#section-user-notification-channels"));
         setTitle("ตั้งค่าช่องทางแจ้งเตือนของผู้ใช้");
         loadUserNotificationChannels();
+        break;
+
+      case "type-of-device":
+        show($("#section-type-of-device"));
+        show($("#btn-add-type-of-device"));
+        setTitle("ประเภทอุปกรณ์");
+        loadTypeOfDevice();
         break;
 
       default:
@@ -3792,11 +3800,11 @@
   }
 
   async function uncUpdateEnable(id, enable) {
-  const payload = { enable: enable ? 1 : 0 };
-  console.log("[unc] Sending update payload:", payload);
+    const payload = { enable: enable ? 1 : 0 };
+    console.log("[unc] Sending update payload:", payload);
 
-  return UserNotificationChannelsAPI.update(id, { enable: enable ? 1 : 0 });
-}
+    return UserNotificationChannelsAPI.update(id, { enable: enable ? 1 : 0 });
+  }
 
 
   function renderUncRows(items = []) {
@@ -3901,16 +3909,16 @@
       if (res?.error) throw new Error(res?.message || "Failed to load user notification channels");
 
       let items = res?.data ?? res?.items ?? [];
-      
+
       // ✅ 3) filter by search
       if (uncState.q) {
         const q = String(uncState.q || "").toLowerCase();
-        items = items.filter((it) => 
+        items = items.filter((it) =>
           String(it.display_name || "").toLowerCase().includes(q) ||
           String(it.channel_name || it.channel || "").toLowerCase().includes(q)
         );
       }
-      
+
       renderUncRows(items);
 
       if (uncEls.total) uncEls.total.textContent = `ทั้งหมด ${items.length} รายการ`;
@@ -3995,11 +4003,149 @@
   document.addEventListener("DOMContentLoaded", () => {
     initChannelsSection();
     initUncSection();
+    initTypeOfDeviceSection();
   });
 
+  /* =========================
+    TYPE OF DEVICE
+  ========================= */
 
+  const todEls = {
+    section: $("#section-type-of-device"),
+    tbody: $("#type-of-device-tbody"),
+    search: $("#type-of-device-search"),
+    limit: $("#type-of-device-limit"),
+    refresh: $("#type-of-device-refresh"),
+    pagination: $("#type-of-device-pagination"),
+    total: $("#type-of-device-total"),
 
+    btnAdd: $("#btn-add-type-of-device"),
 
+    modal: $("#type-of-device-modal"),
+    form: $("#type-of-device-form"),
+    modalTitle: $("#type-of-device-modal-title"),
+    submitText: $("#type-of-device-submit-text"),
+
+    inputId: $("#type-of-device-id"),
+    inputTitle: $("#type-of-device-title"),
+    inputHasNetwork: $("#type-of-device-has-network"),
+    inputIconOnline: $("#type-of-device-icon-online"),
+    inputIconOffline: $("#type-of-device-icon-offline"),
+    formError: $("#type-of-device-form-error"),
+  };
+
+  const todState = {
+    q: "",
+    page: 1,
+    limit: 50,
+    total: 0,
+    loading: false,
+  };
+
+  async function todFetchList() {
+    return TypeOfDeviceAPI.list({
+      q: todState.q,
+      page: todState.page,
+      limit: todState.limit,
+    });
+  }
+
+  function renderTypeOfDeviceRows(items = []) {
+    if (!todEls.tbody) return;
+
+    if (!items.length) {
+      todEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    todEls.tbody.innerHTML = items.map((it) => {
+      const id = it.type_of_device_id ?? "-";
+      const title = it.type_of_device_title ?? "-";
+      const hasNetwork = Number(it.has_network) === 1;
+
+      return `
+      <tr>
+        <td>${escapeHtml(id)}</td>
+        <td>${escapeHtml(title)}</td>
+        <td>
+          <span class="status-badge status-badge--${hasNetwork ? "on" : "off"}">
+            ${hasNetwork ? "มีเครือข่าย" : "ไม่มีเครือข่าย"}
+          </span>
+        </td>
+        <td>${escapeHtml(it.icon_path_online ?? "-")}</td>
+        <td>${escapeHtml(it.icon_path_offline ?? "-")}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm"
+            data-action="edit"
+            data-id="${escapeHtml(id)}">
+            แก้ไข
+          </button>
+          <button class="btn btn-danger btn-sm"
+            data-action="delete"
+            data-id="${escapeHtml(id)}">
+            ลบ
+          </button>
+        </td>
+      </tr>
+    `;
+    }).join("");
+  }
+
+  async function loadTypeOfDevice() {
+    if (todState.loading) return;
+    todState.loading = true;
+
+    try {
+      todEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">กำลังโหลด...</td></tr>`;
+
+      const res = await todFetchList();
+
+      const items = res?.data ?? [];
+      const pg = res?.pagination ?? {};
+
+      const page = Number(pg.page ?? todState.page);
+      const limit = Number(pg.limit ?? todState.limit);
+      const total = Number(pg.total ?? items.length);
+      const totalPages = Number(pg.totalPages ?? Math.ceil(total / Math.max(1, limit)));
+
+      todState.total = total;
+
+      renderTypeOfDeviceRows(items);
+
+      todEls.total.textContent = `ทั้งหมด ${total} รายการ`;
+
+      renderPagination(todEls.pagination, { page, totalPages }, (p) => {
+        todState.page = p;
+        loadTypeOfDevice();
+      });
+
+    } catch (e) {
+      todEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">โหลดข้อมูลไม่สำเร็จ</td></tr>`;
+      console.error("[type-of-device] load error:", e);
+    } finally {
+      todState.loading = false;
+    }
+  }
+
+  function initTypeOfDeviceSection() {
+    if (!todEls.section) return;
+
+    todEls.limit?.addEventListener("change", () => {
+      todState.limit = Number(todEls.limit.value || 50);
+      todState.page = 1;
+      loadTypeOfDevice();
+    });
+
+    todEls.search?.addEventListener("input",
+      debounce(() => {
+        todState.q = String(todEls.search.value || "").trim();
+        todState.page = 1;
+        loadTypeOfDevice();
+      }, 250)
+    );
+
+    todEls.refresh?.addEventListener("click", loadTypeOfDevice);
+  }
 
 
   /* ===== Modal helpers ===== */
@@ -4438,6 +4584,35 @@
     window.ntsMultiSelectInstance?.clearSelection();
   }
 
+  function openTypeOfDeviceModal({ mode, row = null } = {}) {
+    if (!todEls.modal) return;
+
+    if (todEls.formError) {
+      todEls.formError.textContent = "";
+      hide(todEls.formError);
+    }
+
+    const isEdit = mode === "edit";
+    if (todEls.modalTitle) todEls.modalTitle.textContent = isEdit ? "แก้ไขประเภทอุปกรณ์" : "เพิ่มประเภทอุปกรณ์";
+    if (todEls.submitText) todEls.submitText.textContent = isEdit ? "บันทึกการแก้ไข" : "บันทึก";
+
+    if (todEls.inputId) todEls.inputId.value = isEdit ? String(row?.type_of_device_id ?? "") : "";
+    if (todEls.inputTitle) todEls.inputTitle.value = isEdit ? String(row?.type_of_device_title ?? "") : "";
+    if (todEls.inputHasNetwork) todEls.inputHasNetwork.checked = isEdit ? Boolean(row?.has_network) : false;
+
+    if (todEls.inputIconOnline) todEls.inputIconOnline.value = isEdit ? String(row?.icon_path_online ?? "") : "";
+    if (todEls.inputIconOffline) todEls.inputIconOffline.value = isEdit ? String(row?.icon_path_offline ?? "") : "";
+
+    show(todEls.modal);
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeTypeOfDeviceModal() {
+    if (!todEls.modal) return;
+    hide(todEls.modal);
+    document.body.style.overflow = "";
+  }
+
   // ปิด modal เมื่อคลิกที่ overlay 
   document.addEventListener("click", (e) => {
     const closeId = e.target?.getAttribute?.("data-close");
@@ -4597,6 +4772,7 @@
     }
   });
 
+
   // คลิกเมนูซ้ายที่มี data-section
   document.addEventListener("click", async (e) => {
     const a = e.target.closest("a[data-section]");
@@ -4751,6 +4927,14 @@
       // ถ้าเป็น admin จะรอให้เลือกผู้ใช้งานใน dropdown (#unc-user-select)
     }
 
+    if (sectionKey === "type-of-device") {
+      todState.page = 1;
+      todState.q = (todEls.search?.value || "").trim();
+      todState.limit = Number(todEls.limit?.value || 50);
+      loadTypeOfDevice();
+    }
+
+
   });
 
   // ปุ่มเพิ่มประเภทหน่วยงาน
@@ -4813,6 +4997,8 @@
   channelsEls.btnAdd?.addEventListener("click", () => {
     openChannelModal({ mode: "create" });
   });
+
+
 
 
   // ค้นหา
@@ -4908,6 +5094,7 @@
   });
 
 
+
   // เปลี่ยน limit
   orgTypeEls.limit?.addEventListener("change", () => {
     orgTypeState.page = 1;
@@ -4987,6 +5174,12 @@
     loadNotificationTypeStaff();
   });
 
+  typeOfDeviceEls.limit?.addEventListener("change", () => {
+    typeOfDeviceState.page = 1;
+    typeOfDeviceState.limit = Number(typeOfDeviceEls.limit.value || 50);
+    loadTypeOfDevices();
+  });
+
   // รีเฟรช
   orgTypeEls.refresh?.addEventListener("click", () => {
     loadOrgTypes();
@@ -5039,6 +5232,8 @@
   notificationTypeStaffEls.refresh?.addEventListener("click", () => {
     loadNotificationTypeStaff();
   });
+
+
 
 
   // คลิก pagination
@@ -5184,6 +5379,7 @@
     notificationTypeStaffState.page = next;
     loadNotificationTypeStaff();
   });
+
 
   // คลิก edit/delete ในตาราง
   orgTypeEls.tbody?.addEventListener("click", async (e) => {
@@ -5749,6 +5945,7 @@
       }
     }
   });
+
 
   // submit form (create/update)
   orgTypeEls.form?.addEventListener("submit", async (e) => {
@@ -6492,6 +6689,7 @@
   hide(document.getElementById("btn-add-notification-type"));
   hide(document.getElementById("btn-add-notification-type-staff"));
   hide(document.getElementById("btn-add-channel"));
+  hide(document.getElementById("btn-add-type-of-device"));
 
   activateSection("default");
 

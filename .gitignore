@@ -6,3 +6,12 @@ backend/public/uploads/
 backend/public/uploads/profiles
 
 assets/image
+assets/js/gcms-settings-data.js.bak
+
+.DS_Store  
+
+node_modules/
+
+.log
+
+.env
