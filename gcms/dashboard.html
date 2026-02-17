@@ -1,79 +1,79 @@
 <!DOCTYPE html>
 <html lang="th">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
-    <title>ระบบศูนย์ควบคุมและรายงานผล</title>
 
-    <!-- include head -->
-    <script src="/ict8/backend/public/config.js.php"></script>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
+  <title>ระบบศูนย์ควบคุมและรายงานผล</title>
 
-    <script defer src="/ict8/assets/js/api/http.js"></script>
-    <script defer src="/ict8/assets/js/api/news.api.js"></script>
+  <!-- include head -->
 
-    <script defer src="/ict8/assets/js/main.js"></script>
-    <script defer src="/ict8/assets/js/include.js"></script>
+  <!-- ฟอนต์ Inter + Noto Sans Thai -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
 
-    <script defer src="/ict8/assets/js/auth.js"></script>
-    <script defer src="/ict8/assets/js/gcms-dashboard.js"></script>
-    <script defer src="/ict8/assets/js/gcms-nav.js"></script>
+  <!-- ลิงก์ไปยังไฟล์ CSS -->
+  <link rel="stylesheet" href="/ict8/assets/css/style.css" />
+  <link rel="stylesheet" href="/ict8/assets/css/schedule.css" />
+  <link rel="stylesheet" href="/ict8/assets/css/device.css" />
+  <link rel="stylesheet" href="/ict8/assets/css/gcms.css" />
+  <link rel="stylesheet" href="/ict8/assets/css/login.css" />
+  <link rel="stylesheet" href="/ict8/assets/css/profile-setup.css" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-  </head>
+  <script src="/ict8/backend/public/config.js.php"></script>
 
-  <body>
-    <header id="header-gcms"></header>
-    <nav id="gcms-nav"></nav>
+  <script defer src="/ict8/assets/js/api/http.js"></script>
+  <script defer src="/ict8/assets/js/api/news.api.js"></script>
 
-    <main class="main">
-      <div class="dashboard-layout">
-        <aside class="sidebar">
-          <div
-            class="sidebar__menu"
-            role="navigation"
-            aria-label="Dashboard menu"
-          >
-            <button
-              class="sidebar__item"
-              type="button"
-              data-dashboard="network"
-            >
-              เครือข่ายและอุปกรณ์
-            </button>
-            <button
-              class="sidebar__item"
-              type="button"
-              data-dashboard="requests"
-            >
-              คำขอรับการสนับสนุน
-            </button>
-            <button
-              class="sidebar__item"
-              type="button"
-              data-dashboard="meetings"
-            >
-              การประชุมและปฏิทินงาน
-            </button>
-            <button
-              class="sidebar__item"
-              type="button"
-              data-dashboard="publicity"
-            >
-              ข่าวประชาสัมพันธ์
-            </button>
-          </div>
-        </aside>
+  <script defer src="/ict8/assets/js/main.js"></script>
+  <script defer src="/ict8/assets/js/include.js"></script>
 
-        <section class="dashboard-area">
-          <div class="dashboard-content">
-            <h2 id="dashboard-title" class="dashboard-title">
-              เครือข่ายและอุปกรณ์
-            </h2>
-          </div>
-        </section>
-      </div>
-    </main>
+  <script defer src="/ict8/assets/js/auth.js"></script>
+  <script defer src="/ict8/assets/js/gcms-dashboard.js"></script>
+  <script defer src="/ict8/assets/js/gcms-nav.js"></script>
 
-    <footer id="footer-index"></footer>
-  </body>
+</head>
+
+<body>
+  <header id="header-gcms"></header>
+  <nav id="gcms-nav"></nav>
+
+  <main class="main">
+    <div class="dashboard-layout">
+      <aside class="sidebar">
+        <div class="sidebar__menu" role="navigation" aria-label="Dashboard menu">
+          <button class="sidebar__item" type="button" data-dashboard="network">
+            เครือข่ายและอุปกรณ์
+          </button>
+          <button class="sidebar__item" type="button" data-dashboard="requests">
+            คำขอรับการสนับสนุน
+          </button>
+          <button class="sidebar__item" type="button" data-dashboard="meetings">
+            การประชุมและปฏิทินงาน
+          </button>
+          <button class="sidebar__item" type="button" data-dashboard="publicity">
+            ข่าวประชาสัมพันธ์
+          </button>
+        </div>
+      </aside>
+
+      <section class="dashboard-area">
+        <div class="dashboard-content">
+          <h2 id="dashboard-title" class="dashboard-title">
+            เครือข่ายและอุปกรณ์
+          </h2>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer id="footer-index"></footer>
+</body>
+
 </html>

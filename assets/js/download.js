@@ -28,7 +28,7 @@ const THAI_MONTHS = [
 document.addEventListener('DOMContentLoaded', () => {
   if (!downloadGridEl) return;
 
-  fetch('/assets/js/data-ex/form.json')
+  fetch('/ict8/assets/js/data-ex/form.json')
     .then(res => res.json())
     .then(data => {
       // map data ให้มี dateObj + displayDate

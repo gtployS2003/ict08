@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const gridEl = document.querySelector('.link-grid');
   if (!gridEl) return;
 
-  fetch('/assets/js/data-ex/link.json')
+  fetch('/ict8/assets/js/data-ex/link.json')
     .then(res => res.json())
     .then(data => {
       renderLinks(gridEl, data);

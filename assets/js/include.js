@@ -49,23 +49,23 @@ function patchAssetPaths(html) {
 
 
 document.addEventListener("DOMContentLoaded", async () => {
-  await loadHtml("head", "/assets/include/head.html");
+  await loadHtml("head", "/ict8/assets/include/head.html");
 
-  await loadHtml("header", "/assets/include/header.html");
-  await loadHtml("navbar", "/assets/include/navbar.html");
+  await loadHtml("header", "/ict8/assets/include/header.html");
+  await loadHtml("navbar", "/ict8/assets/include/navbar.html");
 
   // initNavbar ถ้ามี
   if (typeof window.initNavbar === "function") window.initNavbar();
 
-  await loadHtml("footer", "/assets/include/footer.html");
+  await loadHtml("footer", "/ict8/assets/include/footer.html");
 
-  await loadHtml("header-index", "/assets/include/header-schedule.html");
-  await loadHtml("footer-index", "/assets/include/footer_index.html");
+  await loadHtml("header-index", "/ict8/assets/include/header-schedule.html");
+  await loadHtml("footer-index", "/ict8/assets/include/footer_index.html");
 
-  await loadHtml("schedule-nav", "/assets/include/nav-schedule.html");
+  await loadHtml("schedule-nav", "/ict8/assets/include/nav-schedule.html");
 
-  await loadHtml("device-nav", "/assets/include/nav-device.html");
-  await loadHtml("header-device", "/assets/include/header-device.html");
+  await loadHtml("device-nav", "/ict8/assets/include/nav-device.html");
+  await loadHtml("header-device", "/ict8/assets/include/header-device.html");
 
   await loadHtml("gcms-nav", "/assets/include/nav-gcms.html");
   await loadHtml("header-gcms", "/assets/include/header-gcms.html");

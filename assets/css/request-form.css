@@ -124,6 +124,7 @@ body{
   font-size: 14px;
   outline: none;
   background: #fff;
+  font-family: "Inter","Noto Sans Thai",sans-serif;
 }
 
 .request-form-textarea{
@@ -171,6 +172,7 @@ body{
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  font-family: inherit;
 }
 
 .request-form-btn-primary{
