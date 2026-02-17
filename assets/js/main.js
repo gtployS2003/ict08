@@ -244,7 +244,7 @@ function initHomeActivities() {
     if (!slidesContainer || !dotsContainer) return;  // ถ้าไม่ได้อยู่หน้า home ก็ไม่ทำอะไร
 
     const HOME_ACT_LIMIT = 15;
-    const jsonPath = "/assets/js/data-ex/activity.json";  // เหมือนที่ใช้ใน activities.js
+    const jsonPath = "/ict8/assets/js/data-ex/activity.json";  // เหมือนที่ใช้ใน activities.js
 
     fetch(jsonPath)
         .then(res => res.json())
