@@ -1,4 +1,4 @@
-const NOTIF_DATA_URL = '/assets/js/data-ex/notifications.json';
+const NOTIF_DATA_URL = '/ict8/assets/js/data-ex/notifications.json';
 
 let allNotifications = [];
 let filteredNotifications = [];

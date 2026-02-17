@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 2) เลือก path news.json ให้ถูก (อยู่ใน /page/ หรือหน้า root)
     const isInPageFolder = window.location.pathname.includes("/page/");
-    const jsonPath = "/assets/js/data-ex/news.json"
+    const jsonPath = "/ict8/assets/js/data-ex/news.json"
 
     // 3) โหลด JSON แล้วหา news ตาม id
     fetch(jsonPath)

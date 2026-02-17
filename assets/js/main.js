@@ -186,7 +186,7 @@ function initHomeNews() {
 
     const HOME_NEWS_LIMIT = 15;
     const isInPageFolder = window.location.pathname.includes("/site/");
-    const jsonPath = "/assets/js/data-ex/news.json";
+    const jsonPath = "/ict8/assets/js/data-ex/news.json";
 
     fetch(jsonPath)
         .then(res => res.json())
@@ -197,7 +197,7 @@ function initHomeNews() {
                 .slice(0, HOME_NEWS_LIMIT);
 
             container.innerHTML = latestNews.map(item => `
-                <a href="/site/news-detail.html?id=${item.id}" target="_blank" rel="noopener noreferrer" class="news-card" >
+                <a href="/ict8/site/news-detail.html?id=${item.id}" target="_blank" rel="noopener noreferrer" class="news-card" >
                     <h3 class="news-card-title">${item.title}</h3>
                     <div class="news-card-date">${item.date}</div>
                     <p  class="news-card-link">
@@ -282,9 +282,9 @@ function initHomeActivities() {
                     const img =
                         item.images && item.images.length > 0
                             ? item.images[0]
-                            : "/assets/img/activities/01.png";
+                            : "/ict8/assets/img/activities/01.png";
                     return `
-                        <a href="/site/activity-detail.html?id=${item.id}" target="_blank" rel="noopener noreferrer"
+                        <a href="/ict8/site/activity-detail.html?id=${item.id}" target="_blank" rel="noopener noreferrer"
                            class="activity-side-item card-link">
                             <img src="${img}" alt="${item.title}" class="activity-side-img">
                             <div class="activity-side-content">

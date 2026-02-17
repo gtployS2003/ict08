@@ -1,13 +1,13 @@
 function detectBasePath() {
   const script =
     document.currentScript ||
-    Array.from(document.scripts).find((s) => (s.src || "").includes("/assets/js/include.js"));
+    Array.from(document.scripts).find((s) => (s.src || "").includes("/ict8/assets/js/include.js"));
 
   if (!script || !script.src) return "";
 
   const u = new URL(script.src);
   const p = u.pathname; // เช่น /ict8/assets/js/include.js
-  const marker = "/assets/js/";
+  const marker = "/ict8/assets/js/";
   const idx = p.indexOf(marker);
 
   return idx >= 0 ? p.slice(0, idx) : "";

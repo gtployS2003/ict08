@@ -22,7 +22,7 @@ if (gridEl) {
 }
 
 function initNewsPage() {
-  fetch('/assets/js/data-ex/news.json')
+  fetch('/ict8/assets/js/data-ex/news.json')
     .then((res) => res.json())
     .then((data) => {
       allNews = data;
