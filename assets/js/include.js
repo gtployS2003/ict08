@@ -41,10 +41,10 @@ function patchAssetPaths(html) {
   // แปลง href/src="/assets/..." -> href="/ict8/assets/..." (ถ้า BASE_PATH="/ict8")
   if (!BASE_PATH) return html;
   return html
-    .replaceAll('href="/ict8/assets/', `href="${BASE_PATH}/assets/`)
-    .replaceAll("href='/ict8/assets/", `href='${BASE_PATH}/assets/`)
-    .replaceAll('src="/ict8/assets/', `src="${BASE_PATH}/assets/`)
-    .replaceAll("src='/ict8/assets/", `src='${BASE_PATH}/assets/`);
+    .replaceAll('href="/assets/', `href="${BASE_PATH}/assets/`)
+    .replaceAll("href='/assets/", `href='${BASE_PATH}/assets/`)
+    .replaceAll('src="/assets/', `src="${BASE_PATH}/assets/`)
+    .replaceAll("src='/assets/", `src='${BASE_PATH}/assets/`);
 }
 
 
