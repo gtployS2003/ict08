@@ -3,7 +3,7 @@
 // อ่านค่าจาก backend/public/config.js.php
 const APP_CONFIG = window.__APP_CONFIG__ || {};
 
-const API_BASE = APP_CONFIG.API_BASE || "http://127.0.0.1/ict/backend/public";
+const API_BASE = APP_CONFIG.API_BASE || "http://127.0.0.1/ict8/backend/public";
 const APP_ENV = APP_CONFIG.APP_ENV || "dev";
 const DEV_API_KEY = APP_CONFIG.DEV_API_KEY || "";
 

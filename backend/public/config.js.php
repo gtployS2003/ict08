@@ -9,7 +9,7 @@ header('Content-Type: application/javascript; charset=utf-8');
 $appEnv   = env('APP_ENV', 'dev');
 $devKey   = env('DEV_API_KEY', '');
 $apiBase  = env('API_BASE', 'http://127.0.0.1/ict/backend/public');
-$basePath = env('BASE_PATH', '/ict');
+$basePath = env('BASE_PATH', '/ict8');
 $liffId   = env('LIFF_ID', '');
 
 // ✅ output เป็น JSON ทั้งก้อน (กัน syntax error ทุกกรณี)

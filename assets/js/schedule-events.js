@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tbodyEl = document.querySelector('#event-list-table-body');
     if (!tbodyEl) return;
 
-    const DATA_URL = '/ict/assets/js/data-ex/tasks_with_time.json';
+    const DATA_URL = '/ict8/assets/js/data-ex/tasks_with_time.json';
 
     fetch(DATA_URL)
         .then(res => res.json())

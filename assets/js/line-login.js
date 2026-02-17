@@ -71,14 +71,14 @@ async function continueAfterLogin() {
     }
 
     alert("isInClient=false → ปิดหน้าต่าง LIFF ไม่ได้ (ตอนนี้ไม่ได้เปิดแบบ LIFF ในแอป LINE)");
-    location.href = "/ict/index.html";
+    location.href = "/ict8/index.html";
     return;
   }
 
   if (data.status === "register") {
     sessionStorage.setItem("line_user_id", profile.userId);
     sessionStorage.setItem("line_user_name", profile.displayName);
-    location.href = "/ict/profile-setup.html";
+    location.href = "/ict8/profile-setup.html";
     return;
   }
 
@@ -164,7 +164,7 @@ async function handleLogoutDev() {
     logUI("logout failed", { message: e?.message || String(e) });
   }
 
-  location.href = "/ict/login.html?ts=" + Date.now();
+  location.href = "/ict8/login.html?ts=" + Date.now();
 }
 
 async function handleLineLogin() {

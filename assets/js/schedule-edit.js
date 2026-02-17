@@ -24,7 +24,7 @@ function getQueryParam(key) {
 
 function loadTaskAndFillForm(taskId) {
     // path ต้องตรงกับที่ใช้ใน calendar
-    fetch('/ict/assets/js/data-ex/tasks_with_time.json')
+    fetch('/ict8/assets/js/data-ex/tasks_with_time.json')
         .then(res => res.json())
         .then(tasks => {
             const task = tasks.find(t => String(t.id) === String(taskId));
@@ -86,7 +86,7 @@ function setupEditFormHandlers() {
     if (cancelBtn) {
         cancelBtn.addEventListener('click', () => {
             // กลับหน้าปฏิทิน
-            window.location.href = '/ict/schedule/calendar.html';
+            window.location.href = '/ict8/schedule/calendar.html';
         });
     }
 

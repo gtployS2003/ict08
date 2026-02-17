@@ -15,7 +15,7 @@
     const API_BASE =
         window.API_BASE_URL ||
         window.__API_BASE__ ||
-        "/ict/backend/public";
+        "/ict8/backend/public";
 
     async function rawFetch(path, { method = "GET", body } = {}) {
         const url = `${API_BASE}${path}`;

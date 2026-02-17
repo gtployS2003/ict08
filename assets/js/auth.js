@@ -7,7 +7,7 @@ function isLoggedIn() {
 function logout() {
   localStorage.removeItem("auth_token");
   localStorage.removeItem("isLoggedIn"); // เผื่อเคยใช้ของเก่า
-  window.location.href = "/ict/site/home.html";
+  window.location.href = "/ict8/site/home.html";
 }
 
 // ซ่อน/แสดง element ตามสถานะ login
@@ -26,10 +26,10 @@ function applyAuthUI() {
 // กันคนที่ยังไม่ login เข้า pages ที่ต้องเป็นสมาชิก
 function protectPages() {
   const path = window.location.pathname;
-  const protectedPaths = ["/ict/index.html"];
+  const protectedPaths = ["/ict8/index.html"];
 
   if (!isLoggedIn() && protectedPaths.includes(path)) {
-    window.location.href = "/ict/site/home.html";
+    window.location.href = "/ict8/site/home.html";
   }
 }
 

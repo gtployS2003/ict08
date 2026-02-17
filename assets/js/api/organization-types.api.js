@@ -6,7 +6,7 @@
   const API_BASE =
     window.API_BASE_URL ||
     window.__API_BASE__ ||
-    "/ict/backend/public"; // fallback
+    "/ict8/backend/public"; // fallback
 
   function toQuery(params = {}) {
     const qs = new URLSearchParams();

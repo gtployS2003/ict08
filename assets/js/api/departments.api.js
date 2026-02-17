@@ -2,7 +2,7 @@
 // ใช้งานผ่าน window.departmentsApi.*
 
 (() => {
-  const API_BASE = window.API_BASE_URL || window.__API_BASE__ || "/ict/backend/public";
+  const API_BASE = window.API_BASE_URL || window.__API_BASE__ || "/ict8/backend/public";
   const BASE_PATH = "/departments";
 
   function toQuery(params = {}) {

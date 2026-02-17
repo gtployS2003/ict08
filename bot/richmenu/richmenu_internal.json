@@ -8,42 +8,42 @@
       "bounds": { "x": 0, "y": 0, "width": 833, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/site/home.html"
+        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict8/site/home.html"
       }
     },
     {
       "bounds": { "x": 833, "y": 0, "width": 833, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/schedule/calendar.html"
+        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict8/schedule/calendar.html"
       }
     },
     {
       "bounds": { "x": 1666, "y": 0, "width": 834, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/gcms/dashboard.html"
+        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict8/gcms/dashboard.html"
       }
     },
     {
       "bounds": { "x": 0, "y": 843, "width": 833, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/#"
+        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict8/profile/profile.html"
       }
     },
     {
       "bounds": { "x": 833, "y": 843, "width": 833, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/monitor/map-device.html"
+        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict8/monitor/map-device.html"
       }
     },
     {
       "bounds": { "x": 1666, "y": 843, "width": 834, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/document/download.html"
+        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict8/document/download.html"
       }
     }
   ]

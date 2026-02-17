@@ -6,7 +6,7 @@ function detectBasePath() {
   if (!script || !script.src) return "";
 
   const u = new URL(script.src);
-  const p = u.pathname; // เช่น /ict/assets/js/include.js
+  const p = u.pathname; // เช่น /ict8/assets/js/include.js
   const marker = "/assets/js/";
   const idx = p.indexOf(marker);
 
@@ -14,7 +14,7 @@ function detectBasePath() {
 }
 
 const BASE_PATH =
-  (window.__APP_CONFIG__ && window.__APP_CONFIG__.BASE_PATH) || detectBasePath() || ""; // "" หรือ "/ict"
+  (window.__APP_CONFIG__ && window.__APP_CONFIG__.BASE_PATH) || detectBasePath() || ""; // "" หรือ "/ict8"
 
 async function loadHtml(targetId, filePath) {
   const url = `${BASE_PATH}${filePath}`; // filePath ต้องขึ้นต้นด้วย /assets/...
@@ -38,7 +38,7 @@ async function loadHtml(targetId, filePath) {
 }
 
 function patchAssetPaths(html) {
-  // แปลง href/src="/assets/..." -> href="/ict/assets/..." (ถ้า BASE_PATH="/ict")
+  // แปลง href/src="/assets/..." -> href="/ict8/assets/..." (ถ้า BASE_PATH="/ict8")
   if (!BASE_PATH) return html;
   return html
     .replaceAll('href="/assets/', `href="${BASE_PATH}/assets/`)

@@ -15,14 +15,14 @@
       "bounds": { "x": 1666, "y": 0, "width": 834, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/site/home.html"
+        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict8/site/home.html"
       }
     },
     {
       "bounds": { "x": 1666, "y": 843, "width": 834, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict/link/other_web.html"
+        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict8/link/other_web.html"
       }
     }
   ]

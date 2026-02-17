@@ -4,7 +4,7 @@
     const API_BASE =
         window.API_BASE_URL ||
         window.__API_BASE__ ||
-        "/ict/backend/public"; // fallback (ปรับได้)
+        "/ict8/backend/public"; // fallback (ปรับได้)
 
     /**
      * ใช้ http.js ถ้ามี (แนะนำ) เพราะรวม token/headers แล้ว

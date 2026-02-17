@@ -29,13 +29,13 @@ function getDeviceIconUrl(device) {
   const status = (device.สถานะ || "").toLowerCase(); // "online" | "offline" | "maintenance" ฯลฯ
 
   if (baseName === "Unknown device") {
-    return "/ict/assets/image/status-device/Unknown device.png";
+    return "/ict8/assets/image/status-device/Unknown device.png";
   }
 
   // ถ้าไม่ได้ online ให้ถือเป็น offline (รวมถึง maintenance)
   const statusSuffix = status === "online" ? "online" : "offline";
 
-  return `/ict/assets/image/status-device/${baseName} ${statusSuffix}.png`;
+  return `/ict8/assets/image/status-device/${baseName} ${statusSuffix}.png`;
 }
 
 // ===== Leaflet map =====
@@ -64,7 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .bindPopup("<b>ศูนย์ ICT เขต 8</b><br>อุปกรณ์เครือข่ายหลัก");
 
   // 3) โหลดข้อมูลอุปกรณ์จากไฟล์ JSON
-  fetch("/ict/assets/js/data-ex/devices.json")
+  fetch("/ict8/assets/js/data-ex/devices.json")
     .then((res) => {
       if (!res.ok) {
         throw new Error(

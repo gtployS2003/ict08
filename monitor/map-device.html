@@ -1,164 +1,148 @@
 <!DOCTYPE html>
 <html lang="th">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" href="/ict/assets/image/logo_หน่วย8.png" />
-    <title>ระบบงานสารสนเทศ</title>
 
-    <!-- include head -->
-    <script src="/ict/assets/js/include.js" defer></script>
-    <script src="/ict/assets/js/auth.js" defer></script>
-    <script src="/ict/assets/js/main.js" defer></script>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
+  <title>ระบบงานสารสนเทศ</title>
 
-    <!-- Leaflet JS -->
-    <script
-      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-      crossorigin=""
-      defer
-    ></script>
-    <script src="/ict/assets/js/devices-map.js" defer></script>
-  </head>
+  <!-- include head -->
+  <script src="/ict8/assets/js/include.js" defer></script>
+  <script src="/ict8/assets/js/auth.js" defer></script>
+  <script src="/ict8/assets/js/main.js" defer></script>
 
-  <body>
-    <div id="header-device"></div>
-    <div id="device-nav"></div>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+  <script src="/ict8/assets/js/devices-map.js" defer></script>
+</head>
 
-    <main class="main">
-      <div class="device-map-layout">
-        <!-- ====== SIDEBAR ====== -->
-        <aside class="device-map-sidebar">
-          <!-- แถบควบคุมหลัก -->
-          <section class="device-controls">
-            <h2 class="device-sidebar-title">จัดการแผนที่อุปกรณ์</h2>
+<body>
+  <div id="header-device"></div>
+  <div id="device-nav"></div>
 
-            <!-- ค้นหา -->
-            <div class="device-search">
-              <label for="device-search" class="device-label"
-                >ค้นหาอุปกรณ์</label
-              >
-              <div class="device-search-row">
-                <input
-                  type="text"
-                  id="device-search"
-                  placeholder="ค้นหาจากชื่อสถานที่ / จังหวัด / IP..."
-                />
-                <button
-                  id="device-search-clear"
-                  type="button"
-                  class="btn-secondary"
-                >
-                  ล้าง
-                </button>
-              </div>
-            </div>
+  <main class="main">
+    <div class="device-map-layout">
+      <!-- ====== SIDEBAR ====== -->
+      <aside class="device-map-sidebar">
+        <!-- แถบควบคุมหลัก -->
+        <section class="device-controls">
+          <h2 class="device-sidebar-title">จัดการแผนที่อุปกรณ์</h2>
 
-            <!-- ตัวกรอง -->
-            <div class="device-filters">
-              <div class="device-filter-group">
-                <label for="device-type-filter" class="device-label"
-                  >ประเภทอุปกรณ์</label
-                >
-                <select id="device-type-filter">
-                  <option value="all">ทุกประเภทอุปกรณ์</option>
-                  <option value="Switch">Switch</option>
-                  <option value="Router">Router</option>
-                  <option value="CCTV">CCTV</option>
-                  <option value="Access Point">Access Point</option>
-                  <option value="Server">Server</option>
-                  <option value="วิทยุสื่อสาร">วิทยุสื่อสาร</option>
-                  <option value="Firewall">Firewall</option>
-                  <option value="UPS">UPS</option>
-                </select>
-              </div>
-
-              <div class="device-filter-group">
-                <label for="device-status-filter" class="device-label"
-                  >สถานะการทำงาน</label
-                >
-                <select id="device-status-filter">
-                  <option value="all">ทุกสถานะ</option>
-                  <option value="online">Online</option>
-                  <option value="offline">Offline</option>
-                  <option value="maintenance">กำลังซ่อม/ดูแล</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- ปุ่ม -->
-            <div class="device-actions">
-              <button id="add-device-button" type="button" class="btn-primary">
-                + เพิ่มอุปกรณ์ใหม่
+          <!-- ค้นหา -->
+          <div class="device-search">
+            <label for="device-search" class="device-label">ค้นหาอุปกรณ์</label>
+            <div class="device-search-row">
+              <input type="text" id="device-search" placeholder="ค้นหาจากชื่อสถานที่ / จังหวัด / IP..." />
+              <button id="device-search-clear" type="button" class="btn-secondary">
+                ล้าง
               </button>
-            </div>
-          </section>
-
-          <!-- legend สถานะ -->
-          <section class="device-legend-section">
-            <h3 class="device-sidebar-subtitle">สัญลักษณ์บนแผนที่</h3>
-            <ul class="device-legend-list">
-              <li>
-                <span class="legend-icon legend-online"></span>
-                <span>อุปกรณ์ Online</span>
-              </li>
-              <li>
-                <span class="legend-icon legend-offline"></span>
-                <span>อุปกรณ์ Offline / กำลังซ่อม</span>
-              </li>
-            </ul>
-          </section>
-
-          <!-- รายการคำร้องตรวจซ่อม (โครงไว้ก่อน) -->
-          <section class="device-request-section">
-            <h3 class="device-sidebar-subtitle">
-              คำร้องตรวจซ่อมล่าสุด
-              <span class="badge badge-light" id="request-count">0</span>
-            </h3>
-            <div class="device-request-list empty">
-              <p class="device-empty-text">ยังไม่มีคำร้องตรวจซ่อมในระบบ</p>
-            </div>
-          </section>
-
-          <!-- รายการที่กำลังดำเนินการ -->
-          <section class="device-progress-section">
-            <h3 class="device-sidebar-subtitle">
-              งานที่กำลังดำเนินการ
-              <span class="badge badge-light" id="progress-count">0</span>
-            </h3>
-            <div class="device-progress-list empty">
-              <p class="device-empty-text">ยังไม่มีงานที่กำลังดำเนินการ</p>
-            </div>
-          </section>
-        </aside>
-
-        <!-- ====== MAP AREA ====== -->
-        <section class="map-device">
-          <div class="map-device-header">
-            <div>
-              <h1>แผนที่อุปกรณ์ ICT Center เขต 8</h1>
-            </div>
-            <div class="map-device-summary">
-              <div class="summary-pill">
-                <span class="summary-label">ทั้งหมด</span>
-                <span class="summary-value" id="summary-total">-</span>
-              </div>
-              <div class="summary-pill online">
-                <span class="summary-label">Online</span>
-                <span class="summary-value" id="summary-online">-</span>
-              </div>
-              <div class="summary-pill offline">
-                <span class="summary-label">Offline</span>
-                <span class="summary-value" id="summary-offline">-</span>
-              </div>
             </div>
           </div>
 
-          <div id="device-map"></div>
-        </section>
-      </div>
-    </main>
+          <!-- ตัวกรอง -->
+          <div class="device-filters">
+            <div class="device-filter-group">
+              <label for="device-type-filter" class="device-label">ประเภทอุปกรณ์</label>
+              <select id="device-type-filter">
+                <option value="all">ทุกประเภทอุปกรณ์</option>
+                <option value="Switch">Switch</option>
+                <option value="Router">Router</option>
+                <option value="CCTV">CCTV</option>
+                <option value="Access Point">Access Point</option>
+                <option value="Server">Server</option>
+                <option value="วิทยุสื่อสาร">วิทยุสื่อสาร</option>
+                <option value="Firewall">Firewall</option>
+                <option value="UPS">UPS</option>
+              </select>
+            </div>
 
-    <div id="footer-index"></div>
-  </body>
+            <div class="device-filter-group">
+              <label for="device-status-filter" class="device-label">สถานะการทำงาน</label>
+              <select id="device-status-filter">
+                <option value="all">ทุกสถานะ</option>
+                <option value="online">Online</option>
+                <option value="offline">Offline</option>
+                <option value="maintenance">กำลังซ่อม/ดูแล</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- ปุ่ม -->
+          <div class="device-actions">
+            <button id="add-device-button" type="button" class="btn-primary">
+              + เพิ่มอุปกรณ์ใหม่
+            </button>
+          </div>
+        </section>
+
+        <!-- legend สถานะ -->
+        <section class="device-legend-section">
+          <h3 class="device-sidebar-subtitle">สัญลักษณ์บนแผนที่</h3>
+          <ul class="device-legend-list">
+            <li>
+              <span class="legend-icon legend-online"></span>
+              <span>อุปกรณ์ Online</span>
+            </li>
+            <li>
+              <span class="legend-icon legend-offline"></span>
+              <span>อุปกรณ์ Offline / กำลังซ่อม</span>
+            </li>
+          </ul>
+        </section>
+
+        <!-- รายการคำร้องตรวจซ่อม (โครงไว้ก่อน) -->
+        <section class="device-request-section">
+          <h3 class="device-sidebar-subtitle">
+            คำร้องตรวจซ่อมล่าสุด
+            <span class="badge badge-light" id="request-count">0</span>
+          </h3>
+          <div class="device-request-list empty">
+            <p class="device-empty-text">ยังไม่มีคำร้องตรวจซ่อมในระบบ</p>
+          </div>
+        </section>
+
+        <!-- รายการที่กำลังดำเนินการ -->
+        <section class="device-progress-section">
+          <h3 class="device-sidebar-subtitle">
+            งานที่กำลังดำเนินการ
+            <span class="badge badge-light" id="progress-count">0</span>
+          </h3>
+          <div class="device-progress-list empty">
+            <p class="device-empty-text">ยังไม่มีงานที่กำลังดำเนินการ</p>
+          </div>
+        </section>
+      </aside>
+
+      <!-- ====== MAP AREA ====== -->
+      <section class="map-device">
+        <div class="map-device-header">
+          <div>
+            <h1>แผนที่อุปกรณ์ ICT8 Center เขต 8</h1>
+          </div>
+          <div class="map-device-summary">
+            <div class="summary-pill">
+              <span class="summary-label">ทั้งหมด</span>
+              <span class="summary-value" id="summary-total">-</span>
+            </div>
+            <div class="summary-pill online">
+              <span class="summary-label">Online</span>
+              <span class="summary-value" id="summary-online">-</span>
+            </div>
+            <div class="summary-pill offline">
+              <span class="summary-label">Offline</span>
+              <span class="summary-value" id="summary-offline">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="device-map"></div>
+      </section>
+    </div>
+  </main>
+
+  <div id="footer-index"></div>
+</body>
+
 </html>

@@ -20,7 +20,7 @@ async function initProfileSetup() {
 
     if (!lineUserId || !lineUserName) {
         alert("ไม่พบข้อมูล LINE กรุณาเข้าสู่ระบบใหม่");
-        window.location.href = "/ict/login.html";
+        window.location.href = "/ict8/login.html";
         return;
     }
 
@@ -164,7 +164,7 @@ async function initProfileSetup() {
 
             sessionStorage.removeItem("line_user_id");
             sessionStorage.removeItem("line_user_name");
-            window.location.href = "/ict/login.html";
+            window.location.href = "/ict8/login.html";
         } catch (err) {
             console.error("register error:", err);
             alert(err?.message || "เกิดข้อผิดพลาดในการสมัครสมาชิก");
