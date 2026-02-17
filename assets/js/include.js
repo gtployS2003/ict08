@@ -41,34 +41,34 @@ function patchAssetPaths(html) {
   // แปลง href/src="/assets/..." -> href="/ict8/assets/..." (ถ้า BASE_PATH="/ict8")
   if (!BASE_PATH) return html;
   return html
-    .replaceAll('href="/assets/', `href="${BASE_PATH}/assets/`)
-    .replaceAll("href='/assets/", `href='${BASE_PATH}/assets/`)
-    .replaceAll('src="/assets/', `src="${BASE_PATH}/assets/`)
-    .replaceAll("src='/assets/", `src='${BASE_PATH}/assets/`);
+    .replaceAll('href="/ict8/assets/', `href="${BASE_PATH}/assets/`)
+    .replaceAll("href='/ict8/assets/", `href='${BASE_PATH}/assets/`)
+    .replaceAll('src="/ict8/assets/', `src="${BASE_PATH}/assets/`)
+    .replaceAll("src='/ict8/assets/", `src='${BASE_PATH}/assets/`);
 }
 
 
 document.addEventListener("DOMContentLoaded", async () => {
-  await loadHtml("head", "/assets/include/head.html");
+  await loadHtml("head", "/ict8/assets/include/head.html");
 
-  await loadHtml("header", "/assets/include/header.html");
-  await loadHtml("navbar", "/assets/include/navbar.html");
+  await loadHtml("header", "/ict8/assets/include/header.html");
+  await loadHtml("navbar", "/ict8/assets/include/navbar.html");
 
   // initNavbar ถ้ามี
   if (typeof window.initNavbar === "function") window.initNavbar();
 
-  await loadHtml("footer", "/assets/include/footer.html");
+  await loadHtml("footer", "/ict8/assets/include/footer.html");
 
-  await loadHtml("header-index", "/assets/include/header-schedule.html");
-  await loadHtml("footer-index", "/assets/include/footer_index.html");
+  await loadHtml("header-index", "/ict8/assets/include/header-schedule.html");
+  await loadHtml("footer-index", "/ict8/assets/include/footer_index.html");
 
-  await loadHtml("schedule-nav", "/assets/include/nav-schedule.html");
+  await loadHtml("schedule-nav", "/ict8/assets/include/nav-schedule.html");
 
-  await loadHtml("device-nav", "/assets/include/nav-device.html");
-  await loadHtml("header-device", "/assets/include/header-device.html");
+  await loadHtml("device-nav", "/ict8/assets/include/nav-device.html");
+  await loadHtml("header-device", "/ict8/assets/include/header-device.html");
 
-  await loadHtml("gcms-nav", "/assets/include/nav-gcms.html");
-  await loadHtml("header-gcms", "/assets/include/header-gcms.html");
+  await loadHtml("gcms-nav", "/ict8/assets/include/nav-gcms.html");
+  await loadHtml("header-gcms", "/ict8/assets/include/header-gcms.html");
 
-  await loadHtml("header-form", "/assets/include/header-form.html");
+  await loadHtml("header-form", "/ict8/assets/include/header-form.html");
 });
