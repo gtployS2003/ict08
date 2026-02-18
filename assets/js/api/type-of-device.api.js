@@ -52,6 +52,51 @@
   }
 
   /**
+   * POST /type-of-device/upload-icon
+   * multipart/form-data: file
+   */
+  async function uploadIcon(file) {
+    if (!file) throw new Error("file is required");
+
+    const fd = new FormData();
+    fd.append("file", file);
+
+    // ถ้ามี apiFetch (จาก http.js) จะรองรับ FormData อยู่แล้ว
+    if (typeof window.apiFetch === "function") {
+      return window.apiFetch("/type-of-device/upload-icon", { method: "POST", body: fd });
+    }
+
+    // fallback fetch ตรง ๆ (FormData)
+    const url = `${API_BASE}/type-of-device/upload-icon`;
+    const opts = { method: "POST", headers: {} };
+
+    const token =
+      localStorage.getItem("access_token") ||
+      sessionStorage.getItem("access_token") ||
+      localStorage.getItem("auth_token") ||
+      sessionStorage.getItem("auth_token") ||
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("token");
+    if (token) {
+      opts.headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    opts.body = fd;
+
+    const res = await fetch(url, opts);
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const msg = data?.message || data?.error || "Upload failed";
+      const err = new Error(msg);
+      err.status = res.status;
+      err.payload = data;
+      throw err;
+    }
+    return data;
+  }
+
+  /**
    * GET /type-of-device?q=&page=&limit=
    */
   async function list({ q = "", page = 1, limit = 50 } = {}) {
@@ -143,5 +188,6 @@
     create,
     update,
     remove,
+    uploadIcon,
   };
 })();

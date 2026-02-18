@@ -16,6 +16,15 @@ function type_of_device_routes(string $method, array $segments, PDO $pdo): bool
 
     $controller = new TypeOfDeviceController($pdo);
 
+    // /type-of-device/upload-icon
+    if (($segments[1] ?? '') === 'upload-icon') {
+        if ($method === 'POST') {
+            $controller->uploadIcon();
+            return true;
+        }
+        return false;
+    }
+
     // /type-of-device
     if (($segments[1] ?? '') === '') {
 

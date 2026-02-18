@@ -219,6 +219,105 @@ final class TypeOfDeviceController
         }
     }
 
+    /**
+     * POST /type-of-device/upload-icon
+     * multipart/form-data:
+     * - file: (image)
+     *
+     * Response:
+     * { error: false, data: { path: "/uploads/device_icon/xxx.png", filename: "xxx.png" } }
+     */
+    public function uploadIcon(): void
+    {
+        try {
+            if (!isset($_FILES['file'])) {
+                json_response([
+                    'error' => true,
+                    'message' => 'Missing file',
+                ], 400);
+            }
+
+            $file = $_FILES['file'];
+            if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                $code = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
+                json_response([
+                    'error' => true,
+                    'message' => 'Upload failed',
+                    'code' => $code,
+                ], 400);
+            }
+
+            if (!is_uploaded_file((string)($file['tmp_name'] ?? ''))) {
+                json_response([
+                    'error' => true,
+                    'message' => 'Invalid upload',
+                ], 400);
+            }
+
+            // จำกัดชนิดไฟล์ (ปลอดภัย)
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, (string)$file['tmp_name']);
+            finfo_close($finfo);
+
+            $allow = [
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/webp' => 'webp',
+            ];
+            if (!isset($allow[$mime])) {
+                json_response([
+                    'error' => true,
+                    'message' => 'File must be .jpg .png .webp only',
+                    'mime' => $mime,
+                ], 422);
+            }
+
+            // จำกัดขนาด (ตัวอย่าง 2MB)
+            $max = 2 * 1024 * 1024;
+            if (((int)($file['size'] ?? 0)) > $max) {
+                json_response([
+                    'error' => true,
+                    'message' => 'File too large (max 2MB)',
+                ], 422);
+            }
+
+            $ext = $allow[$mime];
+
+            // โฟลเดอร์ปลายทาง: backend/public/uploads/device_icon
+            $dir = __DIR__ . '/../public/uploads/device_icon';
+            if (!is_dir($dir)) {
+                mkdir($dir, 0775, true);
+            }
+
+            $rand = bin2hex(random_bytes(8));
+            $name = 'device_' . date('Ymd_His') . '_' . $rand . '.' . $ext;
+            $dest = $dir . '/' . $name;
+
+            if (!move_uploaded_file((string)$file['tmp_name'], $dest)) {
+                json_response([
+                    'error' => true,
+                    'message' => 'Could not move uploaded file',
+                ], 500);
+            }
+
+            $path = '/uploads/device_icon/' . $name;
+            json_response([
+                'error' => false,
+                'message' => 'Uploaded',
+                'data' => [
+                    'path' => $path,
+                    'filename' => $name,
+                ],
+            ], 201);
+        } catch (Throwable $e) {
+            json_response([
+                'error' => true,
+                'message' => 'Failed to upload icon',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     // --------------------
     // Helpers
     // --------------------

@@ -14,6 +14,64 @@
       .replaceAll("'", "&#039;");
   }
 
+  function toInt(v, fallback = 0) {
+    const n = parseInt(String(v ?? ""), 10);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function clampInt(v, min, max) {
+    const n = toInt(v, min);
+    if (!Number.isFinite(n)) return min;
+    if (n < min) return min;
+    if (n > max) return max;
+    return n;
+  }
+
+  function calcTotalPages({ total, limit, totalPages } = {}) {
+    const tp = toInt(totalPages, 0);
+    if (tp > 0) return tp;
+    const t = Number(total ?? 0) || 0;
+    const l = Math.max(1, toInt(limit, 50));
+    return Math.max(1, Math.ceil(Math.max(0, t) / l));
+  }
+
+  function renderPager(container, { page, totalPages } = {}) {
+    if (!container) return;
+
+    const tp = Math.max(1, toInt(totalPages, 1));
+    const p = clampInt(page, 1, tp);
+
+    if (tp <= 1) {
+      container.innerHTML = "";
+      return;
+    }
+
+    const pages = [];
+    const push = (x) => pages.push(x);
+
+    push(1);
+    if (p - 2 > 2) push("…");
+    for (let i = Math.max(2, p - 2); i <= Math.min(tp - 1, p + 2); i++) {
+      push(i);
+    }
+    if (p + 2 < tp - 1) push("…");
+    if (tp > 1) push(tp);
+
+    const pageBtn = ({ label, pageNum, disabled = false, active = false } = {}) => {
+      const cls = ["btn", "btn-ghost", "btn-sm", active ? "is-active" : ""].filter(Boolean).join(" ");
+      return `<button class="${cls}" data-page="${pageNum}" ${disabled ? "disabled" : ""}>${escapeHtml(label)}</button>`;
+    };
+
+    container.innerHTML = [
+      pageBtn({ label: "ก่อนหน้า", pageNum: p - 1, disabled: p <= 1 }),
+      ...pages.map((x) => {
+        if (x === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
+        return pageBtn({ label: String(x), pageNum: x, active: x === p });
+      }),
+      pageBtn({ label: "ถัดไป", pageNum: p + 1, disabled: p >= tp }),
+    ].join("");
+  }
+ 
   // base url: ใช้จาก config.js.php ก่อน ถ้าไม่มีค่อย fallback
   const API_BASE =
     window.API_BASE_URL ||
@@ -50,9 +108,23 @@
       throw new Error(text || `Request failed (${res.status})`);
     }
 
-    if (!res.ok || json?.success === false) {
+    const isFail =
+      !res.ok ||
+      json?.ok === false ||
+      json?.error === true ||
+      json?.success === false;
+
+    if (isFail) {
       const msg = json?.message || `Request failed (${res.status})`;
-      const extra = json?.data ? `: ${JSON.stringify(json.data)}` : "";
+      const extra = json?.errors?.detail
+        ? `: ${json.errors.detail}`
+        : json?.detail
+        ? `: ${json.detail}`
+        : json?.errors
+        ? `: ${JSON.stringify(json.errors)}`
+        : json?.data
+        ? `: ${JSON.stringify(json.data)}`
+        : "";
       throw new Error(msg + extra);
     }
 
@@ -82,7 +154,7 @@
     // ซ่อนทุก section ก่อน
     $$(".setting-section").forEach((sec) => hide(sec));
 
-    // ซ่อน action buttons 
+    // ซ่อน action buttons
     hide($("#btn-add-province"));
     hide($("#btn-add-org-type"));
     hide($("#btn-add-organization"));
@@ -97,6 +169,7 @@
     hide($("#btn-add-notification-type-staff"));
     hide($("#btn-add-channel"));
     hide($("#btn-add-type-of-device"));
+    hide($("#btn-add-main-type-of-device"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -189,7 +262,6 @@
         show($("#section-channels"));
         show($("#btn-add-channel"));
         setTitle("ช่องทางแจ้งเตือน (Channel)");
-        // (ถ้าคุณมี loadChannelsRefs ก็เรียกได้ แต่ส่วนใหญ่ไม่จำเป็น)
         loadChannels();
         break;
 
@@ -206,12 +278,18 @@
         loadTypeOfDevice();
         break;
 
+      case "main-type-of-device":
+        setTitle("ประเภทหลักของอุปกรณ์");
+        show($("#section-main-type-of-device"));
+        show($("#btn-add-main-type-of-device"));
+        mainTypeOfDeviceLoad();
+        break;
+
       default:
         show($("#section-default"));
         setTitle("การตั้งค่าข้อมูล");
         break;
     }
-
   }
 
   /* =========================
@@ -231,6 +309,306 @@
     // toggle hidden
     menuEl.hidden = expanded;
   });
+
+  /* =========================
+   MAIN TYPE OF DEVICE (NEW)
+   - Section: #section-main-type-of-device
+   - Toolbar: #main-type-of-device-search, #main-type-of-device-limit, #main-type-of-device-refresh
+   - Table: #main-type-of-device-tbody, #main-type-of-device-pagination, #main-type-of-device-total
+   - Action: #btn-add-main-type-of-device
+   - Modal: #main-type-of-device-modal, #main-type-of-device-form
+ ========================= */
+
+  const mtdEls = {
+    section: document.querySelector("#section-main-type-of-device"),
+    tbody: document.querySelector("#main-type-of-device-tbody"),
+    search: document.querySelector("#main-type-of-device-search"),
+    limit: document.querySelector("#main-type-of-device-limit"),
+    refresh: document.querySelector("#main-type-of-device-refresh"),
+    pagination: document.querySelector("#main-type-of-device-pagination"),
+    total: document.querySelector("#main-type-of-device-total"),
+
+    btnAdd: document.querySelector("#btn-add-main-type-of-device"),
+
+    modal: document.querySelector("#main-type-of-device-modal"),
+    form: document.querySelector("#main-type-of-device-form"),
+    modalTitle: document.querySelector("#main-type-of-device-modal-title"),
+    submitText: document.querySelector("#main-type-of-device-submit-text"),
+
+    inputId: document.querySelector("#main-type-of-device-id"),
+    inputTitle: document.querySelector("#main-type-of-device-title"),
+
+    formError: document.querySelector("#main-type-of-device-form-error"),
+  };
+
+  const mtdState = {
+    q: "",
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 1,
+    loading: false,
+    inited: false,
+  };
+
+  // ---------- small helpers ----------
+  function mtdSetError(msg) {
+    if (!mtdEls.formError) return;
+    if (!msg) {
+      mtdEls.formError.hidden = true;
+      mtdEls.formError.textContent = "";
+      return;
+    }
+    mtdEls.formError.hidden = false;
+    mtdEls.formError.textContent = msg;
+  }
+
+  function mtdOpenModal({ mode = "create", row } = {}) {
+    if (!mtdEls.modal || !mtdEls.form) return;
+
+    mtdSetError("");
+
+    if (mode === "edit" && row) {
+      mtdEls.modalTitle.textContent = "แก้ไขประเภทหลักของอุปกรณ์";
+      mtdEls.submitText.textContent = "บันทึกการแก้ไข";
+      mtdEls.inputId.value = row.id ?? "";
+      mtdEls.inputTitle.value = row.title ?? "";
+    } else {
+      mtdEls.modalTitle.textContent = "เพิ่มประเภทหลักของอุปกรณ์";
+      mtdEls.submitText.textContent = "บันทึก";
+      mtdEls.inputId.value = "";
+      mtdEls.inputTitle.value = "";
+    }
+
+    mtdEls.modal.hidden = false;
+    // โฟกัสช่อง title
+    setTimeout(() => mtdEls.inputTitle?.focus(), 0);
+  }
+
+  function mtdCloseModal() {
+    if (!mtdEls.modal) return;
+    mtdEls.modal.hidden = true;
+  }
+
+  function mtdEscapeHtml(s) {
+    return String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function mtdRenderPagination() {
+    if (!mtdEls.pagination) return;
+
+    mtdState.totalPages = calcTotalPages({
+      total: mtdState.total,
+      limit: mtdState.limit,
+      totalPages: mtdState.totalPages,
+    });
+
+    renderPager(mtdEls.pagination, {
+      page: mtdState.page,
+      totalPages: mtdState.totalPages,
+    });
+  }
+
+  function mtdRenderRows(items) {
+    if (!mtdEls.tbody) return;
+
+    if (!items || items.length === 0) {
+      mtdEls.tbody.innerHTML = `
+      <tr><td colspan="3" class="muted">ไม่พบข้อมูล</td></tr>
+    `;
+      return;
+    }
+
+    mtdEls.tbody.innerHTML = items
+      .map((r) => {
+        const id = r.id ?? r.main_type_of_device ?? "";
+        const title = r.title ?? r.main_type_of_device_title ?? "";
+        return `
+        <tr>
+          <td>${mtdEscapeHtml(id)}</td>
+          <td>${mtdEscapeHtml(title)}</td>
+          <td>
+            <div class="table-actions">
+              <button class="btn btn-outline btn-sm" type="button" data-action="edit" data-id="${mtdEscapeHtml(id)}"
+                data-title="${mtdEscapeHtml(title)}">
+                <i class="fa-solid fa-pen"></i> แก้ไข
+              </button>
+              <button class="btn btn-danger btn-sm" type="button" data-action="delete" data-id="${mtdEscapeHtml(id)}"
+                data-title="${mtdEscapeHtml(title)}">
+                <i class="fa-solid fa-trash"></i> ลบ
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+      })
+      .join("");
+
+    // bind actions
+    mtdEls.tbody.querySelectorAll("[data-action='edit']").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const title = btn.getAttribute("data-title");
+        mtdOpenModal({ mode: "edit", row: { id, title } });
+      });
+    });
+
+    mtdEls.tbody.querySelectorAll("[data-action='delete']").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const title = btn.getAttribute("data-title") || "";
+        if (!id) return;
+
+        const ok = confirm(`ยืนยันลบประเภทหลักของอุปกรณ์\n\n- ${title}\n\n* การลบอาจกระทบข้อมูลอุปกรณ์ที่อ้างอิง`);
+        if (!ok) return;
+
+        try {
+          await window.MainTypeOfDeviceAPI.remove(id);
+          mainTypeOfDeviceLoad();
+        } catch (e) {
+          alert(e?.message || String(e));
+        }
+      });
+    });
+  }
+
+  // ---------- main loader ----------
+  async function mainTypeOfDeviceLoad() {
+    if (!window.MainTypeOfDeviceAPI) {
+      console.warn("[main-type-of-device] Missing MainTypeOfDeviceAPI");
+      return;
+    }
+    if (!mtdEls.section) return;
+
+    try {
+      mtdState.loading = true;
+
+      const q = String(mtdEls.search?.value || "").trim();
+      mtdState.q = q;
+      mtdState.limit = parseInt(mtdEls.limit?.value || "50", 10) || 50;
+
+      const res = await window.MainTypeOfDeviceAPI.list({
+        q: mtdState.q,
+        page: mtdState.page,
+        limit: mtdState.limit,
+      });
+
+      // รองรับ response แบบ ok(): { ok:true, data:{ items,total,page,limit } }
+      const data = res?.data || res;
+      const items = data?.items || [];
+      mtdState.total = Number(data?.total || 0);
+      mtdState.page = Number(data?.page || mtdState.page);
+      mtdState.limit = Number(data?.limit || mtdState.limit);
+
+      mtdRenderRows(items);
+      mtdRenderPagination();
+
+      if (mtdEls.total) {
+        const total = mtdState.total || 0;
+        mtdEls.total.textContent = `ทั้งหมด ${total} รายการ`;
+      }
+    } catch (e) {
+      if (mtdEls.tbody) {
+        mtdEls.tbody.innerHTML = `
+        <tr><td colspan="3" class="muted">โหลดข้อมูลไม่สำเร็จ: ${mtdEscapeHtml(e?.message || String(e))}</td></tr>
+      `;
+      }
+    } finally {
+      mtdState.loading = false;
+    }
+  }
+
+  // ---------- init ----------
+  function initMainTypeOfDeviceSection() {
+    // กัน DOM ยังไม่มี section (เผื่อบางหน้าไม่ได้ include)
+    if (!mtdEls.section) return;
+    if (mtdState.inited) return;
+    mtdState.inited = true;
+
+    // default limit
+    if (mtdEls.limit && !mtdEls.limit.value) mtdEls.limit.value = String(mtdState.limit);
+
+    // search (debounce)
+    let t = null;
+    mtdEls.search?.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        mtdState.page = 1;
+        mainTypeOfDeviceLoad();
+      }, 300);
+    });
+
+    // limit
+    mtdEls.limit?.addEventListener("change", () => {
+      mtdState.page = 1;
+      mainTypeOfDeviceLoad();
+    });
+
+    // refresh
+    mtdEls.refresh?.addEventListener("click", () => {
+      mainTypeOfDeviceLoad();
+    });
+
+    // pagination (delegate)
+    mtdEls.pagination?.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-page]");
+      if (!btn || btn.disabled) return;
+      const next = toInt(btn.getAttribute("data-page"), 0);
+      if (!next || next < 1 || next > (mtdState.totalPages || 1)) return;
+      if (next === mtdState.page) return;
+      mtdState.page = next;
+      mainTypeOfDeviceLoad();
+    });
+
+    // add button
+    mtdEls.btnAdd?.addEventListener("click", () => {
+      mtdOpenModal({ mode: "create" });
+    });
+
+    // modal close (overlay + close buttons)
+    document.querySelectorAll('[data-close="main-type-of-device-modal"]').forEach((el) => {
+      el.addEventListener("click", () => mtdCloseModal());
+    });
+
+    // submit form (create/update)
+    mtdEls.form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const idRaw = String(mtdEls.inputId?.value || "").trim();
+      const title = String(mtdEls.inputTitle?.value || "").trim();
+
+      if (!title) {
+        mtdSetError("กรุณากรอกชื่อประเภทหลักของอุปกรณ์");
+        mtdEls.inputTitle?.focus();
+        return;
+      }
+
+      try {
+        mtdSetError("");
+
+        if (idRaw) {
+          await window.MainTypeOfDeviceAPI.update(idRaw, { title });
+        } else {
+          await window.MainTypeOfDeviceAPI.create({ title });
+        }
+
+        mtdCloseModal();
+        mainTypeOfDeviceLoad();
+      } catch (err) {
+        mtdSetError(err?.message || String(err));
+      }
+    });
+
+    // ✅ optional: expose loader for section switcher
+    window.mainTypeOfDeviceLoad = mainTypeOfDeviceLoad;
+    window.initMainTypeOfDeviceSection = initMainTypeOfDeviceSection;
+  }
+
 
   /* =========================
     Organization Types UI
@@ -304,33 +682,10 @@
   function renderOrgTypePagination() {
     if (!orgTypeEls.pagination) return;
 
-    const { page, totalPages } = orgTypeState;
-
-    if (totalPages <= 1) {
-      orgTypeEls.pagination.innerHTML = "";
-      return;
-    }
-
-    const pages = [];
-    const push = (p) => pages.push(p);
-
-    push(1);
-    if (page - 2 > 2) push("…");
-    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) {
-      push(p);
-    }
-    if (page + 2 < totalPages - 1) push("…");
-    if (totalPages > 1) push(totalPages);
-
-    orgTypeEls.pagination.innerHTML = `
-    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
-    ${pages.map((p) => {
-      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
-      const active = p === page ? "is-active" : "";
-      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
-    }).join("")}
-    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
-  `;
+    renderPager(orgTypeEls.pagination, {
+      page: orgTypeState.page,
+      totalPages: orgTypeState.totalPages,
+    });
   }
 
   function renderOrgTypeTotal() {
@@ -443,37 +798,10 @@
 
   function renderProvincePagination() {
     if (!provinceEls.pagination) return;
-
-    const { page, totalPages } = provinceState;
-
-    if (totalPages <= 1) {
-      provinceEls.pagination.innerHTML = "";
-      return;
-    }
-
-    // แสดงเลขหน้าแบบกระชับ
-    const pages = [];
-    const push = (p) => pages.push(p);
-
-    push(1);
-    if (page - 2 > 2) push("…");
-    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) {
-      push(p);
-    }
-    if (page + 2 < totalPages - 1) push("…");
-    if (totalPages > 1) push(totalPages);
-
-    provinceEls.pagination.innerHTML = `
-      <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
-      ${pages
-        .map((p) => {
-          if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
-          const active = p === page ? "is-active" : "";
-          return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
-        })
-        .join("")}
-      <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
-    `;
+    renderPager(provinceEls.pagination, {
+      page: provinceState.page,
+      totalPages: provinceState.totalPages,
+    });
   }
 
   function renderProvinceTotal() {
@@ -500,7 +828,6 @@
       const json = await apiFetch(`/provinces?${qs.toString()}`, { method: "GET" });
       const data = json?.data ?? {};
 
-      // รองรับหลายรูปแบบ response
       const items =
         data.items ??
         (Array.isArray(data) ? data : null) ??
@@ -511,7 +838,6 @@
         data.pagination ??
         json.pagination ??
         {};
-
 
       provinceState.total = Number(pagination.total || items.length || 0);
       provinceState.totalPages = Number(pagination.total_pages || 1);
@@ -691,32 +1017,10 @@
   function renderOrgPagination() {
     if (!orgEls.pagination) return;
 
-    const { page, totalPages } = orgState;
-    if (totalPages <= 1) {
-      orgEls.pagination.innerHTML = "";
-      return;
-    }
-
-    const pages = [];
-    const push = (p) => pages.push(p);
-
-    push(1);
-    if (page - 2 > 2) push("…");
-    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
-    if (page + 2 < totalPages - 1) push("…");
-    if (totalPages > 1) push(totalPages);
-
-    orgEls.pagination.innerHTML = `
-    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
-    ${pages
-        .map((p) => {
-          if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
-          const active = p === page ? "is-active" : "";
-          return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
-        })
-        .join("")}
-    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
-  `;
+    renderPager(orgEls.pagination, {
+      page: orgState.page,
+      totalPages: orgState.totalPages,
+    });
   }
 
   function renderOrgTotal() {
@@ -834,33 +1138,10 @@
   function renderPersonPrefixPagination() {
     if (!personPrefixEls.pagination) return;
 
-    const { page, totalPages } = personPrefixState;
-
-    if (totalPages <= 1) {
-      personPrefixEls.pagination.innerHTML = "";
-      return;
-    }
-
-    const pages = [];
-    const push = (p) => pages.push(p);
-
-    push(1);
-    if (page - 2 > 2) push("…");
-    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) {
-      push(p);
-    }
-    if (page + 2 < totalPages - 1) push("…");
-    if (totalPages > 1) push(totalPages);
-
-    personPrefixEls.pagination.innerHTML = `
-    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
-    ${pages.map((p) => {
-      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
-      const active = p === page ? "is-active" : "";
-      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
-    }).join("")}
-    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
-  `;
+    renderPager(personPrefixEls.pagination, {
+      page: personPrefixState.page,
+      totalPages: personPrefixState.totalPages,
+    });
   }
 
   function renderPersonPrefixTotal() {
@@ -991,33 +1272,10 @@
   function renderDepartmentPagination() {
     if (!departmentEls.pagination) return;
 
-    const { page, totalPages } = departmentState;
-
-    if (totalPages <= 1) {
-      departmentEls.pagination.innerHTML = "";
-      return;
-    }
-
-    const pages = [];
-    const push = (p) => pages.push(p);
-
-    push(1);
-    if (page - 2 > 2) push("…");
-    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) {
-      push(p);
-    }
-    if (page + 2 < totalPages - 1) push("…");
-    if (totalPages > 1) push(totalPages);
-
-    departmentEls.pagination.innerHTML = `
-    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
-    ${pages.map((p) => {
-      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
-      const active = p === page ? "is-active" : "";
-      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
-    }).join("")}
-    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
-  `;
+    renderPager(departmentEls.pagination, {
+      page: departmentState.page,
+      totalPages: departmentState.totalPages,
+    });
   }
 
   function renderDepartmentTotal() {
@@ -1216,35 +1474,10 @@
   function renderPositionTitlePagination() {
     if (!positionTitleEls.pagination) return;
 
-    const { page, totalPages } = positionTitleState;
-
-    if (totalPages <= 1) {
-      positionTitleEls.pagination.innerHTML = "";
-      return;
-    }
-
-    const pages = [];
-    const push = (p) => pages.push(p);
-
-    push(1);
-    if (page - 2 > 2) push("…");
-    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) {
-      push(p);
-    }
-    if (page + 2 < totalPages - 1) push("…");
-    if (totalPages > 1) push(totalPages);
-
-    positionTitleEls.pagination.innerHTML = `
-    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
-    ${pages
-        .map((p) => {
-          if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
-          const active = p === page ? "is-active" : "";
-          return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
-        })
-        .join("")}
-    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
-  `;
+    renderPager(positionTitleEls.pagination, {
+      page: positionTitleState.page,
+      totalPages: positionTitleState.totalPages,
+    });
   }
 
   function renderPositionTitleTotal() {
@@ -1460,30 +1693,10 @@
   function renderUserRolePagination() {
     if (!userRoleEls.pagination) return;
 
-    const { page, totalPages } = userRoleState;
-    if (totalPages <= 1) {
-      userRoleEls.pagination.innerHTML = "";
-      return;
-    }
-
-    const pages = [];
-    const push = (p) => pages.push(p);
-
-    push(1);
-    if (page - 2 > 2) push("…");
-    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
-    if (page + 2 < totalPages - 1) push("…");
-    if (totalPages > 1) push(totalPages);
-
-    userRoleEls.pagination.innerHTML = `
-    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
-    ${pages.map((p) => {
-      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
-      const active = p === page ? "is-active" : "";
-      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
-    }).join("")}
-    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
-  `;
+    renderPager(userRoleEls.pagination, {
+      page: userRoleState.page,
+      totalPages: userRoleState.totalPages,
+    });
   }
 
   function renderUserRoleTotal() {
@@ -1492,54 +1705,49 @@
   }
 
   async function loadUserRoles() {
-    const tbody = document.querySelector("#user-role-tbody");
-    const totalEl = document.querySelector("#user-role-total");
-    const pagerEl = document.querySelector("#user-role-pagination");
+    if (userRoleState.loading) return;
+    userRoleState.loading = true;
 
-    const q = (document.querySelector("#user-role-search")?.value || "").trim();
-    const limit = parseInt(document.querySelector("#user-role-limit")?.value || "50", 10);
-    const page = 1; // เริ่มง่ายๆก่อน เดี๋ยวค่อยทำ pagination
+    try {
+      if (!userRoleEls.tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="4" class="muted">กำลังโหลด...</td></tr>`;
+      userRoleEls.tbody.innerHTML = `<tr><td colspan="4" class="muted">กำลังโหลด...</td></tr>`;
 
-    const api = window.userRolesApi || window.UserRolesAPI;
-    const { items, pagination } = await api.list({ q, page, limit });
+      const api = window.userRolesApi || window.UserRolesAPI;
+      if (!api?.list) throw new Error("UserRolesAPI.list not found (check include user-roles.api.js)");
 
-    if (!items || items.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="muted">ไม่พบข้อมูล</td></tr>`;
-      if (totalEl) totalEl.textContent = `ทั้งหมด 0 รายการ`;
-      if (pagerEl) pagerEl.innerHTML = "";
-      return;
+      const res = await api.list({
+        q: userRoleState.q,
+        page: userRoleState.page,
+        limit: userRoleState.limit,
+      });
+
+      const items = Array.isArray(res?.items) ? res.items : [];
+      const pg = res?.pagination ?? {};
+
+      userRoleState.total = Number(pg.total ?? items.length ?? 0);
+      userRoleState.totalPages = calcTotalPages({
+        total: userRoleState.total,
+        limit: userRoleState.limit,
+        totalPages: pg.total_pages ?? pg.totalPages ?? 0,
+      });
+      userRoleState.page = clampInt(Number(pg.page ?? userRoleState.page), 1, userRoleState.totalPages);
+
+      renderUserRoleRows(items);
+      renderUserRolePagination();
+      renderUserRoleTotal();
+    } catch (err) {
+      console.error("[user-roles] load failed:", err);
+      if (userRoleEls.tbody) {
+        userRoleEls.tbody.innerHTML = `<tr><td colspan="4" class="muted">โหลดข้อมูลไม่สำเร็จ</td></tr>`;
+      }
+      userRoleState.total = 0;
+      userRoleState.totalPages = 1;
+      renderUserRolePagination();
+      renderUserRoleTotal();
+    } finally {
+      userRoleState.loading = false;
     }
-
-    tbody.innerHTML = items.map((r) => `
-  <tr>
-    <td>${r.user_role_id ?? ""}</td>
-    <td>${escapeHtml(r.code ?? "")}</td>
-    <td>${escapeHtml(r.role ?? "")}</td>
-    <td>
-      <button
-        type="button"
-        class="btn btn-ghost btn-sm"
-        data-action="edit"
-        data-id="${r.user_role_id}"
-        data-code="${escapeHtml(r.code ?? "")}"
-        data-role="${escapeHtml(r.role ?? "")}"
-      >แก้ไข</button>
-
-      <button
-        type="button"
-        class="btn btn-danger btn-sm"
-        data-action="delete"
-        data-id="${r.user_role_id}"
-      >ลบ</button>
-    </td>
-  </tr>
-`).join("");
-
-
-    if (totalEl) totalEl.textContent = `ทั้งหมด ${pagination?.total ?? items.length} รายการ`;
-    if (pagerEl) pagerEl.innerHTML = ""; // ค่อยทำทีหลัง
   }
 
   /* =========================
@@ -1597,6 +1805,19 @@
   `).join("");
   }
 
+  function renderSettingUserPagination() {
+    if (!settingUserEls.pagination) return;
+    renderPager(settingUserEls.pagination, {
+      page: settingUserState.page,
+      totalPages: settingUserState.totalPages,
+    });
+  }
+
+  function renderSettingUserTotal() {
+    if (!settingUserEls.total) return;
+    settingUserEls.total.textContent = `ทั้งหมด ${settingUserState.total} รายการ`;
+  }
+
   async function loadPendingUsers() {
     if (settingUserState.loading) return;
     settingUserState.loading = true;
@@ -1615,21 +1836,27 @@
         limit: settingUserState.limit,
       });
 
+      const data = res?.data ?? res ?? {};
+      const items = Array.isArray(data.items) ? data.items : [];
 
-      const data = res?.data || {};
-      const items = data.items || [];
-
-      settingUserState.total = data.pagination?.total || items.length || 0;
-      settingUserState.totalPages = data.pagination?.total_pages || 1;
+      settingUserState.total = Number(data.total ?? items.length ?? 0);
+      settingUserState.totalPages = calcTotalPages({
+        total: settingUserState.total,
+        limit: settingUserState.limit,
+        totalPages: data.total_pages ?? data.totalPages ?? 0,
+      });
+      settingUserState.page = clampInt(Number(data.page ?? settingUserState.page), 1, settingUserState.totalPages);
 
       renderSettingUserRows(items);
-
-      if (settingUserEls.total) {
-        settingUserEls.total.textContent = `ทั้งหมด ${settingUserState.total} รายการ`;
-      }
+      renderSettingUserPagination();
+      renderSettingUserTotal();
     } catch (err) {
       settingUserEls.tbody.innerHTML =
         `<tr><td colspan="9" class="muted">${escapeHtml(err.message)}</td></tr>`;
+      settingUserState.total = 0;
+      settingUserState.totalPages = 1;
+      renderSettingUserPagination();
+      renderSettingUserTotal();
     } finally {
       settingUserState.loading = false;
     }
@@ -1706,31 +1933,10 @@
   function renderUsersPagination() {
     if (!usersEls.pagination) return;
 
-    const { page, totalPages } = usersState;
-
-    if (totalPages <= 1) {
-      usersEls.pagination.innerHTML = "";
-      return;
-    }
-
-    const pages = [];
-    const push = (p) => pages.push(p);
-
-    push(1);
-    if (page - 2 > 2) push("…");
-    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
-    if (page + 2 < totalPages - 1) push("…");
-    if (totalPages > 1) push(totalPages);
-
-    usersEls.pagination.innerHTML = `
-    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
-    ${pages.map((p) => {
-      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
-      const active = p === page ? "is-active" : "";
-      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
-    }).join("")}
-    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
-  `;
+    renderPager(usersEls.pagination, {
+      page: usersState.page,
+      totalPages: usersState.totalPages,
+    });
   }
 
   function renderUsersTotal() {
@@ -2465,30 +2671,10 @@
   function renderRequestTypePagination() {
     if (!requestTypeEls.pagination) return;
 
-    const { page, totalPages } = requestTypeState;
-    if (totalPages <= 1) {
-      requestTypeEls.pagination.innerHTML = "";
-      return;
-    }
-
-    const pages = [];
-    const push = (p) => pages.push(p);
-
-    push(1);
-    if (page - 2 > 2) push("…");
-    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
-    if (page + 2 < totalPages - 1) push("…");
-    if (totalPages > 1) push(totalPages);
-
-    requestTypeEls.pagination.innerHTML = `
-    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
-    ${pages.map((p) => {
-      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
-      const active = p === page ? "is-active" : "";
-      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
-    }).join("")}
-    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
-  `;
+    renderPager(requestTypeEls.pagination, {
+      page: requestTypeState.page,
+      totalPages: requestTypeState.totalPages,
+    });
   }
 
   function renderRequestTypeTotal() {
@@ -2626,30 +2812,10 @@
   function renderRequestSubTypePagination() {
     if (!requestSubTypeEls.pagination) return;
 
-    const { page, totalPages } = requestSubTypeState;
-    if (totalPages <= 1) {
-      requestSubTypeEls.pagination.innerHTML = "";
-      return;
-    }
-
-    const pages = [];
-    const push = (p) => pages.push(p);
-
-    push(1);
-    if (page - 2 > 2) push("…");
-    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
-    if (page + 2 < totalPages - 1) push("…");
-    if (totalPages > 1) push(totalPages);
-
-    requestSubTypeEls.pagination.innerHTML = `
-    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
-    ${pages.map((p) => {
-      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
-      const active = p === page ? "is-active" : "";
-      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
-    }).join("")}
-    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
-  `;
+    renderPager(requestSubTypeEls.pagination, {
+      page: requestSubTypeState.page,
+      totalPages: requestSubTypeState.totalPages,
+    });
   }
 
   function renderRequestSubTypeTotal() {
@@ -2913,30 +3079,10 @@
   function renderRequestStatusPagination() {
     if (!requestStatusEls.pagination) return;
 
-    const { page, totalPages } = requestStatusState;
-    if (totalPages <= 1) {
-      requestStatusEls.pagination.innerHTML = "";
-      return;
-    }
-
-    const pages = [];
-    const push = (p) => pages.push(p);
-
-    push(1);
-    if (page - 2 > 2) push("…");
-    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
-    if (page + 2 < totalPages - 1) push("…");
-    if (totalPages > 1) push(totalPages);
-
-    requestStatusEls.pagination.innerHTML = `
-    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
-    ${pages.map((p) => {
-      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
-      const active = p === page ? "is-active" : "";
-      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
-    }).join("")}
-    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
-  `;
+    renderPager(requestStatusEls.pagination, {
+      page: requestStatusState.page,
+      totalPages: requestStatusState.totalPages,
+    });
   }
 
   function renderRequestStatusTotal() {
@@ -3053,6 +3199,8 @@
     search: $("#notification-type-search"),
     limit: $("#notification-type-limit"),
     refresh: $("#notification-type-refresh"),
+    pagination: $("#notification-type-pagination"),
+    total: $("#notification-type-total"),
     btnAdd: $("#btn-add-notification-type"),
 
     modal: $("#notification-type-modal"),
@@ -3071,8 +3219,23 @@
     page: 1,
     limit: 50,
     q: "",
+    total: 0,
+    totalPages: 1,
     loading: false,
   };
+
+  function renderNotificationTypePagination() {
+    if (!notificationTypeEls.pagination) return;
+    renderPager(notificationTypeEls.pagination, {
+      page: notificationTypeState.page,
+      totalPages: notificationTypeState.totalPages,
+    });
+  }
+
+  function renderNotificationTypeTotal() {
+    if (!notificationTypeEls.total) return;
+    notificationTypeEls.total.textContent = `ทั้งหมด ${notificationTypeState.total} รายการ`;
+  }
 
   async function loadNotificationTypes() {
     if (notificationTypeState.loading) return;
@@ -3096,9 +3259,25 @@
         limit: notificationTypeState.limit,
       });
 
-      const items = Array.isArray(res?.data) ? res.data : [];
+      const items =
+        Array.isArray(res?.data) ? res.data :
+          Array.isArray(res?.data?.items) ? res.data.items :
+            Array.isArray(res?.items) ? res.items :
+              [];
+
+      const pg = res?.pagination ?? res?.data?.pagination ?? {};
+
+      notificationTypeState.total = Number(pg.total ?? res?.total ?? items.length ?? 0);
+      notificationTypeState.totalPages = calcTotalPages({
+        total: notificationTypeState.total,
+        limit: notificationTypeState.limit,
+        totalPages: pg.total_pages ?? pg.totalPages ?? res?.total_pages ?? 0,
+      });
+      notificationTypeState.page = clampInt(Number(pg.page ?? notificationTypeState.page), 1, notificationTypeState.totalPages);
 
       renderNotificationTypeRows(items);
+      renderNotificationTypePagination();
+      renderNotificationTypeTotal();
 
     } catch (err) {
       console.error(err);
@@ -3106,6 +3285,11 @@
         notificationTypeEls.tbody.innerHTML =
           `<tr><td colspan="4" class="muted">โหลดข้อมูลไม่สำเร็จ</td></tr>`;
       }
+
+      notificationTypeState.total = 0;
+      notificationTypeState.totalPages = 1;
+      renderNotificationTypePagination();
+      renderNotificationTypeTotal();
     } finally {
       notificationTypeState.loading = false;
     }
@@ -3265,30 +3449,10 @@
   function renderNotificationTypeStaffPagination() {
     if (!notificationTypeStaffEls.pagination) return;
 
-    const { page, totalPages } = notificationTypeStaffState;
-    if (totalPages <= 1) {
-      notificationTypeStaffEls.pagination.innerHTML = "";
-      return;
-    }
-
-    const pages = [];
-    const push = (p) => pages.push(p);
-
-    push(1);
-    if (page - 2 > 2) push("…");
-    for (let p = Math.max(2, page - 2); p <= Math.min(totalPages - 1, page + 2); p++) push(p);
-    if (page + 2 < totalPages - 1) push("…");
-    if (totalPages > 1) push(totalPages);
-
-    notificationTypeStaffEls.pagination.innerHTML = `
-    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
-    ${pages.map((p) => {
-      if (p === "…") return `<span class="muted" style="padding:0 8px;">…</span>`;
-      const active = p === page ? "is-active" : "";
-      return `<button class="btn btn-ghost btn-sm ${active}" data-page="${p}">${p}</button>`;
-    }).join("")}
-    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>ถัดไป</button>
-  `;
+    renderPager(notificationTypeStaffEls.pagination, {
+      page: notificationTypeStaffState.page,
+      totalPages: notificationTypeStaffState.totalPages,
+    });
   }
 
   function renderNotificationTypeStaffTotal() {
@@ -3589,42 +3753,22 @@
     };
   }
 
-  function escapeHtml(s) {
-    return String(s ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
   function renderPagination(container, { page, totalPages }, onPage) {
     if (!container) return;
-    container.innerHTML = "";
-    if (totalPages <= 1) return;
 
-    const mkBtn = (label, p, disabled = false, active = false) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = `page-btn ${active ? "active" : ""}`;
-      b.textContent = label;
-      b.disabled = disabled;
-      b.addEventListener("click", () => onPage(p));
-      return b;
-    };
+    const tp = Math.max(1, Number(totalPages) || 1);
+    const p = clampInt(page || 1, 1, tp);
 
-    container.appendChild(mkBtn("«", 1, page <= 1));
-    container.appendChild(mkBtn("‹", Math.max(1, page - 1), page <= 1));
-
-    // แสดงรอบ ๆ หน้า current
-    const start = Math.max(1, page - 2);
-    const end = Math.min(totalPages, page + 2);
-    for (let p = start; p <= end; p++) {
-      container.appendChild(mkBtn(String(p), p, false, p === page));
-    }
-
-    container.appendChild(mkBtn("›", Math.min(totalPages, page + 1), page >= totalPages));
-    container.appendChild(mkBtn("»", totalPages, page >= totalPages));
+    renderPager(container, { page: p, totalPages: tp });
+    container.querySelectorAll("button[data-page]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (btn.disabled) return;
+        const next = toInt(btn.getAttribute("data-page"), 0);
+        if (!next || next < 1 || next > tp) return;
+        if (next === p) return;
+        onPage(next);
+      });
+    });
   }
 
   async function channelsFetchList() {
@@ -3690,7 +3834,7 @@
       const page = Number(pg.page ?? channelState.page);
       const limit = Number(pg.limit ?? channelState.limit);
       const total = Number(pg.total ?? items.length);
-      const totalPages = Number(pg.totalPages ?? Math.ceil(total / Math.max(1, limit)));
+      const totalPages = Number(pg.total_pages ?? pg.totalPages ?? Math.ceil(total / Math.max(1, limit)));
 
       channelState.total = total;
 
@@ -4029,8 +4173,13 @@
     inputId: $("#type-of-device-id"),
     inputTitle: $("#type-of-device-title"),
     inputHasNetwork: $("#type-of-device-has-network"),
+    hasNetworkText: $("#type-of-device-has-network-text"),
     inputIconOnline: $("#type-of-device-icon-online"),
     inputIconOffline: $("#type-of-device-icon-offline"),
+    fileIconOnline: $("#type-of-device-icon-online-file"),
+    fileIconOffline: $("#type-of-device-icon-offline-file"),
+    linkIconOnline: $("#type-of-device-icon-online-link"),
+    linkIconOffline: $("#type-of-device-icon-offline-link"),
     formError: $("#type-of-device-form-error"),
   };
 
@@ -4106,7 +4255,7 @@
       const page = Number(pg.page ?? todState.page);
       const limit = Number(pg.limit ?? todState.limit);
       const total = Number(pg.total ?? items.length);
-      const totalPages = Number(pg.totalPages ?? Math.ceil(total / Math.max(1, limit)));
+      const totalPages = Number(pg.total_pages ?? pg.totalPages ?? Math.ceil(total / Math.max(1, limit)));
 
       todState.total = total;
 
@@ -4145,6 +4294,50 @@
     );
 
     todEls.refresh?.addEventListener("click", loadTypeOfDevice);
+
+    todEls.inputHasNetwork?.addEventListener("change", () => {
+      if (!todEls.hasNetworkText) return;
+      todEls.hasNetworkText.textContent = todEls.inputHasNetwork.checked ? "รองรับเครือข่าย" : "ไม่รองรับเครือข่าย";
+    });
+  }
+
+  function todToPublicUrl(path) {
+    const p = String(path || "").trim();
+    if (!p) return "";
+    if (/^https?:\/\//i.test(p)) return p;
+    // ถ้าเป็น path ที่ upload (เก็บเป็น /uploads/...) ให้ prefix ด้วย API_BASE (/ict8/backend/public)
+    if (p.startsWith("/uploads/")) return `${API_BASE}${p}`;
+    // อย่างอื่นถือว่าเป็น path/URL ที่เข้าถึงได้จากเว็บอยู่แล้ว
+    return p;
+  }
+
+  function todSyncIconLinks() {
+    const onlinePath = String(todEls.inputIconOnline?.value || "").trim();
+    const offlinePath = String(todEls.inputIconOffline?.value || "").trim();
+
+    if (todEls.linkIconOnline) {
+      if (onlinePath) {
+        todEls.linkIconOnline.hidden = false;
+        todEls.linkIconOnline.href = todToPublicUrl(onlinePath);
+        todEls.linkIconOnline.textContent = onlinePath;
+      } else {
+        todEls.linkIconOnline.hidden = true;
+        todEls.linkIconOnline.href = "#";
+        todEls.linkIconOnline.textContent = "";
+      }
+    }
+
+    if (todEls.linkIconOffline) {
+      if (offlinePath) {
+        todEls.linkIconOffline.hidden = false;
+        todEls.linkIconOffline.href = todToPublicUrl(offlinePath);
+        todEls.linkIconOffline.textContent = offlinePath;
+      } else {
+        todEls.linkIconOffline.hidden = true;
+        todEls.linkIconOffline.href = "#";
+        todEls.linkIconOffline.textContent = "";
+      }
+    }
   }
 
 
@@ -4615,6 +4808,16 @@
     if (todEls.inputIconOnline) todEls.inputIconOnline.value = isEdit ? String(row?.icon_path_online ?? "") : "";
     if (todEls.inputIconOffline) todEls.inputIconOffline.value = isEdit ? String(row?.icon_path_offline ?? "") : "";
 
+    // reset file inputs (ให้เลือกไฟล์เดิมซ้ำได้)
+    if (todEls.fileIconOnline) todEls.fileIconOnline.value = "";
+    if (todEls.fileIconOffline) todEls.fileIconOffline.value = "";
+
+    if (todEls.hasNetworkText) {
+      todEls.hasNetworkText.textContent = todEls.inputHasNetwork?.checked ? "รองรับเครือข่าย" : "ไม่รองรับเครือข่าย";
+    }
+
+    todSyncIconLinks();
+
     show(todEls.modal);
     document.body.style.overflow = "hidden";
   }
@@ -4698,6 +4901,11 @@
     if (closeId === "channel-modal") closeChannelModal();
   });
 
+  document.addEventListener("click", (e) => {
+    const closeId = e.target?.getAttribute?.("data-close");
+    if (closeId === "type-of-device-modal") closeTypeOfDeviceModal();
+  });
+
 
   // กด ESC ปิด
   document.addEventListener("keydown", (e) => {
@@ -4775,6 +4983,12 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && notificationTypeStaffEls.modal && !notificationTypeStaffEls.modal.hidden) {
       closeNotificationTypeStaffModal();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && todEls.modal && !todEls.modal.hidden) {
+      closeTypeOfDeviceModal();
     }
   });
 
@@ -4946,6 +5160,14 @@
       loadTypeOfDevice();
     }
 
+    if (sectionKey === "main-type-of-device") {
+      // ใช้ state/els ของ section main-type-of-device (mtd*) ที่ประกาศไว้ด้านบน
+      mtdState.page = 1;
+      mtdState.q = (mtdEls.search?.value || "").trim();
+      mtdState.limit = Number(mtdEls.limit?.value || 50);
+      mainTypeOfDeviceLoad();
+    }
+
 
   });
 
@@ -5068,6 +5290,13 @@
     loadUserRoles();
   });
 
+  settingUserEls.search?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    settingUserState.page = 1;
+    settingUserState.q = (settingUserEls.search.value || "").trim();
+    loadPendingUsers();
+  });
+
   usersEls.search?.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
     usersState.page = 1;
@@ -5155,6 +5384,12 @@
     loadUserRoles();
   });
 
+  settingUserEls.limit?.addEventListener("change", () => {
+    settingUserState.page = 1;
+    settingUserState.limit = Number(settingUserEls.limit.value || 50);
+    loadPendingUsers();
+  });
+
   usersEls.limit?.addEventListener("change", () => {
     usersState.page = 1;
     usersState.limit = Number(usersEls.limit.value || 50);
@@ -5218,6 +5453,10 @@
 
   userRoleEls.refresh?.addEventListener("click", () => {
     loadUserRoles();
+  });
+
+  settingUserEls.refresh?.addEventListener("click", () => {
+    loadPendingUsers();
   });
 
   usersEls.refresh?.addEventListener("click", () => {
@@ -5334,6 +5573,17 @@
 
     userRoleState.page = next;
     loadUserRoles();
+  });
+
+  settingUserEls.pagination?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-page]");
+    if (!btn || btn.disabled) return;
+
+    const next = Number(btn.getAttribute("data-page"));
+    if (!next || next < 1 || next > settingUserState.totalPages) return;
+
+    settingUserState.page = next;
+    loadPendingUsers();
   });
 
   requestTypeEls.pagination?.addEventListener("click", (e) => {
@@ -5662,7 +5912,7 @@
     if (!confirm("ยืนยันการอนุมัติผู้ใช้งานนี้?")) return;
 
     try {
-      await window.UserApprovalsAPI.approve({
+      await window.UserApprovalsAPI.approveUser({
         user_id: userId,
         role_id: roleId,
       });
@@ -5951,6 +6201,39 @@
           channelState.page = channelState.totalPages;
           await loadChannels();
         }
+      } catch (err) {
+        alert(`ลบไม่สำเร็จ: ${err.message || err}`);
+      }
+    }
+  });
+
+  todEls.tbody?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+
+    const action = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id") || "";
+    if (!id) return;
+
+    const api = window.TypeOfDeviceAPI;
+    if (!api) return alert("TypeOfDeviceAPI not found");
+
+    if (action === "edit") {
+      try {
+        const res = await api.getById(id);
+        const row = res?.data ?? res;
+        openTypeOfDeviceModal({ mode: "edit", row });
+      } catch (err) {
+        alert(err.message || "โหลดข้อมูลไม่สำเร็จ");
+      }
+      return;
+    }
+
+    if (action === "delete") {
+      if (!confirm(`ต้องการลบประเภทอุปกรณ์ ID ${id} ใช่ไหม?`)) return;
+      try {
+        await api.remove(id);
+        await loadTypeOfDevice();
       } catch (err) {
         alert(`ลบไม่สำเร็จ: ${err.message || err}`);
       }
@@ -6552,6 +6835,81 @@
       if (channelsEls.formError) {
         channelsEls.formError.textContent = err.message || "บันทึกไม่สำเร็จ";
         show(channelsEls.formError);
+      } else {
+        alert(err.message || "บันทึกไม่สำเร็จ");
+      }
+    }
+  });
+
+  todEls.form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const id = String(todEls.inputId?.value || "").trim();
+    const type_of_device_title = String(todEls.inputTitle?.value || "").trim();
+    const has_network = todEls.inputHasNetwork?.checked ? 1 : 0;
+
+    if (!type_of_device_title) {
+      if (todEls.formError) {
+        todEls.formError.textContent = "กรุณากรอกชื่อประเภทอุปกรณ์";
+        show(todEls.formError);
+      }
+      return;
+    }
+
+    const api = window.TypeOfDeviceAPI;
+    if (!api) return alert("TypeOfDeviceAPI not found");
+
+    try {
+      if (todEls.formError) hide(todEls.formError);
+
+      // ค่าเดิมจาก hidden inputs
+      let icon_path_online = String(todEls.inputIconOnline?.value || "").trim();
+      let icon_path_offline = String(todEls.inputIconOffline?.value || "").trim();
+
+      // ถ้ามีการเลือกไฟล์ใหม่ -> upload ก่อน
+      const onlineFile = todEls.fileIconOnline?.files?.[0];
+      if (onlineFile) {
+        const up = await api.uploadIcon(onlineFile);
+        const path = up?.data?.path;
+        if (!path) throw new Error("Upload online icon failed");
+        icon_path_online = String(path);
+        if (todEls.inputIconOnline) todEls.inputIconOnline.value = icon_path_online;
+      }
+
+      const offlineFile = todEls.fileIconOffline?.files?.[0];
+      if (offlineFile) {
+        const up = await api.uploadIcon(offlineFile);
+        const path = up?.data?.path;
+        if (!path) throw new Error("Upload offline icon failed");
+        icon_path_offline = String(path);
+        if (todEls.inputIconOffline) todEls.inputIconOffline.value = icon_path_offline;
+      }
+
+      // sync link UI
+      todSyncIconLinks();
+
+      if (id) {
+        await api.update(id, {
+          type_of_device_title,
+          has_network,
+          icon_path_online,
+          icon_path_offline,
+        });
+      } else {
+        await api.create({
+          type_of_device_title,
+          has_network,
+          icon_path_online,
+          icon_path_offline,
+        });
+      }
+
+      closeTypeOfDeviceModal();
+      await loadTypeOfDevice();
+    } catch (err) {
+      if (todEls.formError) {
+        todEls.formError.textContent = err.message || "บันทึกไม่สำเร็จ";
+        show(todEls.formError);
       } else {
         alert(err.message || "บันทึกไม่สำเร็จ");
       }
