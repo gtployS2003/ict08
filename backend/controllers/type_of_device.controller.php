@@ -286,7 +286,32 @@ final class TypeOfDeviceController
             // โฟลเดอร์ปลายทาง: backend/public/uploads/device_icon
             $dir = __DIR__ . '/../public/uploads/device_icon';
             if (!is_dir($dir)) {
-                mkdir($dir, 0775, true);
+                // suppress warning and handle ourselves to keep JSON response clean
+                $ok = @mkdir($dir, 0775, true);
+                if (!$ok && !is_dir($dir)) {
+                    $last = error_get_last();
+                    json_response([
+                        'error' => true,
+                        'message' => 'Upload directory cannot be created',
+                        'dir' => $dir,
+                        'detail' => $last['message'] ?? null,
+                    ], 500);
+                }
+            }
+
+            // Best-effort: ensure group-writable (may be ignored if not permitted)
+            @chmod($dir, 0775);
+
+            if (!is_writable($dir)) {
+                json_response([
+                    'error' => true,
+                    'message' => 'Upload directory is not writable',
+                    'dir' => $dir,
+                    'perms' => substr(sprintf('%o', @fileperms($dir) ?: 0), -4),
+                    'owner_uid' => @fileowner($dir) ?: null,
+                    'group_gid' => @filegroup($dir) ?: null,
+                    'hint' => 'Fix filesystem permissions for the web server user (XAMPP/Apache) to write into this directory.',
+                ], 500);
             }
 
             $rand = bin2hex(random_bytes(8));
@@ -294,9 +319,12 @@ final class TypeOfDeviceController
             $dest = $dir . '/' . $name;
 
             if (!move_uploaded_file((string)$file['tmp_name'], $dest)) {
+                $last = error_get_last();
                 json_response([
                     'error' => true,
                     'message' => 'Could not move uploaded file',
+                    'detail' => $last['message'] ?? null,
+                    'dest' => $dest,
                 ], 500);
             }
 

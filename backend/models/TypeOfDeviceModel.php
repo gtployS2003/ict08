@@ -43,7 +43,7 @@ final class TypeOfDeviceModel
                 t.icon_path_offline
             FROM {$this->table} t
             {$where}
-            ORDER BY t.type_of_device_id DESC
+            ORDER BY t.type_of_device_id ASC
             LIMIT :limit OFFSET :offset
         ";
 

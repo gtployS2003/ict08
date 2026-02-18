@@ -1108,8 +1108,8 @@
                                         <th style="width: 90px">ID</th>
                                         <th>ประเภทอุปกรณ์</th>
                                         <th style="width: 140px">เครือข่าย</th>
-                                        <th>Icon Online</th>
-                                        <th>Icon Offline</th>
+                                        <th style="width: 200px">Icon Online</th>
+                                        <th style="width: 200px">Icon Offline</th>
                                         <th style="width: 170px">จัดการ</th>
                                     </tr>
                                 </thead>
@@ -2101,6 +2101,14 @@
                         <input id="type-of-device-icon-online" name="icon_path_online" type="hidden" />
                         <input id="type-of-device-icon-online-file" type="file"
                             accept="image/png,image/jpeg,image/webp" />
+
+                        <div id="tod-icon-online-preview" class="gcms-file-preview" hidden>
+                            <img id="tod-icon-online-preview-img" alt="Icon Online preview" />
+                            <div class="gcms-file-preview__meta">
+                                <div id="tod-icon-online-preview-name" class="gcms-file-preview__name muted"></div>
+                                <button id="tod-icon-online-clear" class="btn btn-ghost btn-sm" type="button">ล้าง</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-field full">
@@ -2108,6 +2116,14 @@
                         <input id="type-of-device-icon-offline" name="icon_path_offline" type="hidden" />
                         <input id="type-of-device-icon-offline-file" type="file"
                             accept="image/png,image/jpeg,image/webp" />
+
+                        <div id="tod-icon-offline-preview" class="gcms-file-preview" hidden>
+                            <img id="tod-icon-offline-preview-img" alt="Icon Offline preview" />
+                            <div class="gcms-file-preview__meta">
+                                <div id="tod-icon-offline-preview-name" class="gcms-file-preview__name muted"></div>
+                                <button id="tod-icon-offline-clear" class="btn btn-ghost btn-sm" type="button">ล้าง</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

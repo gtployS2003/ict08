@@ -4178,6 +4178,17 @@
     inputIconOffline: $("#type-of-device-icon-offline"),
     fileIconOnline: $("#type-of-device-icon-online-file"),
     fileIconOffline: $("#type-of-device-icon-offline-file"),
+
+    // previews (selected file)
+    previewOnlineWrap: $("#tod-icon-online-preview"),
+    previewOnlineImg: $("#tod-icon-online-preview-img"),
+    previewOnlineName: $("#tod-icon-online-preview-name"),
+    previewOnlineClear: $("#tod-icon-online-clear"),
+
+    previewOfflineWrap: $("#tod-icon-offline-preview"),
+    previewOfflineImg: $("#tod-icon-offline-preview-img"),
+    previewOfflineName: $("#tod-icon-offline-preview-name"),
+    previewOfflineClear: $("#tod-icon-offline-clear"),
     linkIconOnline: $("#type-of-device-icon-online-link"),
     linkIconOffline: $("#type-of-device-icon-offline-link"),
     formError: $("#type-of-device-form-error"),
@@ -4199,6 +4210,29 @@
     });
   }
 
+  function renderTodIconCell(path, { alt = "" } = {}) {
+    const raw = String(path || "").trim();
+    if (!raw) {
+      return `<div class="gcms-icon-wrap is-empty"><span class="gcms-icon-fallback">-</span></div>`;
+    }
+
+    const url = todToPublicUrl(raw);
+    const safeUrl = escapeHtml(url);
+    const safeRaw = escapeHtml(raw);
+    const safeAlt = escapeHtml(alt);
+
+    return `
+      <div class="gcms-icon-wrap" title="${safeRaw}">
+        <a class="gcms-icon-link" href="${safeUrl}" target="_blank" rel="noopener">
+          <img class="gcms-icon-thumb" src="${safeUrl}" alt="${safeAlt}"
+            onerror="this.style.display='none'; if(this.parentNode){ this.parentNode.classList.add('is-broken'); }" />
+          <span class="gcms-icon-fallback">ไม่พบรูป</span>
+        </a>
+        <div class="gcms-icon-path muted">${safeRaw}</div>
+      </div>
+    `;
+  }
+
   function renderTypeOfDeviceRows(items = []) {
     if (!todEls.tbody) return;
 
@@ -4212,6 +4246,9 @@
       const title = it.type_of_device_title ?? "-";
       const hasNetwork = Number(it.has_network) === 1;
 
+      const iconOnline = it.icon_path_online ?? "";
+      const iconOffline = it.icon_path_offline ?? "";
+
       return `
       <tr>
         <td>${escapeHtml(id)}</td>
@@ -4221,8 +4258,8 @@
             ${hasNetwork ? "มีเครือข่าย" : "ไม่มีเครือข่าย"}
           </span>
         </td>
-        <td>${escapeHtml(it.icon_path_online ?? "-")}</td>
-        <td>${escapeHtml(it.icon_path_offline ?? "-")}</td>
+        <td>${renderTodIconCell(iconOnline, { alt: "Icon Online" })}</td>
+        <td>${renderTodIconCell(iconOffline, { alt: "Icon Offline" })}</td>
         <td>
           <button class="btn btn-ghost btn-sm"
             data-action="edit"
@@ -4299,6 +4336,23 @@
       if (!todEls.hasNetworkText) return;
       todEls.hasNetworkText.textContent = todEls.inputHasNetwork.checked ? "รองรับเครือข่าย" : "ไม่รองรับเครือข่าย";
     });
+
+    // previews for icon uploads (selected file)
+    todEls._onlinePreviewCtl = todBindFilePreview({
+      fileInput: todEls.fileIconOnline,
+      wrap: todEls.previewOnlineWrap,
+      img: todEls.previewOnlineImg,
+      nameEl: todEls.previewOnlineName,
+      clearBtn: todEls.previewOnlineClear,
+    });
+
+    todEls._offlinePreviewCtl = todBindFilePreview({
+      fileInput: todEls.fileIconOffline,
+      wrap: todEls.previewOfflineWrap,
+      img: todEls.previewOfflineImg,
+      nameEl: todEls.previewOfflineName,
+      clearBtn: todEls.previewOfflineClear,
+    });
   }
 
   function todToPublicUrl(path) {
@@ -4338,6 +4392,56 @@
         todEls.linkIconOffline.textContent = "";
       }
     }
+  }
+
+  function todBindFilePreview({ fileInput, wrap, img, nameEl, clearBtn }) {
+    if (!fileInput || !wrap || !img || !nameEl) return null;
+
+    let objectUrl = "";
+
+    const clearObjectUrl = () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = "";
+      }
+    };
+
+    const hideWrap = () => wrap.setAttribute("hidden", "");
+    const showWrap = () => wrap.removeAttribute("hidden");
+
+    const clear = () => {
+      clearObjectUrl();
+      img.removeAttribute("src");
+      nameEl.textContent = "";
+      try {
+        fileInput.value = "";
+      } catch (_) {
+        // ignore
+      }
+      hideWrap();
+    };
+
+    const showFile = (file) => {
+      clearObjectUrl();
+      objectUrl = URL.createObjectURL(file);
+      img.src = objectUrl;
+      nameEl.textContent = `${file.name} (${Math.round((file.size || 0) / 1024)} KB)`;
+      showWrap();
+    };
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (!file) return clear();
+      if (!/^image\//i.test(String(file.type || ""))) return clear();
+      showFile(file);
+    });
+
+    clearBtn?.addEventListener("click", clear);
+
+    // initial state
+    hideWrap();
+
+    return { clear, showFile };
   }
 
 
@@ -4812,11 +4916,32 @@
     if (todEls.fileIconOnline) todEls.fileIconOnline.value = "";
     if (todEls.fileIconOffline) todEls.fileIconOffline.value = "";
 
+    // reset previews
+    todEls._onlinePreviewCtl?.clear?.();
+    todEls._offlinePreviewCtl?.clear?.();
+
     if (todEls.hasNetworkText) {
       todEls.hasNetworkText.textContent = todEls.inputHasNetwork?.checked ? "รองรับเครือข่าย" : "ไม่รองรับเครือข่าย";
     }
 
     todSyncIconLinks();
+
+    // edit mode: show existing icons as preview (optional but helpful)
+    if (isEdit) {
+      const onlinePath = String(row?.icon_path_online ?? "").trim();
+      if (onlinePath && todEls.previewOnlineWrap && todEls.previewOnlineImg && todEls.previewOnlineName) {
+        todEls.previewOnlineImg.src = todToPublicUrl(onlinePath);
+        todEls.previewOnlineName.textContent = onlinePath;
+        todEls.previewOnlineWrap.removeAttribute("hidden");
+      }
+
+      const offlinePath = String(row?.icon_path_offline ?? "").trim();
+      if (offlinePath && todEls.previewOfflineWrap && todEls.previewOfflineImg && todEls.previewOfflineName) {
+        todEls.previewOfflineImg.src = todToPublicUrl(offlinePath);
+        todEls.previewOfflineName.textContent = offlinePath;
+        todEls.previewOfflineWrap.removeAttribute("hidden");
+      }
+    }
 
     show(todEls.modal);
     document.body.style.overflow = "hidden";
@@ -4826,6 +4951,10 @@
     if (!todEls.modal) return;
     hide(todEls.modal);
     document.body.style.overflow = "";
+
+    // cleanup previews to avoid leaking object URLs
+    todEls._onlinePreviewCtl?.clear?.();
+    todEls._offlinePreviewCtl?.clear?.();
   }
 
   // ปิด modal เมื่อคลิกที่ overlay 
