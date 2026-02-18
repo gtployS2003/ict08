@@ -96,7 +96,7 @@
     hide($("#btn-add-notification-type"));
     hide($("#btn-add-notification-type-staff"));
     hide($("#btn-add-channel"));
-    hide($("#btn-add-type-of-device"))
+    hide($("#btn-add-type-of-device"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -4251,16 +4251,22 @@
   }
 
   function openOrgTypeModal({ mode, id = "", en = "", th = "" }) {
-    orgTypeEls.modalTitle.textContent =
-      mode === "edit" ? "แก้ไขประเภทหน่วยงาน" : "เพิ่มประเภทหน่วยงาน";
-    orgTypeEls.submitText.textContent =
-      mode === "edit" ? "บันทึกการแก้ไข" : "บันทึก";
+    if (!orgTypeEls.modal) return;
 
-    orgTypeEls.inputId.value = id;
-    orgTypeEls.inputEN.value = en;
-    orgTypeEls.inputTH.value = th;
+    const isEdit = mode === "edit";
+    if (orgTypeEls.modalTitle) {
+      orgTypeEls.modalTitle.textContent = isEdit ? "แก้ไขประเภทหน่วยงาน" : "เพิ่มประเภทหน่วยงาน";
+    }
+    if (orgTypeEls.submitText) {
+      orgTypeEls.submitText.textContent = isEdit ? "บันทึกการแก้ไข" : "บันทึก";
+    }
+
+    if (orgTypeEls.inputId) orgTypeEls.inputId.value = String(id ?? "");
+    if (orgTypeEls.inputEN) orgTypeEls.inputEN.value = String(en ?? "");
+    if (orgTypeEls.inputTH) orgTypeEls.inputTH.value = String(th ?? "");
 
     show(orgTypeEls.modal);
+    document.body.style.overflow = "hidden";
   }
 
   function closeOrgTypeModal() {
@@ -4297,16 +4303,22 @@
   }
 
   function openPersonPrefixModal({ mode, id = "", en = "", th = "" }) {
-    personPrefixEls.modalTitle.textContent =
-      mode === "edit" ? "แก้ไขคำนำหน้าชื่อ" : "เพิ่มคำนำหน้าชื่อ";
-    personPrefixEls.submitText.textContent =
-      mode === "edit" ? "บันทึกการแก้ไข" : "บันทึก";
+    if (!personPrefixEls.modal) return;
 
-    personPrefixEls.inputId.value = id;
-    personPrefixEls.inputEN.value = en;
-    personPrefixEls.inputTH.value = th;
+    const isEdit = mode === "edit";
+    if (personPrefixEls.modalTitle) {
+      personPrefixEls.modalTitle.textContent = isEdit ? "แก้ไขคำนำหน้าชื่อ" : "เพิ่มคำนำหน้าชื่อ";
+    }
+    if (personPrefixEls.submitText) {
+      personPrefixEls.submitText.textContent = isEdit ? "บันทึกการแก้ไข" : "บันทึก";
+    }
+
+    if (personPrefixEls.inputId) personPrefixEls.inputId.value = String(id ?? "");
+    if (personPrefixEls.inputEN) personPrefixEls.inputEN.value = String(en ?? "");
+    if (personPrefixEls.inputTH) personPrefixEls.inputTH.value = String(th ?? "");
 
     show(personPrefixEls.modal);
+    document.body.style.overflow = "hidden";
   }
 
   function closePersonPrefixModal() {
@@ -4998,6 +5010,11 @@
     openChannelModal({ mode: "create" });
   });
 
+  // ปุ่มเพิ่มประเภทอุปกรณ์
+  todEls.btnAdd?.addEventListener("click", () => {
+    openTypeOfDeviceModal({ mode: "create" });
+  });
+
 
 
 
@@ -5172,12 +5189,6 @@
     notificationTypeStaffState.page = 1;
     notificationTypeStaffState.limit = Number(notificationTypeStaffEls.limit.value || 50);
     loadNotificationTypeStaff();
-  });
-
-  typeOfDeviceEls.limit?.addEventListener("change", () => {
-    typeOfDeviceState.page = 1;
-    typeOfDeviceState.limit = Number(typeOfDeviceEls.limit.value || 50);
-    loadTypeOfDevices();
   });
 
   // รีเฟรช
