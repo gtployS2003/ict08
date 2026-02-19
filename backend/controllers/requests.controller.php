@@ -161,8 +161,8 @@ class RequestsController
                     $deviceId = (int) $deviceIdRaw;
                 }
 
-                // ✅ repair: ไม่ใช้ subtype/start/end/location จาก client
-                $requestSubType = null;
+                // ✅ repair: บังคับ subtype = 6 (ตาม requirement)
+                $requestSubType = 6;
                 $start = '';
                 $end = '';
                 $location = '';
@@ -275,8 +275,8 @@ class RequestsController
             $payload = [
                 'request_type' => $requestType,
 
-                // ✅ conference/other ใช้ subtype, repair = NULL
-                'request_sub_type' => ($requestType === self::REQUEST_TYPE_REPAIR) ? null : (int) $requestSubType,
+                // ✅ conference/other ใช้ subtype จาก client, repair บังคับ = 6
+                'request_sub_type' => ($requestType === self::REQUEST_TYPE_REPAIR) ? 6 : (int) $requestSubType,
 
                 'subject' => $subject,
                 'device_id' => ($requestType === self::REQUEST_TYPE_REPAIR) ? (int) $deviceId : null,
