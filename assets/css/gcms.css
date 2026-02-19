@@ -895,15 +895,17 @@ select option {
   display: none !important;
 }
 
-/* ===== USER DETAIL : 2 COLUMN MINIMAL (MATCH GCMS THEME) ===== */
+/* ===== USER DETAIL / ORG DETAIL : 2 COLUMN MINIMAL (MATCH GCMS THEME) ===== */
 
-#user-detail-modal .modal__dialog {
+#user-detail-modal .modal__dialog,
+#organization-detail-modal .modal__dialog {
   /* ให้กว้างขึ้นนิด เพราะมี 2 column */
   width: min(820px, calc(100% - 24px));
 }
 
 /* ใช้ layout แบบ form เดิม */
-#user-detail-modal .kv-list {
+#user-detail-modal .kv-list,
+#organization-detail-modal .kv-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -915,15 +917,22 @@ select option {
 }
 
 /* 1 field */
-#user-detail-modal .kv {
+#user-detail-modal .kv,
+#organization-detail-modal .kv {
   display: flex;
   flex-direction: column;
   gap: 6px;
   /* ให้เหมือน form-field label+input */
 }
 
+/* allow full-width fields */
+#organization-detail-modal .kv.full {
+  grid-column: 1 / -1;
+}
+
 /* label style ให้เหมือน .form-field label */
-#user-detail-modal .kv .k {
+#user-detail-modal .kv .k,
+#organization-detail-modal .kv .k {
   font-size: 13px;
   font-weight: 700;
   color: rgba(0, 0, 0, 0.70);
@@ -931,7 +940,8 @@ select option {
 }
 
 /* value style ให้เหมือน .form-field input */
-#user-detail-modal .kv .v {
+#user-detail-modal .kv .v,
+#organization-detail-modal .kv .v {
   width: 100%;
   min-height: 44px;
   /* ใกล้ input ของเดิม */
@@ -962,16 +972,19 @@ select option {
 }
 
 /* ให้ scroll นุ่มแบบเดิม */
-#user-detail-modal .kv-list::-webkit-scrollbar {
+#user-detail-modal .kv-list::-webkit-scrollbar,
+#organization-detail-modal .kv-list::-webkit-scrollbar {
   width: 8px;
 }
 
-#user-detail-modal .kv-list::-webkit-scrollbar-thumb {
+#user-detail-modal .kv-list::-webkit-scrollbar-thumb,
+#organization-detail-modal .kv-list::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, .12);
   border-radius: 999px;
 }
 
-#user-detail-modal .modal__footer {
+#user-detail-modal .modal__footer,
+#organization-detail-modal .modal__footer {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
@@ -987,14 +1000,16 @@ select option {
 
 /* mobile -> 1 column */
 @media (max-width: 820px) {
-  #user-detail-modal .kv-list {
+  #user-detail-modal .kv-list,
+  #organization-detail-modal .kv-list {
     grid-template-columns: 1fr;
   }
 }
 
 /* จอเล็กมาก ปรับ padding */
 @media (max-width: 560px) {
-  #user-detail-modal .kv-list {
+  #user-detail-modal .kv-list,
+  #organization-detail-modal .kv-list {
     padding: 14px;
   }
 }

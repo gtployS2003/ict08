@@ -145,6 +145,44 @@
     el.style.display = "none";
   }
 
+  // ===== Generic modal helpers (used by multiple sections) =====
+  // NOTE: Some pages use "data-close" attributes. These helpers provide a
+  // consistent open/close API and a global click/escape handler.
+  function openModal(modalId) {
+    const el = document.getElementById(String(modalId || ""));
+    if (!el) return;
+    show(el);
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeModal(modalId) {
+    const el = document.getElementById(String(modalId || ""));
+    if (!el) return;
+    hide(el);
+
+    // If there are no other visible modals, restore scroll
+    const anyOpen = Array.from(document.querySelectorAll(".modal")).some((m) => !m.hidden);
+    if (!anyOpen) document.body.style.overflow = "";
+  }
+
+  (function bindGlobalModalCloseOnce() {
+    if (window.__GCMS_MODAL_CLOSE_BOUND__) return;
+    window.__GCMS_MODAL_CLOSE_BOUND__ = true;
+
+    document.addEventListener("click", (e) => {
+      const closeId = e.target?.getAttribute?.("data-close");
+      if (!closeId) return;
+      closeModal(closeId);
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      const open = Array.from(document.querySelectorAll(".modal")).filter((m) => !m.hidden);
+      const top = open[open.length - 1];
+      if (top?.id) closeModal(top.id);
+    });
+  })();
+
   function setTitle(text) {
     const title = $("#setting-title");
     if (title) title.textContent = text;
@@ -282,6 +320,8 @@
         setTitle("ประเภทหลักของอุปกรณ์");
         show($("#section-main-type-of-device"));
         show($("#btn-add-main-type-of-device"));
+        // ensure handlers (open modal, close, submit) are bound
+        initMainTypeOfDeviceSection();
         mainTypeOfDeviceLoad();
         break;
 
@@ -969,22 +1009,33 @@
 
   /** render rows */
   function renderOrgRows(items = []) {
-    if (!orgEls.tbody) return;
+  if (!orgEls.tbody) return;
 
-    if (!items.length) {
-      orgEls.tbody.innerHTML = `<tr><td colspan="7" class="muted">ไม่พบข้อมูล</td></tr>`;
-      return;
-    }
+  if (!items.length) {
+    orgEls.tbody.innerHTML = `<tr><td colspan="7" class="muted">ไม่พบข้อมูล</td></tr>`;
+    return;
+  }
 
-    orgEls.tbody.innerHTML = items
-      .map((row) => {
-        const id = row.organization_id;
+  orgEls.tbody.innerHTML = items
+    .map((row) => {
+      const id = row.organization_id;
 
-        // backend model ส่งชื่อจังหวัด/ประเภทมาด้วย (จาก JOIN)
-        const provinceName = row.province_name_th || "";
-        const typeName = row.organization_type_name_th || row.organization_type_name || "";
+      const provinceName = row.province_name_th || "";
+      const typeName = row.organization_type_name_th || row.organization_type_name || "";
 
-        return `
+      // ✅ เอาไว้ส่งเข้า modal detail/edit-contact
+      const payloadAttrs = `
+        data-id="${escapeHtml(id)}"
+        data-code="${escapeHtml(row.code)}"
+        data-name="${escapeHtml(row.name)}"
+        data-location="${escapeHtml(row.location)}"
+        data-province_name="${escapeHtml(provinceName)}"
+        data-type_name="${escapeHtml(typeName)}"
+        data-province_id="${escapeHtml(row.province_id)}"
+        data-organization_type_id="${escapeHtml(row.organization_type_id)}"
+      `;
+
+      return `
         <tr data-id="${escapeHtml(id)}">
           <td>${escapeHtml(id)}</td>
           <td>${escapeHtml(row.code)}</td>
@@ -994,7 +1045,16 @@
           <td>${escapeHtml(row.location)}</td>
           <td>
             <div class="row-actions">
-              <button class="btn btn-ghost btn-sm" type="button" data-action="edit"
+              <!-- ✅ ใหม่: ดูรายละเอียด (เปิด Organization Detail Modal) -->
+              <button class="btn btn-outline btn-sm" type="button"
+                data-action="detail"
+                ${payloadAttrs}>
+                รายละเอียด
+              </button>
+
+              <!-- เดิม: แก้ไขข้อมูล organization -->
+              <button class="btn btn-ghost btn-sm" type="button"
+                data-action="edit"
                 data-id="${escapeHtml(id)}"
                 data-code="${escapeHtml(row.code)}"
                 data-name="${escapeHtml(row.name)}"
@@ -1003,16 +1063,21 @@
                 data-organization_type_id="${escapeHtml(row.organization_type_id)}">
                 แก้ไข
               </button>
-              <button class="btn btn-danger btn-sm" type="button" data-action="delete" data-id="${escapeHtml(id)}">
+
+              <!-- เดิม: ลบ -->
+              <button class="btn btn-danger btn-sm" type="button"
+                data-action="delete"
+                data-id="${escapeHtml(id)}">
                 ลบ
               </button>
             </div>
           </td>
         </tr>
       `;
-      })
-      .join("");
-  }
+    })
+    .join("");
+}
+
 
   function renderOrgPagination() {
     if (!orgEls.pagination) return;
@@ -4148,7 +4213,305 @@
     initChannelsSection();
     initUncSection();
     initTypeOfDeviceSection();
+    initMainTypeOfDeviceSection();
   });
+
+  // Organization Detail + Contact Modals
+  // NOTE: the modal HTML may be injected/changed, so keep refs refreshable.
+  const orgDetailEls = {
+    modal: document.querySelector("#organization-detail-modal"),
+    btnEdit: document.querySelector("#organization-detail-edit"),
+
+    orgId: document.querySelector("#od-org-id"),
+    orgCode: document.querySelector("#od-org-code"),
+    orgName: document.querySelector("#od-org-name"),
+    orgLocation: document.querySelector("#od-org-location"),
+    province: document.querySelector("#od-province"),
+
+    phone: document.querySelector("#od-phone"),
+    fax: document.querySelector("#od-fax"),
+    faxExt: document.querySelector("#od-fax-ext"),
+    email: document.querySelector("#od-email"),
+    facebook: document.querySelector("#od-facebook"),
+    line: document.querySelector("#od-line"),
+    map: document.querySelector("#od-map"),
+    latlng: document.querySelector("#od-latlng"),
+  };
+
+  const orgContactEls = {
+    modal: document.querySelector("#organization-contact-modal"),
+    form: document.querySelector("#organization-contact-form"),
+    err: document.querySelector("#organization-contact-form-error"),
+    submitText: document.querySelector("#organization-contact-submit-text"),
+
+    contactInfoId: document.querySelector("#oc-contact-info-id"),
+    organizationId: document.querySelector("#oc-organization-id"),
+    orgDisplay: document.querySelector("#oc-org-display"),
+
+    phone: document.querySelector("#oc-phone"),
+    email: document.querySelector("#oc-email"),
+    fax: document.querySelector("#oc-fax"),
+    faxExt: document.querySelector("#oc-fax-ext"),
+    fbName: document.querySelector("#oc-facebook-name"),
+    fbUrl: document.querySelector("#oc-facebook-url"),
+    lineId: document.querySelector("#oc-line-id"),
+    lineUrl: document.querySelector("#oc-line-url"),
+    mapEmbed: document.querySelector("#oc-map-embed"),
+    lat: document.querySelector("#oc-lat"),
+    lng: document.querySelector("#oc-lng"),
+  };
+
+  function refreshOrgModalEls() {
+    orgDetailEls.modal = document.querySelector("#organization-detail-modal");
+    orgDetailEls.btnEdit = document.querySelector("#organization-detail-edit");
+    orgDetailEls.orgId = document.querySelector("#od-org-id");
+    orgDetailEls.orgCode = document.querySelector("#od-org-code");
+    orgDetailEls.orgName = document.querySelector("#od-org-name");
+    orgDetailEls.orgLocation = document.querySelector("#od-org-location");
+    orgDetailEls.province = document.querySelector("#od-province");
+    orgDetailEls.phone = document.querySelector("#od-phone");
+    orgDetailEls.fax = document.querySelector("#od-fax");
+    orgDetailEls.faxExt = document.querySelector("#od-fax-ext");
+    orgDetailEls.email = document.querySelector("#od-email");
+    orgDetailEls.facebook = document.querySelector("#od-facebook");
+    orgDetailEls.line = document.querySelector("#od-line");
+    orgDetailEls.map = document.querySelector("#od-map");
+    orgDetailEls.latlng = document.querySelector("#od-latlng");
+
+    orgContactEls.modal = document.querySelector("#organization-contact-modal");
+    orgContactEls.form = document.querySelector("#organization-contact-form");
+    orgContactEls.err = document.querySelector("#organization-contact-form-error");
+    orgContactEls.submitText = document.querySelector("#organization-contact-submit-text");
+    orgContactEls.contactInfoId = document.querySelector("#oc-contact-info-id");
+    orgContactEls.organizationId = document.querySelector("#oc-organization-id");
+    orgContactEls.orgDisplay = document.querySelector("#oc-org-display");
+    orgContactEls.phone = document.querySelector("#oc-phone");
+    orgContactEls.email = document.querySelector("#oc-email");
+    orgContactEls.fax = document.querySelector("#oc-fax");
+    orgContactEls.faxExt = document.querySelector("#oc-fax-ext");
+    orgContactEls.fbName = document.querySelector("#oc-facebook-name");
+    orgContactEls.fbUrl = document.querySelector("#oc-facebook-url");
+    orgContactEls.lineId = document.querySelector("#oc-line-id");
+    orgContactEls.lineUrl = document.querySelector("#oc-line-url");
+    orgContactEls.mapEmbed = document.querySelector("#oc-map-embed");
+    orgContactEls.lat = document.querySelector("#oc-lat");
+    orgContactEls.lng = document.querySelector("#oc-lng");
+  }
+
+let _orgDetailCurrent = null; // เก็บ row ปัจจุบันที่เปิด detail
+let _orgContactCurrent = null; // เก็บ row ปัจจุบันที่กำลังแก้ไข
+
+
+async function loadContactInfoByOrganization(organizationId, orgFallbackQuery = "") {
+  // ใช้ q เพื่อให้ได้ข้อมูลเร็วขึ้น (optional)
+  const q = orgFallbackQuery ? String(orgFallbackQuery) : "";
+  const res = await contactInfoApi.list({ q, page: 1, limit: 200 });
+
+  const items = res?.data || res?.items || [];
+  const found = items.find(x => Number(x.organization_id) === Number(organizationId));
+  return found || null;
+}
+
+async function openOrgDetailModal(orgRow) {
+  refreshOrgModalEls();
+  _orgDetailCurrent = orgRow;
+
+  if (!orgDetailEls.modal) {
+    console.warn("[org] organization-detail-modal not found in DOM");
+    return;
+  }
+
+  // เติมข้อมูลจาก organization ก่อน
+  if (orgDetailEls.orgId) orgDetailEls.orgId.textContent = orgRow.organization_id ?? "-";
+  if (orgDetailEls.orgCode) orgDetailEls.orgCode.textContent = orgRow.code ?? "-";
+  if (orgDetailEls.orgName) orgDetailEls.orgName.textContent = orgRow.name ?? "-";
+  if (orgDetailEls.orgLocation) orgDetailEls.orgLocation.textContent = orgRow.location ?? "-";
+  if (orgDetailEls.province) {
+    // NOTE: orgRow มาจาก dataset ของปุ่มในตาราง (province_name)
+    // และบางครั้งมาจาก API (province_name_th / nameTH / nameEN)
+    const direct =
+      orgRow.province_nameTH ||
+      orgRow.province_nameEN ||
+      orgRow.province_name_th ||
+      orgRow.province_name_en ||
+      orgRow.province_name ||
+      "";
+
+    let label = String(direct || "").trim();
+
+    // fallback: lookup label จาก <select> ที่โหลดไว้ (ใช้สำหรับกรณีมีแต่ province_id)
+    if (!label) {
+      const pid = String(orgRow.province_id || "").trim();
+      if (pid) {
+        try {
+          const opt = orgEls?.selectProvince?.querySelector(`option[value="${CSS.escape(pid)}"]`);
+          const optText = opt?.textContent || "";
+          label = String(optText).trim();
+        } catch (_) {
+          // ignore
+        }
+      }
+    }
+
+    orgDetailEls.province.textContent = label || "-";
+  }
+
+  // ล้างค่าติดต่อก่อน
+  if (orgDetailEls.phone) orgDetailEls.phone.textContent = "-";
+  if (orgDetailEls.fax) orgDetailEls.fax.textContent = "-";
+  if (orgDetailEls.faxExt) orgDetailEls.faxExt.textContent = "-";
+  if (orgDetailEls.email) orgDetailEls.email.textContent = "-";
+  if (orgDetailEls.facebook) orgDetailEls.facebook.textContent = "-";
+  if (orgDetailEls.line) orgDetailEls.line.textContent = "-";
+  if (orgDetailEls.map) orgDetailEls.map.textContent = "-";
+  if (orgDetailEls.latlng) orgDetailEls.latlng.textContent = "-";
+
+  // โหลด contact_info
+  let ci = null;
+  try {
+    ci = await loadContactInfoByOrganization(orgRow.organization_id, orgRow.name || orgRow.code || "");
+  } catch (e) {
+    // ไม่ให้พัง แค่โชว์ไม่มีข้อมูล
+    console.warn(e);
+  }
+
+  if (ci) {
+    if (orgDetailEls.phone) orgDetailEls.phone.textContent = ci.phone_number || "-";
+    if (orgDetailEls.fax) orgDetailEls.fax.textContent = ci.fax || "-";
+    if (orgDetailEls.faxExt) orgDetailEls.faxExt.textContent = ci.fax_extension || "-";
+    if (orgDetailEls.email) orgDetailEls.email.textContent = ci.email || "-";
+
+    const fb = [ci.facebook_name, ci.facebook_url].filter(Boolean).join(" | ");
+    if (orgDetailEls.facebook) orgDetailEls.facebook.textContent = fb || "-";
+
+    const line = [ci.line_id, ci.line_url].filter(Boolean).join(" | ");
+    if (orgDetailEls.line) orgDetailEls.line.textContent = line || "-";
+
+    if (orgDetailEls.map) orgDetailEls.map.textContent = ci.map_embed_url ? "มี" : "-";
+    const latlng = [ci.map_lat, ci.map_lng].filter(Boolean).join(", ");
+    if (orgDetailEls.latlng) orgDetailEls.latlng.textContent = latlng || "-";
+  }
+
+  // ปุ่มแก้ไขใน detail -> เปิด modal edit
+  if (orgDetailEls.btnEdit) {
+    orgDetailEls.btnEdit.onclick = () => {
+      closeModal("organization-detail-modal");
+      openOrgContactModal(orgRow);
+    };
+  }
+
+  openModal("organization-detail-modal");
+}
+
+async function openOrgContactModal(orgRow) {
+  refreshOrgModalEls();
+  _orgContactCurrent = orgRow;
+
+  if (!orgContactEls.modal) {
+    console.warn("[org] organization-contact-modal not found in DOM");
+    return;
+  }
+
+  // reset error
+  if (orgContactEls.err) {
+    orgContactEls.err.hidden = true;
+    orgContactEls.err.textContent = "";
+  }
+
+  // ใส่ org display
+  if (orgContactEls.organizationId) orgContactEls.organizationId.value = orgRow.organization_id || "";
+  if (orgContactEls.orgDisplay) orgContactEls.orgDisplay.value = `${orgRow.code || ""} ${orgRow.name || ""}`.trim();
+
+  // ล้าง form ก่อน
+  if (orgContactEls.contactInfoId) orgContactEls.contactInfoId.value = "";
+  if (orgContactEls.phone) orgContactEls.phone.value = "";
+  if (orgContactEls.email) orgContactEls.email.value = "";
+  if (orgContactEls.fax) orgContactEls.fax.value = "";
+  if (orgContactEls.faxExt) orgContactEls.faxExt.value = "";
+  if (orgContactEls.fbName) orgContactEls.fbName.value = "";
+  if (orgContactEls.fbUrl) orgContactEls.fbUrl.value = "";
+  if (orgContactEls.lineId) orgContactEls.lineId.value = "";
+  if (orgContactEls.lineUrl) orgContactEls.lineUrl.value = "";
+  if (orgContactEls.mapEmbed) orgContactEls.mapEmbed.value = "";
+  if (orgContactEls.lat) orgContactEls.lat.value = "";
+  if (orgContactEls.lng) orgContactEls.lng.value = "";
+
+  // โหลด contact_info ถ้ามี -> เติมค่า
+  let ci = null;
+  try {
+    ci = await loadContactInfoByOrganization(orgRow.organization_id, orgRow.name || orgRow.code || "");
+  } catch (e) {
+    console.warn(e);
+  }
+
+  if (ci) {
+    if (orgContactEls.contactInfoId) orgContactEls.contactInfoId.value = ci.contact_info_id || "";
+    if (orgContactEls.phone) orgContactEls.phone.value = ci.phone_number || "";
+    if (orgContactEls.email) orgContactEls.email.value = ci.email || "";
+    if (orgContactEls.fax) orgContactEls.fax.value = ci.fax || "";
+    if (orgContactEls.faxExt) orgContactEls.faxExt.value = ci.fax_extension || "";
+    if (orgContactEls.fbName) orgContactEls.fbName.value = ci.facebook_name || "";
+    if (orgContactEls.fbUrl) orgContactEls.fbUrl.value = ci.facebook_url || "";
+    if (orgContactEls.lineId) orgContactEls.lineId.value = ci.line_id || "";
+    if (orgContactEls.lineUrl) orgContactEls.lineUrl.value = ci.line_url || "";
+    if (orgContactEls.mapEmbed) orgContactEls.mapEmbed.value = ci.map_embed_url || "";
+    if (orgContactEls.lat) orgContactEls.lat.value = ci.map_lat || "";
+    if (orgContactEls.lng) orgContactEls.lng.value = ci.map_lng || "";
+  }
+
+  openModal("organization-contact-modal");
+}
+
+if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const organization_id = Number(orgContactEls.organizationId?.value || 0);
+  const contact_info_id = orgContactEls.contactInfoId?.value ? Number(orgContactEls.contactInfoId.value) : 0;
+
+  const payload = {
+    organization_id, // ใช้ตอน create
+    phone_number: orgContactEls.phone?.value?.trim?.() || "",
+    email: orgContactEls.email?.value?.trim?.() || "",
+    fax: orgContactEls.fax?.value?.trim?.() || "",
+    fax_extension: orgContactEls.faxExt?.value?.trim?.() || "",
+    facebook_name: orgContactEls.fbName?.value?.trim?.() || "",
+    facebook_url: orgContactEls.fbUrl?.value?.trim?.() || "",
+    line_id: orgContactEls.lineId?.value?.trim?.() || "",
+    line_url: orgContactEls.lineUrl?.value?.trim?.() || "",
+    map_embed_url: orgContactEls.mapEmbed?.value?.trim?.() || "",
+    map_lat: orgContactEls.lat?.value?.trim?.() || "",
+    map_lng: orgContactEls.lng?.value?.trim?.() || "",
+  };
+
+  // แปลงค่าว่างเป็น null (กัน DB เก็บ "" )
+  Object.keys(payload).forEach((k) => {
+    if (k === "organization_id") return;
+    if (payload[k] === "") payload[k] = null;
+  });
+
+  try {
+    if (orgContactEls.submitText) orgContactEls.submitText.textContent = "กำลังบันทึก...";
+    if (!contact_info_id) {
+      await contactInfoApi.create(payload);
+    } else {
+      // update ไม่จำเป็นต้องส่ง organization_id (แต่ส่งไปก็ไม่เป็นไรถ้า backend ignore)
+      const { organization_id: _, ...upd } = payload;
+      await contactInfoApi.update(contact_info_id, upd);
+    }
+
+    closeModal("organization-contact-modal");
+    // refresh org list เพื่อให้ข้อมูลใน UI อัพเดต (ถ้าคุณโชว์ข้อมูลติดต่อในตารางด้วย)
+    // await loadOrganizations();
+  } catch (err) {
+    if (orgContactEls.err) {
+      orgContactEls.err.hidden = false;
+      orgContactEls.err.textContent = err?.message || String(err);
+    }
+  } finally {
+    if (orgContactEls.submitText) orgContactEls.submitText.textContent = "บันทึก";
+  }
+});
+
 
   /* =========================
     TYPE OF DEVICE
@@ -5848,50 +6211,73 @@
     }
   });
 
-  orgEls.tbody?.addEventListener("click", async (e) => {
-    const actionBtn = e.target.closest("button[data-action]");
-    if (!actionBtn) return;
+orgEls.tbody?.addEventListener("click", async (e) => {
+  const actionBtn = e.target.closest("button[data-action]");
+  if (!actionBtn) return;
 
-    const action = actionBtn.getAttribute("data-action");
-    const id = actionBtn.getAttribute("data-id");
+  const action = actionBtn.getAttribute("data-action");
+  const id = actionBtn.getAttribute("data-id");
 
-    if (action === "edit") {
-      const row = {
-        organization_id: id,
-        code: actionBtn.getAttribute("data-code") || "",
-        name: actionBtn.getAttribute("data-name") || "",
-        location: actionBtn.getAttribute("data-location") || "",
-        province_id: actionBtn.getAttribute("data-province_id") || "",
-        organization_type_id: actionBtn.getAttribute("data-organization_type_id") || "",
-      };
-      openOrganizationModal({ mode: "edit", row });
-      return;
-    }
+  // ✅ helper: อ่าน row จาก dataset ของปุ่ม (ใช้ร่วมกันทุก action)
+  const rowFromBtn = () => ({
+    organization_id: id,
+    code: actionBtn.getAttribute("data-code") || "",
+    name: actionBtn.getAttribute("data-name") || "",
+    location: actionBtn.getAttribute("data-location") || "",
+    province_id: actionBtn.getAttribute("data-province_id") || "",
+    organization_type_id: actionBtn.getAttribute("data-organization_type_id") || "",
 
-    if (action === "delete") {
-      const ok = confirm(`ต้องการลบหน่วยงาน ID ${id} ใช่ไหม?`);
-      if (!ok) return;
+    // ✅ เพิ่มสำหรับ modal รายละเอียด
+    province_name: actionBtn.getAttribute("data-province_name") || "",
+    type_name: actionBtn.getAttribute("data-type_name") || "",
+  });
 
-      try {
-        await apiFetch(`/organizations/${encodeURIComponent(id)}`, { method: "DELETE" });
+  // ✅ ใหม่: รายละเอียดหน่วยงาน (Organization Detail Modal)
+  if (action === "detail") {
+    const row = rowFromBtn();
+    // คุณต้องมีฟังก์ชันนี้ในไฟล์ (เดี๋ยวทำต่อให้ได้)
+    openOrgDetailModal(row);
+    return;
+  }
 
-        // ถ้าหน้าสุดท้ายลบจนหมด ให้ถอยหน้ากลับ
-        if (orgState.page > 1) {
-          // reload แล้วเช็คว่ามีรายการเหลือไหมด้วยการลด page แบบปลอดภัย
-          // (ง่ายสุด: reload ปัจจุบันก่อน ถ้า totalPages ลด ให้ปรับ)
-          await loadOrganizations();
-          if (orgState.page > orgState.totalPages) {
-            orgState.page = orgState.totalPages;
-            await loadOrganizations();
-          }
-        } else {
+  // ✅ ใหม่: แก้ไขรายละเอียด (Contact Info Modal)
+  if (action === "contact") {
+    const row = rowFromBtn();
+    // คุณต้องมีฟังก์ชันนี้ในไฟล์ (เดี๋ยวทำต่อให้ได้)
+    openOrgContactModal(row);
+    return;
+  }
+
+  // เดิม: แก้ไข organization
+  if (action === "edit") {
+    const row = rowFromBtn();
+    openOrganizationModal({ mode: "edit", row });
+    return;
+  }
+
+  // เดิม: ลบ organization
+  if (action === "delete") {
+    const ok = confirm(`ต้องการลบหน่วยงาน ID ${id} ใช่ไหม?`);
+    if (!ok) return;
+
+    try {
+      await apiFetch(`/organizations/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+      // ถ้าหน้าสุดท้ายลบจนหมด ให้ถอยหน้ากลับ
+      if (orgState.page > 1) {
+        await loadOrganizations();
+        if (orgState.page > orgState.totalPages) {
+          orgState.page = orgState.totalPages;
           await loadOrganizations();
         }
-      } catch (err) {
-        alert(`ลบไม่สำเร็จ: ${err.message}`);
+      } else {
+        await loadOrganizations();
       }
+    } catch (err) {
+      alert(`ลบไม่สำเร็จ: ${err.message}`);
     }
-  });
+  }
+});
 
   personPrefixEls.tbody?.addEventListener("click", async (e) => {
     const actionBtn = e.target.closest("button[data-action]");

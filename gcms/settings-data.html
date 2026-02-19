@@ -48,6 +48,7 @@
     <script src="/ict8/assets/js/api/user-notification-channels.api.js"></script>
     <script src="/ict8/assets/js/api/type-of-device.api.js"></script>
     <script src="/ict8/assets/js/api/main-type-of-device.api.js"></script>
+    <script src="/ict8/assets/js/api/contact-info.api.js"></script>
 
     <script src="/ict8/assets/js/include.js" defer></script>
     <script src="/ict8/assets/js/auth.js" defer></script>
@@ -399,13 +400,13 @@
                             <table class="data-table" aria-label="Organizations table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 90px">ID</th>
+                                        <th style="width: 60px">ID</th>
                                         <th style="width: 120px">รหัส</th>
-                                        <th>ชื่อหน่วยงาน</th>
+                                        <th style="width: 120px;">ชื่อหน่วยงาน</th>
                                         <th>จังหวัด</th>
                                         <th>ประเภท</th>
                                         <th>ที่ตั้ง</th>
-                                        <th style="width: 170px">จัดการ</th>
+                                        <th style="width: 220px">จัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="org-tbody">
@@ -2060,6 +2061,86 @@
         </div>
     </div>
 
+    <!-- MODAL: ORGANIZATION DETAIL (VIEW) -->
+    <div id="organization-detail-modal" class="modal" hidden>
+        <div class="modal__overlay" data-close="organization-detail-modal"></div>
+
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="organization-detail-modal-title">
+            <div class="modal__header">
+                <h3 id="organization-detail-modal-title">รายละเอียดหน่วยงาน</h3>
+                <button class="modal__close" type="button" aria-label="Close" data-close="organization-detail-modal">✕</button>
+            </div>
+
+            <div class="kv-list detail-form">
+                <div class="kv field">
+                    <div class="k">รหัสหน่วยงาน</div>
+                    <div class="v" id="od-org-code">-</div>
+                </div>
+                <div class="kv field">
+                    <div class="k">ID</div>
+                    <div class="v" id="od-org-id">-</div>
+                </div>
+
+                <div class="kv field full">
+                    <div class="k">ชื่อหน่วยงาน</div>
+                    <div class="v" id="od-org-name">-</div>
+                </div>
+
+                <div class="kv field full">
+                    <div class="k">ที่ตั้ง</div>
+                    <div class="v" id="od-org-location">-</div>
+                </div>
+
+                <div class="kv field full">
+                    <div class="k">จังหวัด</div>
+                    <div class="v" id="od-province">-</div>
+                </div>
+
+                <div class="kv field">
+                    <div class="k">โทรศัพท์</div>
+                    <div class="v" id="od-phone">-</div>
+                </div>
+                <div class="kv field">
+                    <div class="k">อีเมล</div>
+                    <div class="v" id="od-email">-</div>
+                </div>
+
+                <div class="kv field">
+                    <div class="k">แฟกซ์</div>
+                    <div class="v" id="od-fax">-</div>
+                </div>
+                <div class="kv field">
+                    <div class="k">ต่อแฟกซ์</div>
+                    <div class="v" id="od-fax-ext">-</div>
+                </div>
+
+                <div class="kv field full">
+                    <div class="k">Facebook</div>
+                    <div class="v" id="od-facebook">-</div>
+                </div>
+
+                <div class="kv field full">
+                    <div class="k">LINE</div>
+                    <div class="v" id="od-line">-</div>
+                </div>
+
+                <div class="kv field">
+                    <div class="k">แผนที่</div>
+                    <div class="v" id="od-map">-</div>
+                </div>
+                <div class="kv field">
+                    <div class="k">Lat, Lng</div>
+                    <div class="v" id="od-latlng">-</div>
+                </div>
+            </div>
+
+            <div class="modal__footer">
+                <button id="organization-detail-edit" class="btn btn-primary" type="button">แก้ไขรายละเอียด</button>
+                <button class="btn btn-outline" type="button" data-close="organization-detail-modal">ปิด</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: TYPE OF DEVICE FORM -->
     <div id="type-of-device-modal" class="modal" hidden>
         <div class="modal__overlay" data-close="type-of-device-modal"></div>
@@ -2106,7 +2187,8 @@
                             <img id="tod-icon-online-preview-img" alt="Icon Online preview" />
                             <div class="gcms-file-preview__meta">
                                 <div id="tod-icon-online-preview-name" class="gcms-file-preview__name muted"></div>
-                                <button id="tod-icon-online-clear" class="btn btn-ghost btn-sm" type="button">ล้าง</button>
+                                <button id="tod-icon-online-clear" class="btn btn-ghost btn-sm"
+                                    type="button">ล้าง</button>
                             </div>
                         </div>
                     </div>
@@ -2121,7 +2203,8 @@
                             <img id="tod-icon-offline-preview-img" alt="Icon Offline preview" />
                             <div class="gcms-file-preview__meta">
                                 <div id="tod-icon-offline-preview-name" class="gcms-file-preview__name muted"></div>
-                                <button id="tod-icon-offline-clear" class="btn btn-ghost btn-sm" type="button">ล้าง</button>
+                                <button id="tod-icon-offline-clear" class="btn btn-ghost btn-sm"
+                                    type="button">ล้าง</button>
                             </div>
                         </div>
                     </div>
@@ -2171,6 +2254,97 @@
             </form>
         </div>
     </div>
+
+    <!-- MODAL: ORGANIZATION CONTACT (ADD/EDIT) -->
+    <div id="organization-contact-modal" class="modal" hidden>
+        <div class="modal__overlay" data-close="organization-contact-modal"></div>
+
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="organization-contact-modal-title">
+            <div class="modal__header">
+                <h3 id="organization-contact-modal-title">แก้ไขรายละเอียดหน่วยงาน</h3>
+                <button class="modal__close" type="button" aria-label="Close"
+                    data-close="organization-contact-modal">✕</button>
+            </div>
+
+            <form id="organization-contact-form" class="modal__body" autocomplete="off">
+                <!-- hidden -->
+                <input type="hidden" id="oc-contact-info-id" />
+                <input type="hidden" id="oc-organization-id" />
+
+                <div class="form-grid">
+                    <div class="form-field full">
+                        <label>หน่วยงาน</label>
+                        <input id="oc-org-display" type="text" disabled />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="oc-phone">โทรศัพท์</label>
+                        <input id="oc-phone" type="text" placeholder="055-xxx-xxxx" />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="oc-email">อีเมล</label>
+                        <input id="oc-email" type="email" placeholder="example@moi.go.th" />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="oc-fax">แฟกซ์</label>
+                        <input id="oc-fax" type="text" placeholder="055-xxx-xxxx" />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="oc-fax-ext">ต่อแฟกซ์</label>
+                        <input id="oc-fax-ext" type="text" placeholder="123" />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="oc-facebook-name">Facebook Name</label>
+                        <input id="oc-facebook-name" type="text" />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="oc-facebook-url">Facebook URL</label>
+                        <input id="oc-facebook-url" type="url" placeholder="https://facebook.com/..." />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="oc-line-id">LINE ID</label>
+                        <input id="oc-line-id" type="text" />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="oc-line-url">LINE URL</label>
+                        <input id="oc-line-url" type="url" placeholder="https://line.me/..." />
+                    </div>
+
+                    <div class="form-field full">
+                        <label for="oc-map-embed">Map Embed URL</label>
+                        <input id="oc-map-embed" type="text" />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="oc-lat">Latitude</label>
+                        <input id="oc-lat" type="text" />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="oc-lng">Longitude</label>
+                        <input id="oc-lng" type="text" />
+                    </div>
+                </div>
+
+                <div id="organization-contact-form-error" class="form-error" hidden></div>
+
+                <div class="modal__footer">
+                    <button type="button" class="btn btn-ghost" data-close="organization-contact-modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span id="organization-contact-submit-text">บันทึก</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
 
 
