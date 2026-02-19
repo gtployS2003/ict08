@@ -7,6 +7,113 @@ final class DeviceModel
     public function __construct(private PDO $pdo) {}
 
     /**
+     * Map devices (no pagination):
+     * - include coordinates from contact_info (map_lat/map_lng)
+     * - include icon path from type_of_device (icon_path_online/offline)
+     * - support filters/search and is_online
+     */
+    public function listDevicesForMap(
+        string $q = '',
+        ?int $provinceId = null,
+        ?int $organizationId = null,
+        ?int $mainTypeId = null,
+        ?int $typeId = null,
+        ?int $isOnline = null,
+        int $limit = 5000
+    ): array
+    {
+        $q = trim($q);
+        $limit = max(1, min(5000, $limit));
+
+        $where = [];
+        $params = [];
+
+        if ($q !== '') {
+            $where[] = "("
+                . "d.device_name LIKE :q1 OR d.ip LIKE :q2 OR "
+                . "org.name LIKE :q3 OR p.nameTH LIKE :q4 OR p.nameEN LIKE :q5 OR "
+                . "mtd.main_type_of_device_title LIKE :q6 OR tod.type_of_device_title LIKE :q7"
+                . ")";
+            $like = '%' . $q . '%';
+            $params[':q1'] = $like;
+            $params[':q2'] = $like;
+            $params[':q3'] = $like;
+            $params[':q4'] = $like;
+            $params[':q5'] = $like;
+            $params[':q6'] = $like;
+            $params[':q7'] = $like;
+        }
+
+        if ($provinceId !== null && $provinceId > 0) {
+            $where[] = "org.province_id = :province_id";
+            $params[':province_id'] = $provinceId;
+        }
+
+        if ($organizationId !== null && $organizationId > 0) {
+            $where[] = "org.organization_id = :organization_id";
+            $params[':organization_id'] = $organizationId;
+        }
+
+        if ($mainTypeId !== null && $mainTypeId > 0) {
+            $where[] = "d.main_type_of_device_id = :main_type_of_device_id";
+            $params[':main_type_of_device_id'] = $mainTypeId;
+        }
+
+        if ($typeId !== null && $typeId > 0) {
+            $where[] = "d.type_of_device_id = :type_of_device_id";
+            $params[':type_of_device_id'] = $typeId;
+        }
+
+        if ($isOnline !== null) {
+            $where[] = "d.is_online = :is_online";
+            $params[':is_online'] = $isOnline;
+        }
+
+        $whereSql = '';
+        if (!empty($where)) {
+            $whereSql = "WHERE " . implode(" AND ", $where);
+        }
+
+        $sql = "
+            SELECT
+                d.device_id,
+                d.device_name,
+                d.main_type_of_device_id,
+                mtd.main_type_of_device_title,
+                d.type_of_device_id,
+                tod.type_of_device_title,
+                tod.icon_path_online,
+                tod.icon_path_offline,
+                d.ip,
+                d.detail,
+                d.contact_info_id,
+                ci.map_lat,
+                ci.map_lng,
+                org.organization_id,
+                org.name AS organization_name,
+                org.province_id,
+                p.nameTH AS province_name_th,
+                p.nameEN AS province_name_en,
+                d.is_online
+            FROM device d
+            LEFT JOIN main_type_of_device mtd ON mtd.main_type_of_device = d.main_type_of_device_id
+            LEFT JOIN type_of_device tod ON tod.type_of_device_id = d.type_of_device_id
+            LEFT JOIN contact_info ci ON ci.contact_info_id = d.contact_info_id
+            LEFT JOIN organization org ON org.organization_id = ci.organization_id
+            LEFT JOIN province p ON p.province_id = org.province_id
+            $whereSql
+            ORDER BY d.device_id ASC
+            LIMIT :limit
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $k => $v) $stmt->bindValue($k, $v);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
      * List devices with:
      * - search (q) : match device_name, ip, org name, province
      * - filter province_id

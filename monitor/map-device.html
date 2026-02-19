@@ -5,9 +5,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
-  <title>ระบบงานสารสนเทศ</title>
+  <title>ระบบติดตามอุปกรณ์</title>
 
   <!-- include head -->
+  <script src="/ict8/backend/public/config.js.php" defer></script>
   <script src="/ict8/assets/js/include.js" defer></script>
   <script src="/ict8/assets/js/auth.js" defer></script>
   <script src="/ict8/assets/js/main.js" defer></script>
@@ -34,7 +35,7 @@
           <div class="device-search">
             <label for="device-search" class="device-label">ค้นหาอุปกรณ์</label>
             <div class="device-search-row">
-              <input type="text" id="device-search" placeholder="ค้นหาจากชื่อสถานที่ / จังหวัด / IP..." />
+              <input type="text" id="device-search" placeholder="ค้นหาจากชื่ออุปกรณ์ / IP / หน่วยงาน / จังหวัด..." />
               <button id="device-search-clear" type="button" class="btn-secondary">
                 ล้าง
               </button>
@@ -44,17 +45,30 @@
           <!-- ตัวกรอง -->
           <div class="device-filters">
             <div class="device-filter-group">
-              <label for="device-type-filter" class="device-label">ประเภทอุปกรณ์</label>
-              <select id="device-type-filter">
-                <option value="all">ทุกประเภทอุปกรณ์</option>
-                <option value="Switch">Switch</option>
-                <option value="Router">Router</option>
-                <option value="CCTV">CCTV</option>
-                <option value="Access Point">Access Point</option>
-                <option value="Server">Server</option>
-                <option value="วิทยุสื่อสาร">วิทยุสื่อสาร</option>
-                <option value="Firewall">Firewall</option>
-                <option value="UPS">UPS</option>
+              <label for="device-filter-province" class="device-label">จังหวัด</label>
+              <select id="device-filter-province">
+                <option value="">ทุกจังหวัด</option>
+              </select>
+            </div>
+
+            <div class="device-filter-group">
+              <label for="device-filter-org" class="device-label">หน่วยงาน</label>
+              <select id="device-filter-org">
+                <option value="">ทุกหน่วยงาน</option>
+              </select>
+            </div>
+
+            <div class="device-filter-group">
+              <label for="device-filter-main-type" class="device-label">ประเภทหลัก</label>
+              <select id="device-filter-main-type">
+                <option value="">ทุกประเภทหลัก</option>
+              </select>
+            </div>
+
+            <div class="device-filter-group">
+              <label for="device-filter-type" class="device-label">ประเภทอุปกรณ์</label>
+              <select id="device-filter-type">
+                <option value="">ทุกประเภทอุปกรณ์</option>
               </select>
             </div>
 
@@ -69,11 +83,8 @@
             </div>
           </div>
 
-          <!-- ปุ่ม -->
           <div class="device-actions">
-            <button id="add-device-button" type="button" class="btn-primary">
-              + เพิ่มอุปกรณ์ใหม่
-            </button>
+            <button id="device-map-refresh" type="button" class="btn-primary">รีเฟรช</button>
           </div>
         </section>
 
@@ -90,28 +101,6 @@
               <span>อุปกรณ์ Offline / กำลังซ่อม</span>
             </li>
           </ul>
-        </section>
-
-        <!-- รายการคำร้องตรวจซ่อม (โครงไว้ก่อน) -->
-        <section class="device-request-section">
-          <h3 class="device-sidebar-subtitle">
-            คำร้องตรวจซ่อมล่าสุด
-            <span class="badge badge-light" id="request-count">0</span>
-          </h3>
-          <div class="device-request-list empty">
-            <p class="device-empty-text">ยังไม่มีคำร้องตรวจซ่อมในระบบ</p>
-          </div>
-        </section>
-
-        <!-- รายการที่กำลังดำเนินการ -->
-        <section class="device-progress-section">
-          <h3 class="device-sidebar-subtitle">
-            งานที่กำลังดำเนินการ
-            <span class="badge badge-light" id="progress-count">0</span>
-          </h3>
-          <div class="device-progress-list empty">
-            <p class="device-empty-text">ยังไม่มีงานที่กำลังดำเนินการ</p>
-          </div>
         </section>
       </aside>
 

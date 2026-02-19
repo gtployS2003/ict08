@@ -10,6 +10,69 @@ final class DevicesController
 {
     public function __construct(private PDO $pdo) {}
 
+    // GET /devices/map?q=&province_id=&organization_id=&main_type_of_device_id=&type_of_device_id=&status=
+    // ใช้สำหรับหน้าแผนที่: คืนข้อมูลพร้อม lat/lng และ path icon
+    public function map(): void
+    {
+        try {
+            $q = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
+
+            $provinceId = null;
+            if (isset($_GET['province_id']) && $_GET['province_id'] !== '') {
+                $provinceId = (int)$_GET['province_id'];
+                if ($provinceId <= 0) $provinceId = null;
+            }
+
+            $organizationId = null;
+            if (isset($_GET['organization_id']) && $_GET['organization_id'] !== '') {
+                $organizationId = (int)$_GET['organization_id'];
+                if ($organizationId <= 0) $organizationId = null;
+            }
+
+            $mainTypeId = null;
+            if (isset($_GET['main_type_of_device_id']) && $_GET['main_type_of_device_id'] !== '') {
+                $mainTypeId = (int)$_GET['main_type_of_device_id'];
+                if ($mainTypeId <= 0) $mainTypeId = null;
+            }
+
+            $typeId = null;
+            if (isset($_GET['type_of_device_id']) && $_GET['type_of_device_id'] !== '') {
+                $typeId = (int)$_GET['type_of_device_id'];
+                if ($typeId <= 0) $typeId = null;
+            }
+
+            // status: all|online|offline|maintenance (ตอนนี้ map กับ is_online)
+            $isOnline = null;
+            if (isset($_GET['is_online']) && $_GET['is_online'] !== '') {
+                $isOnline = (int)$_GET['is_online'];
+                if ($isOnline !== 0 && $isOnline !== 1) $isOnline = null;
+            } else if (isset($_GET['status']) && $_GET['status'] !== '') {
+                $status = strtolower(trim((string)$_GET['status']));
+                if ($status === 'online') $isOnline = 1;
+                if ($status === 'offline' || $status === 'maintenance') $isOnline = 0;
+            }
+
+            $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 5000;
+
+            $model = new DeviceModel($this->pdo);
+            $items = $model->listDevicesForMap($q, $provinceId, $organizationId, $mainTypeId, $typeId, $isOnline, $limit);
+
+            json_response([
+                'error' => false,
+                'message' => 'OK',
+                'data' => [
+                    'items' => $items,
+                ],
+            ]);
+        } catch (Throwable $e) {
+            json_response([
+                'error' => true,
+                'message' => 'Failed to list devices for map',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     // GET /devices?q=&page=&limit=&province_id=
     public function index(): void
     {

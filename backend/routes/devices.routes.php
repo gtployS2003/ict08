@@ -23,6 +23,16 @@ function devices_routes(string $method, array $segments, PDO $pdo): bool
 
     $controller = new DevicesController($pdo);
 
+    // /devices/map
+    if (($segments[1] ?? '') === 'map') {
+        if ($method === 'GET') {
+            $controller->map();
+            return true;
+        }
+        fail('Method Not Allowed', 405);
+        return true;
+    }
+
     $id = 0;
     if (isset($segments[1]) && ctype_digit((string)$segments[1])) {
         $id = (int)$segments[1];

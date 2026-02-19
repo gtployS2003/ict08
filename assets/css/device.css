@@ -139,6 +139,8 @@ main {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) 2.5fr;
   gap: 20px;
+  align-items: start;
+  margin-top: 50px;
 }
 
 .map-device {
@@ -161,6 +163,18 @@ main {
   gap: 18px;
   max-height: 730px;
   overflow-y: auto;
+}
+
+/*
+  NOTE:
+  gcms.css มี rule `.device-map-sidebar { position: sticky; top: 190px; ... }`
+  ซึ่งออกแบบมาสำหรับหน้า GCMS dashboard แต่ทำให้หน้าแผนที่อุปกรณ์เริ่มไม่เท่ากัน
+  ดังนั้นบังคับให้ sidebar ในหน้าแผนที่ (ที่อยู่ภายใต้ .device-map-layout) ไม่เป็น sticky
+*/
+.device-map-layout .device-map-sidebar {
+  position: relative !important;
+  top: auto !important;
+  height: auto !important;
 }
 
 .map-device-header {
