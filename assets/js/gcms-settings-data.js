@@ -203,6 +203,7 @@
     hide($("#btn-add-request-type"));
     hide($("#btn-add-request-sub-type"));
     hide($("#btn-add-request-status"));
+    hide($("#btn-add-head-of-request"));
     hide($("#btn-add-notification-type"));
     hide($("#btn-add-notification-type-staff"));
     hide($("#btn-add-channel"));
@@ -279,6 +280,12 @@
         show($("#section-request-status"));
         show($("#btn-add-request-status"));
         setTitle("ตั้งค่าสถานะคำขอ");
+        break;
+
+      case "head-of-request":
+        show($("#section-head-of-request"));
+        show($("#btn-add-head-of-request"));
+        setTitle("ผู้รับผิดชอบตามประเภทย่อย");
         break;
 
       case "notification-type":
@@ -3024,6 +3031,311 @@
   }
 
   /* =========================
+    Head Of Request UI (ผู้รับผิดชอบตามประเภทย่อย)
+    - Section: #section-head-of-request
+    - Table: #head-of-request-tbody
+    - Toolbar: #head-of-request-search, #head-of-request-filter-type, #head-of-request-limit, #head-of-request-refresh
+    - Modal: #head-of-request-modal + #head-of-request-form
+  ========================= */
+  const horEls = {
+    section: $("#section-head-of-request"),
+    tbody: $("#head-of-request-tbody"),
+    search: $("#head-of-request-search"),
+    filterType: $("#head-of-request-filter-type"),
+    limit: $("#head-of-request-limit"),
+    refresh: $("#head-of-request-refresh"),
+    pagination: $("#head-of-request-pagination"),
+    total: $("#head-of-request-total"),
+
+    btnAdd: $("#btn-add-head-of-request"),
+
+    modal: $("#head-of-request-modal"),
+    form: $("#head-of-request-form"),
+    modalTitle: $("#head-of-request-modal-title"),
+    submitText: $("#head-of-request-submit-text"),
+    selectSubType: $("#head-of-request-sub-type"),
+    selectStaff: $("#head-of-request-staff-ids"),
+    formError: $("#head-of-request-form-error"),
+  };
+
+  const horState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    subtype_of: 0,
+    total: 0,
+    totalPages: 1,
+    loading: false,
+    refsLoaded: false,
+    usersLoaded: false,
+    subTypesLoaded: false,
+    mode: "create", // create | edit
+  };
+
+  function refreshHorEls() {
+    horEls.section = $("#section-head-of-request");
+    horEls.tbody = $("#head-of-request-tbody");
+    horEls.search = $("#head-of-request-search");
+    horEls.filterType = $("#head-of-request-filter-type");
+    horEls.limit = $("#head-of-request-limit");
+    horEls.refresh = $("#head-of-request-refresh");
+    horEls.pagination = $("#head-of-request-pagination");
+    horEls.total = $("#head-of-request-total");
+
+    horEls.btnAdd = $("#btn-add-head-of-request");
+
+    horEls.modal = $("#head-of-request-modal");
+    horEls.form = $("#head-of-request-form");
+    horEls.modalTitle = $("#head-of-request-modal-title");
+    horEls.submitText = $("#head-of-request-submit-text");
+    horEls.selectSubType = $("#head-of-request-sub-type");
+    horEls.selectStaff = $("#head-of-request-staff-ids");
+    horEls.formError = $("#head-of-request-form-error");
+  }
+
+  function renderHorRows(items = []) {
+    if (!horEls.tbody) return;
+    if (!items.length) {
+      horEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    horEls.tbody.innerHTML = items
+      .map((row) => {
+        const id = row.request_sub_type_id ?? "";
+        const subName = row.request_sub_type_name ?? row.name ?? "";
+        const typeName = row.request_type_name ?? "-";
+        const staff = Array.isArray(row.staff) ? row.staff : [];
+        const staffNames = staff
+          .map((s) => s.display_name || s.line_user_name || "")
+          .filter(Boolean)
+          .join(", ");
+
+        return `
+          <tr data-id="${escapeHtml(String(id))}">
+            <td>${escapeHtml(String(id))}</td>
+            <td>${escapeHtml(String(subName))}</td>
+            <td>${escapeHtml(String(typeName))}</td>
+            <td>${staffNames ? escapeHtml(staffNames) : '<span class="muted">-</span>'}</td>
+            <td>
+              <button class="btn btn-ghost btn-sm" type="button"
+                data-action="edit"
+                data-id="${escapeHtml(String(id))}">
+                แก้ไข
+              </button>
+              <button class="btn btn-danger btn-sm" type="button"
+                data-action="delete"
+                data-id="${escapeHtml(String(id))}">
+                ลบ
+              </button>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  function renderHorPagination() {
+    if (!horEls.pagination) return;
+    renderPager(horEls.pagination, {
+      page: horState.page,
+      totalPages: horState.totalPages,
+    });
+  }
+
+  function renderHorTotal() {
+    if (!horEls.total) return;
+    horEls.total.textContent = `ทั้งหมด ${horState.total} รายการ`;
+  }
+
+  async function loadHorTypeRefs({ force = false } = {}) {
+    refreshHorEls();
+    if (!horEls.filterType) return;
+    if (!force && horState.refsLoaded) return;
+
+    horEls.filterType.innerHTML = `<option value="">กำลังโหลด...</option>`;
+    try {
+      const api = window.RequestTypesAPI || window.requestTypesApi;
+      if (!api?.list) throw new Error("RequestTypesAPI.list not found");
+      const res = await api.list({ q: "", page: 1, limit: 500 });
+
+      const items =
+        Array.isArray(res?.data) ? res.data :
+          Array.isArray(res?.data?.items) ? res.data.items :
+            Array.isArray(res?.items) ? res.items :
+              [];
+
+      horEls.filterType.innerHTML = [
+        `<option value="">ทุกประเภทคำขอหลัก</option>`,
+        ...items.map((it) => {
+          const id = it.request_type_id ?? it.id ?? "";
+          const label = it.type_name ?? it.name ?? "-";
+          return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
+        }),
+      ].join("");
+
+      horState.refsLoaded = true;
+    } catch (e) {
+      console.warn("[head-of-request] load type refs failed:", e);
+      horEls.filterType.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
+    }
+  }
+
+  async function loadHorSubTypeOptions({ force = false } = {}) {
+    refreshHorEls();
+    if (!horEls.selectSubType) return;
+    if (!force && horState.subTypesLoaded) return;
+
+    horEls.selectSubType.innerHTML = `<option value="">กำลังโหลด...</option>`;
+    try {
+      const api = window.RequestSubTypesAPI || window.requestSubTypesApi;
+      if (!api?.list) throw new Error("RequestSubTypesAPI.list not found");
+      const res = await api.list({ q: "", subtype_of: 0, page: 1, limit: 500 });
+
+      const items =
+        Array.isArray(res) ? res :
+          Array.isArray(res?.data) ? res.data :
+            Array.isArray(res?.data?.items) ? res.data.items :
+              Array.isArray(res?.items) ? res.items :
+                [];
+
+      horEls.selectSubType.innerHTML = [
+        `<option value="">เลือกประเภทคำขอย่อย</option>`,
+        ...items.map((it) => {
+          const id = it.request_sub_type_id ?? it.id ?? "";
+          const name = it.name ?? it.sub_type_name ?? "-";
+          const parent = it.request_type_name ?? "";
+          const label = parent ? `${parent} — ${name}` : name;
+          return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
+        }),
+      ].join("");
+
+      horState.subTypesLoaded = true;
+    } catch (e) {
+      console.warn("[head-of-request] load sub types failed:", e);
+      horEls.selectSubType.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
+    }
+  }
+
+  async function loadHorEligibleUsers({ force = false } = {}) {
+    refreshHorEls();
+    if (!horEls.selectStaff) return;
+    if (!force && horState.usersLoaded) return;
+
+    horEls.selectStaff.innerHTML = "";
+    try {
+      const api = window.HeadOfRequestAPI;
+      if (!api?.eligibleUsers) throw new Error("HeadOfRequestAPI.eligibleUsers not found");
+
+      const res = await api.eligibleUsers({ q: "", page: 1, limit: 500 });
+      const items = Array.isArray(res?.data) ? res.data : [];
+
+      horEls.selectStaff.innerHTML = items
+        .map((u) => {
+          const id = u.user_id ?? u.id ?? "";
+          const label = u.display_name || u.line_user_name || `User ${id}`;
+          return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
+        })
+        .join("");
+
+      horState.usersLoaded = true;
+    } catch (e) {
+      console.warn("[head-of-request] load eligible users failed:", e);
+      horEls.selectStaff.innerHTML = "";
+    }
+  }
+
+  async function loadHeadOfRequest() {
+    refreshHorEls();
+    if (horState.loading) return;
+    horState.loading = true;
+
+    try {
+      if (!horEls.tbody) return;
+      horEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">กำลังโหลด...</td></tr>`;
+
+      const api = window.HeadOfRequestAPI;
+      if (!api?.list) throw new Error("HeadOfRequestAPI.list not found (check include head-of-request.api.js)");
+
+      const res = await api.list({
+        q: horState.q,
+        subtype_of: horState.subtype_of,
+        page: horState.page,
+        limit: horState.limit,
+      });
+
+      const items = Array.isArray(res?.data) ? res.data : [];
+      const pg = res?.pagination ?? {};
+
+      horState.total = Number(pg.total ?? items.length ?? 0);
+      horState.totalPages =
+        Number(pg.totalPages ?? pg.total_pages ?? 0) ||
+        Math.max(1, Math.ceil(horState.total / Math.max(1, horState.limit)));
+
+      renderHorRows(items);
+      renderHorPagination();
+      renderHorTotal();
+    } catch (err) {
+      console.error(err);
+      if (horEls.tbody) {
+        horEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">${escapeHtml(err.message || err)}</td></tr>`;
+      }
+    } finally {
+      horState.loading = false;
+    }
+  }
+
+  function horSetError(msg) {
+    if (!horEls.formError) return;
+    horEls.formError.textContent = msg || "";
+    if (!msg) hide(horEls.formError);
+    else show(horEls.formError);
+  }
+
+  async function openHorModal({ mode = "create", row } = {}) {
+    refreshHorEls();
+    horState.mode = mode;
+
+    await loadHorSubTypeOptions();
+    await loadHorEligibleUsers();
+
+    if (horEls.modalTitle) {
+      horEls.modalTitle.textContent = mode === "edit" ? "แก้ไขผู้รับผิดชอบตามประเภทย่อย" : "เพิ่มผู้รับผิดชอบตามประเภทย่อย";
+    }
+    if (horEls.submitText) {
+      horEls.submitText.textContent = mode === "edit" ? "บันทึก" : "บันทึก";
+    }
+
+    // reset
+    horSetError("");
+
+    const subTypeId = row?.request_sub_type_id ?? row?.id ?? "";
+    if (horEls.selectSubType) {
+      horEls.selectSubType.disabled = mode === "edit";
+      horEls.selectSubType.value = subTypeId ? String(subTypeId) : "";
+    }
+
+    // select staff
+    const staffIds = new Set(
+      (Array.isArray(row?.staff) ? row.staff : [])
+        .map((s) => String(s.user_id ?? s.staff_id ?? ""))
+        .filter(Boolean)
+    );
+
+    if (horEls.selectStaff) {
+      Array.from(horEls.selectStaff.options).forEach((opt) => {
+        opt.selected = staffIds.has(String(opt.value));
+      });
+    }
+
+    openModal("head-of-request-modal");
+  }
+
+  function closeHorModal() {
+    closeModal("head-of-request-modal");
+  }
+
+  /* =========================
     Request Status UI
     - filter ตามประเภทคำขอหลัก (request_type_id)
   ========================= */
@@ -5613,6 +5925,19 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
       await loadRequestStatuses();
     }
 
+    if (sectionKey === "head-of-request") {
+      refreshHorEls();
+
+      horState.page = 1;
+      horState.q = (horEls.search?.value || "").trim();
+      horState.limit = Number(horEls.limit?.value || 50);
+
+      await loadHorTypeRefs({ force: true });
+      horState.subtype_of = Number(horEls.filterType?.value || 0);
+
+      await loadHeadOfRequest();
+    }
+
     if (sectionKey === "notification-type") {
       notificationTypeState.page = 1;
       notificationTypeState.q = (notificationTypeEls.search?.value || "").trim();
@@ -5709,6 +6034,10 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
   requestStatusEls.btnAdd?.addEventListener("click", async () => {
     await loadRequestStatusTypeRefs();
     openRequestStatusModal({ mode: "create" });
+  });
+
+  horEls.btnAdd?.addEventListener("click", async () => {
+    await openHorModal({ mode: "create" });
   });
 
   notificationTypeEls.btnAdd?.addEventListener("click", () => {
@@ -5817,6 +6146,13 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
     loadRequestStatuses();
   });
 
+  horEls.search?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    horState.page = 1;
+    horState.q = (horEls.search.value || "").trim();
+    loadHeadOfRequest();
+  });
+
   notificationTypeEls.search?.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
     notificationTypeState.page = 1;
@@ -5906,6 +6242,12 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
     loadRequestStatuses();
   });
 
+  horEls.limit?.addEventListener("change", () => {
+    horState.page = 1;
+    horState.limit = Number(horEls.limit.value || 50);
+    loadHeadOfRequest();
+  });
+
   notificationTypeEls.limit?.addEventListener("change", () => {
     notificationTypeState.page = 1;
     notificationTypeState.limit = Number(notificationTypeEls.limit.value || 50);
@@ -5965,6 +6307,10 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
 
   requestStatusEls.refresh?.addEventListener("click", () => {
     loadRequestStatuses();
+  });
+
+  horEls.refresh?.addEventListener("click", () => {
+    loadHeadOfRequest();
   });
 
   notificationTypeEls.refresh?.addEventListener("click", () => {
@@ -6109,6 +6455,17 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
 
     requestStatusState.page = next;
     loadRequestStatuses();
+  });
+
+  horEls.pagination?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-page]");
+    if (!btn || btn.disabled) return;
+
+    const next = Number(btn.getAttribute("data-page"));
+    if (!next || next < 1 || next > horState.totalPages) return;
+
+    horState.page = next;
+    loadHeadOfRequest();
   });
 
   notificationTypeEls.pagination?.addEventListener("click", (e) => {
@@ -6610,6 +6967,53 @@ orgEls.tbody?.addEventListener("click", async (e) => {
           requestStatusState.page = requestStatusState.totalPages;
           await loadRequestStatuses();
         }
+      } catch (err) {
+        alert(`ลบไม่สำเร็จ: ${err.message || err}`);
+      }
+    }
+  });
+
+  horEls.tbody?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+
+    const action = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id") || "";
+    const subTypeId = Number(id || 0);
+    if (!subTypeId) return;
+
+    const api = window.HeadOfRequestAPI;
+    if (!api) return alert("HeadOfRequestAPI not found");
+
+    if (action === "edit") {
+      // Find current row data from the last loaded table to pre-select staff
+      // (fallback: reload list and then open modal with empty selection)
+      try {
+        // Ensure we have up-to-date data in DOM (read from rendered dataset isn't enough)
+        const res = await api.list({
+          q: horState.q,
+          subtype_of: horState.subtype_of,
+          page: horState.page,
+          limit: horState.limit,
+        });
+        const items = Array.isArray(res?.data) ? res.data : [];
+        const row = items.find((r) => Number(r.request_sub_type_id) === subTypeId) || { request_sub_type_id: subTypeId, staff: [] };
+        await openHorModal({ mode: "edit", row });
+      } catch (err) {
+        console.error(err);
+        await openHorModal({ mode: "edit", row: { request_sub_type_id: subTypeId, staff: [] } });
+      }
+      return;
+    }
+
+    if (action === "delete") {
+      if (!confirm(`ต้องการลบผู้รับผิดชอบของประเภทย่อย ID ${subTypeId} ใช่ไหม?`)) return;
+
+      try {
+        if (!api.removeBySubType) throw new Error("HeadOfRequestAPI.removeBySubType not found");
+        await api.removeBySubType(subTypeId);
+
+        await loadHeadOfRequest();
       } catch (err) {
         alert(`ลบไม่สำเร็จ: ${err.message || err}`);
       }
@@ -7158,6 +7562,32 @@ orgEls.tbody?.addEventListener("click", async (e) => {
     }
   });
 
+  horEls.form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    try {
+      const api = window.HeadOfRequestAPI;
+      if (!api?.save) throw new Error("HeadOfRequestAPI.save not found");
+
+      const request_sub_type_id = Number(horEls.selectSubType?.value || 0);
+      if (!request_sub_type_id) throw new Error("กรุณาเลือกประเภทคำขอย่อย");
+
+      const staff_ids = Array.from(horEls.selectStaff?.selectedOptions || [])
+        .map((o) => Number(o.value || 0))
+        .filter((n) => Number.isFinite(n) && n > 0);
+
+      // allow empty = clear
+      horSetError("");
+      await api.save({ request_sub_type_id, staff_ids });
+
+      closeHorModal();
+      await loadHeadOfRequest();
+    } catch (err) {
+      console.error(err);
+      horSetError(err.message || String(err));
+    }
+  });
+
   requestStatusEls.form?.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -7471,6 +7901,12 @@ orgEls.tbody?.addEventListener("click", async (e) => {
     requestSubTypeState.page = 1;
     requestSubTypeState.subtype_of = Number(requestSubTypeEls.filterType.value || 0);
     await loadRequestSubTypes();
+  });
+
+  horEls.filterType?.addEventListener("change", async () => {
+    horState.page = 1;
+    horState.subtype_of = Number(horEls.filterType.value || 0);
+    await loadHeadOfRequest();
   });
 
 
