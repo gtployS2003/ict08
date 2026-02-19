@@ -1,0 +1,217 @@
+<?php
+// backend/services/NotificationService.php
+declare(strict_types=1);
+
+require_once __DIR__ . '/../config/env.php';
+require_once __DIR__ . '/../models/NotificationModel.php';
+require_once __DIR__ . '/../models/NotificationTypeModel.php';
+require_once __DIR__ . '/../models/NotificationTypeStaffModel.php';
+require_once __DIR__ . '/../models/UserNotificationChannelModel.php';
+require_once __DIR__ . '/LineService.php';
+
+final class NotificationService
+{
+    // notification_type_id ที่คุณต้องการใช้ (ปรับได้)
+    public const NOTIF_TYPE_REQUEST_REPAIR = 5;
+    public const NOTIF_TYPE_REQUEST_OTHER = 6;
+    public const NOTIF_TYPE_REQUEST_CONFERENCE = 7;
+
+    public function __construct(private PDO $pdo)
+    {
+    }
+
+    /**
+     * Create notification row for a newly created request.
+     * Returns: ['notification_id' => int, 'notification_type_id' => int, 'message' => string]
+     *
+     * @return array{notification_id:int, notification_type_id:int, message:string}
+     */
+    public function createNewRequestNotification(int $requestId, int $requestTypeId, string $subject = ''): array
+    {
+        $requestId = max(0, $requestId);
+        if ($requestId <= 0) {
+            throw new InvalidArgumentException('requestId is required');
+        }
+
+        $typeId = $this->resolveRequestNotificationTypeId($requestTypeId);
+
+        $message = $this->buildRequestMessage($requestTypeId, $requestId, $subject);
+
+        $notificationModel = new NotificationModel($this->pdo);
+        $notificationId = $notificationModel->createRequestPending([
+            'request_id' => $requestId,
+            'notification_type_id' => $typeId,
+            'message' => $message,
+        ]);
+
+        return [
+            'notification_id' => $notificationId,
+            'notification_type_id' => $typeId,
+            'message' => $message,
+        ];
+    }
+
+    /**
+     * Dispatch notification to enabled staff via enabled channels.
+     * - LINE: push message if recipient has channel 'line' enabled
+     * - WEB: no-op (notification already saved in DB)
+     */
+    public function dispatchToStaff(int $notificationTypeId, string $message): array
+    {
+        $notificationTypeId = max(1, $notificationTypeId);
+        $message = trim($message);
+        if ($message === '') {
+            return ['ok' => false, 'error' => 'Empty message'];
+        }
+
+        $recipientsModel = new NotificationTypeStaffModel($this->pdo);
+        $recipients = $recipientsModel->listEnabledRecipientsByType($notificationTypeId);
+
+        $uncModel = new UserNotificationChannelModel($this->pdo);
+
+        $token = env('LINE_CHANNEL_ACCESS_TOKEN');
+        $line = ($token !== null && $token !== '') ? new LineService($token) : null;
+
+        $sentLine = 0;
+        $skipped = 0;
+        $errors = [];
+
+        foreach ($recipients as $r) {
+            $uid = (int)($r['user_id'] ?? 0);
+            if ($uid <= 0) {
+                $skipped++;
+                continue;
+            }
+
+            // Ensure default channel rows exist (idempotent)
+            try {
+                if ($uncModel->countByUser($uid) <= 0) {
+                    $roleId = $this->getUserRoleId($uid);
+                    $uncModel->bootstrapDefaults($uid, $roleId);
+                }
+            } catch (Throwable $e) {
+                // ถ้าสร้าง default ไม่ได้ ก็ยังพยายาม dispatch ต่อ (best effort)
+                $errors[] = ['user_id' => $uid, 'step' => 'bootstrapDefaults', 'error' => $e->getMessage()];
+            }
+
+            $enabledChannels = [];
+            try {
+                $enabledChannels = $uncModel->listEnabledChannelNamesByUser($uid);
+            } catch (Throwable $e) {
+                $errors[] = ['user_id' => $uid, 'step' => 'listEnabledChannels', 'error' => $e->getMessage()];
+                $skipped++;
+                continue;
+            }
+
+            // LINE
+            if (in_array('line', $enabledChannels, true)) {
+                $lineUserId = trim((string)($r['line_user_id'] ?? ''));
+                if ($line && $lineUserId !== '') {
+                    try {
+                        $resp = $line->pushMessage($lineUserId, [
+                            ['type' => 'text', 'text' => $message]
+                        ]);
+                        if (($resp['ok'] ?? false) === true) {
+                            $sentLine++;
+                        } else {
+                            $errors[] = ['user_id' => $uid, 'step' => 'linePush', 'resp' => $resp];
+                        }
+                    } catch (Throwable $e) {
+                        $errors[] = ['user_id' => $uid, 'step' => 'linePush', 'error' => $e->getMessage()];
+                    }
+                } else {
+                    $skipped++;
+                }
+            }
+
+            // WEB: no-op (stored in notification table already)
+        }
+
+        return [
+            'ok' => true,
+            'recipients' => count($recipients),
+            'sent_line' => $sentLine,
+            'skipped' => $skipped,
+            'errors' => $errors,
+        ];
+    }
+
+    /* ===================== internal helpers ===================== */
+
+    private function getUserRoleId(int $userId): int
+    {
+        $stmt = $this->pdo->prepare("SELECT user_role_id FROM `user` WHERE user_id = :uid LIMIT 1");
+        $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+        $role = $stmt->fetchColumn();
+        return $role ? (int)$role : 1;
+    }
+
+    private function resolveRequestNotificationTypeId(int $requestTypeId): int
+    {
+        // default mapping ตาม requirement
+        $desired = 0;
+        switch ($requestTypeId) {
+            case 3: // repair
+                $desired = self::NOTIF_TYPE_REQUEST_REPAIR;
+                break;
+            case 4: // other
+                $desired = self::NOTIF_TYPE_REQUEST_OTHER;
+                break;
+            case 2: // conference
+                $desired = self::NOTIF_TYPE_REQUEST_CONFERENCE;
+                break;
+            default:
+                $desired = 0;
+        }
+
+        $typeModel = new NotificationTypeModel($this->pdo);
+
+        // 1) ถ้า desired มีจริงใน DB ก็ใช้เลย
+        if ($desired > 0 && $typeModel->existsById($desired)) {
+            return $desired;
+        }
+
+        // 2) fallback by known names (รองรับ typo: conferance)
+        $fallbackNames = [];
+        if ($requestTypeId === 3) {
+            $fallbackNames = ['request_repair_pending'];
+        } elseif ($requestTypeId === 4) {
+            $fallbackNames = ['request_other_pending'];
+        } elseif ($requestTypeId === 2) {
+            $fallbackNames = ['request_conference_pending', 'request_conferance_pending'];
+        }
+
+        foreach ($fallbackNames as $name) {
+            $row = $typeModel->findByName($name);
+            if ($row && isset($row['notification_type_id']) && is_numeric($row['notification_type_id'])) {
+                return (int)$row['notification_type_id'];
+            }
+        }
+
+        // 3) fallback hard-coded (เผื่อ DB ใช้ id เดิม)
+        if ($requestTypeId === 2 && $typeModel->existsById(4)) {
+            return 4;
+        }
+
+        throw new RuntimeException('Cannot resolve notification_type_id for request_type=' . $requestTypeId);
+    }
+
+    private function buildRequestMessage(int $requestTypeId, int $requestId, string $subject = ''): string
+    {
+        $subject = trim($subject);
+        $suffix = $subject !== '' ? (" — " . $subject) : '';
+
+        if ($requestTypeId === 3) {
+            return "มีคำขอแจ้งซ่อมอุปกรณ์ใหม่เข้ามา (#{$requestId}){$suffix}";
+        }
+        if ($requestTypeId === 4) {
+            return "มีคำขอใช้บริการอื่น ๆ ใหม่เข้ามา (#{$requestId}){$suffix}";
+        }
+        if ($requestTypeId === 2) {
+            return "มีคำขอใช้ห้องประชุมใหม่เข้ามา (#{$requestId}){$suffix}";
+        }
+
+        return "มีคำขอใหม่เข้ามา (#{$requestId}){$suffix}";
+    }
+}

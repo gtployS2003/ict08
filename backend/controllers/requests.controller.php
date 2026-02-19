@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../models/RequestModel.php';
+require_once __DIR__ . '/../services/NotificationService.php';
 
 // ✅ auth middleware (มี get_auth_user(), require_auth())
 $authPath = __DIR__ . '/../middleware/auth.php';
@@ -306,6 +307,22 @@ class RequestsController
             $model = new RequestModel($this->pdo);
             $newId = $model->create($payload);
 
+            // 10.x) create notification row (ต้องอยู่ใน transaction เพื่อให้แน่ใจว่า request insert แล้ว)
+            $notifMeta = null;
+            try {
+                $notifSvc = new NotificationService($this->pdo);
+                $notifMeta = $notifSvc->createNewRequestNotification($newId, $requestType, $subject);
+            } catch (Throwable $e) {
+                // ถ้า notification ล้มเหลว ให้ rollback ทั้งหมด (requirement: ทุก request ต้องมี notification)
+                $this->pdo->rollBack();
+                json_response([
+                    'error' => true,
+                    'message' => 'Failed to create request notification',
+                    'detail' => $e->getMessage(),
+                ], 500);
+                return;
+            }
+
             // 10) insert attachment
             if ($hasAttachment === 1 && !empty($files)) {
 
@@ -348,6 +365,23 @@ class RequestsController
 
 
             $this->pdo->commit();
+
+            // 11) dispatch notification (best effort) หลัง commit เพื่อไม่ให้ค้าง transaction
+            if (is_array($notifMeta)) {
+                try {
+                    $notifSvc = new NotificationService($this->pdo);
+                    $dispatch = $notifSvc->dispatchToStaff(
+                        (int)($notifMeta['notification_type_id'] ?? 0),
+                        (string)($notifMeta['message'] ?? '')
+                    );
+                    // log เฉย ๆ ไม่ให้กระทบ response
+                    if (($dispatch['ok'] ?? false) !== true) {
+                        error_log('[REQUESTS] dispatch notification not ok: ' . json_encode($dispatch, JSON_UNESCAPED_UNICODE));
+                    }
+                } catch (Throwable $e) {
+                    error_log('[REQUESTS] dispatch notification failed: ' . $e->getMessage());
+                }
+            }
 
             $created = $model->findById($newId);
 

@@ -113,6 +113,42 @@ final class NotificationTypeModel
         return $row;
     }
 
+    /**
+     * Find by notification_type (case-sensitive match as stored)
+     * @return array<string,mixed>|null
+     */
+    public function findByName(string $notificationType): ?array
+    {
+        $notificationType = trim($notificationType);
+        if ($notificationType === '') return null;
+
+        $sql = "
+            SELECT
+                notification_type_id,
+                notification_type,
+                meaning
+            FROM notification_type
+            WHERE notification_type = :name
+            LIMIT 1
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':name', $notificationType, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    public function existsById(int $id): bool
+    {
+        if ($id <= 0) return false;
+        $stmt = $this->pdo->prepare("SELECT 1 FROM notification_type WHERE notification_type_id = :id LIMIT 1");
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+        return (bool)$stmt->fetchColumn();
+    }
+
     public function existsByName(string $notificationType, ?int $excludeId = null): bool
     {
         $notificationType = trim($notificationType);

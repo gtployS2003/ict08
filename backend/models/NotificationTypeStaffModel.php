@@ -371,4 +371,75 @@ final class NotificationTypeStaffModel
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
+
+    /**
+     * List enabled recipients for a notification type.
+     * - filter: nts.is_enabled = 1
+     * - join user to get line_user_id for LINE channel
+     *
+     * @return array<int, array{user_id:int, line_user_id:?string, line_user_name:?string}>
+     */
+    public function listEnabledRecipientsByType(int $notificationTypeId): array
+    {
+        $notificationTypeId = max(1, $notificationTypeId);
+
+        $sql = "
+            SELECT
+                nts.user_id,
+                u.line_user_id,
+                u.line_user_name
+            FROM notification_type_staff nts
+            INNER JOIN `user` u ON u.user_id = nts.user_id
+            WHERE nts.notification_type_id = :ntid
+              AND nts.is_enabled = 1
+            ORDER BY nts.id ASC
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':ntid', $notificationTypeId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'user_id' => (int)($r['user_id'] ?? 0),
+                'line_user_id' => isset($r['line_user_id']) ? (string)$r['line_user_id'] : null,
+                'line_user_name' => isset($r['line_user_name']) ? (string)$r['line_user_name'] : null,
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * List enabled notification_type_id values for a user.
+     *
+     * @return array<int,int>
+     */
+    public function listEnabledTypeIdsByUser(int $userId): array
+    {
+        $userId = max(1, $userId);
+
+        $sql = "
+            SELECT notification_type_id
+            FROM notification_type_staff
+            WHERE user_id = :uid
+              AND is_enabled = 1
+            ORDER BY notification_type_id ASC
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $out = [];
+        foreach ($rows as $r) {
+            $id = (int)($r['notification_type_id'] ?? 0);
+            if ($id > 0) $out[] = $id;
+        }
+
+        return array_values(array_unique($out));
+    }
 }

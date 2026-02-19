@@ -412,4 +412,36 @@ final class UserNotificationChannelModel
             throw $e;
         }
     }
+
+    /**
+     * Get enabled channel names for a user (e.g. ['line','web'])
+     *
+     * @return array<int, string>
+     */
+    public function listEnabledChannelNamesByUser(int $userId): array
+    {
+        $userId = max(0, $userId);
+        if ($userId <= 0) return [];
+
+        $sql = "
+            SELECT LOWER(c.channel) AS channel
+            FROM user_notification_channel unc
+            INNER JOIN channel c ON c.channel_id = unc.channel
+            WHERE unc.user_id = :uid
+              AND unc.enable = 1
+            ORDER BY c.channel_id ASC
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $out = [];
+        foreach ($rows as $r) {
+            $name = strtolower((string)($r['channel'] ?? ''));
+            if ($name !== '') $out[] = $name;
+        }
+        return array_values(array_unique($out));
+    }
 }
