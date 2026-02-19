@@ -37,7 +37,13 @@ class RequestsController
      * - start_date_time (YYYY-MM-DD HH:MM:SS)
      * - end_date_time   (YYYY-MM-DD HH:MM:SS)
      *
-     * other (type=3) เพิ่ม:
+     * repair (type=3) เพิ่ม:
+     * - device_id
+     * - request_sub_type = NULL
+     * - start/end ไม่ใช้ (NULL)
+     * - location จะดึงจาก organization.location ของอุปกรณ์
+     *
+     * other (type=4) เพิ่ม:
      * - location (required)
      * - request_sub_type default = 0
      * - start/end ไม่บังคับ (จะบันทึกเป็น NULL)
@@ -115,6 +121,8 @@ class RequestsController
             $end = trim((string) ($body['end_date_time'] ?? ''));
 
             $location = trim((string) ($body['location'] ?? ''));
+            $deviceIdRaw = $body['device_id'] ?? null;
+            $deviceId = null;
 
             if ($requestType === self::REQUEST_TYPE_CONFERENCE) {
 
@@ -142,6 +150,21 @@ class RequestsController
                 }
 
                 // location: ไม่ใช้ใน conference
+                $location = '';
+
+            } elseif ($requestType === self::REQUEST_TYPE_REPAIR) {
+
+                // ✅ repair: ต้องมี device_id
+                if ($deviceIdRaw === null || $deviceIdRaw === '' || !is_numeric($deviceIdRaw) || (int) $deviceIdRaw <= 0) {
+                    $errors['device_id'] = 'device_id is required and must be number > 0';
+                } else {
+                    $deviceId = (int) $deviceIdRaw;
+                }
+
+                // ✅ repair: ไม่ใช้ subtype/start/end/location จาก client
+                $requestSubType = null;
+                $start = '';
+                $end = '';
                 $location = '';
 
             } elseif ($requestType === self::REQUEST_TYPE_OTHER) {
@@ -190,13 +213,11 @@ class RequestsController
 
             // 8) ตรวจไฟล์แนบ
             $hasAttachment = 0;
-            $file = null;
+            $files = [];
 
             if (!empty($_FILES)) {
-
                 // multiple: attachments[]
-                if (isset($_FILES['attachments']) && is_array($_FILES['attachments']['name'])) {
-
+                if (isset($_FILES['attachments']) && isset($_FILES['attachments']['name']) && is_array($_FILES['attachments']['name'])) {
                     foreach ($_FILES['attachments']['name'] as $idx => $name) {
                         $files[] = [
                             'name' => $name,
@@ -206,17 +227,15 @@ class RequestsController
                             'size' => $_FILES['attachments']['size'][$idx] ?? 0,
                         ];
                     }
-
-                    // single fallback (เผื่อใช้ attachment/file)
                 } elseif (isset($_FILES['attachment']) && is_array($_FILES['attachment'])) {
+                    // single fallback (เผื่อใช้ attachment)
                     $files[] = $_FILES['attachment'];
-
                 } elseif (isset($_FILES['file']) && is_array($_FILES['file'])) {
+                    // single fallback (เผื่อใช้ file)
                     $files[] = $_FILES['file'];
                 }
             }
 
-            // มีอย่างน้อย 1 ไฟล์ที่ OK
             foreach ($files as $f) {
                 if (($f['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
                     $hasAttachment = 1;
@@ -224,23 +243,51 @@ class RequestsController
                 }
             }
 
+            // 9) เติมข้อมูลเฉพาะ repair: ดึง location/province จาก device -> org
+            $derivedLocation = null;
+            if ($requestType === self::REQUEST_TYPE_REPAIR) {
+                $meta = $this->getDeviceOrganizationMeta((int) $deviceId);
+                if (!$meta) {
+                    json_response([
+                        'error' => true,
+                        'message' => 'Invalid device_id (device/organization not found)',
+                    ], 422);
+                    return;
+                }
 
-            if ($file && ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
-                $hasAttachment = 1;
+                $deviceProvinceId = (int) ($meta['province_id'] ?? 0);
+                if ($deviceProvinceId > 0 && $deviceProvinceId !== $provinceId) {
+                    json_response([
+                        'error' => true,
+                        'message' => 'Validation failed',
+                        'errors' => [
+                            'province_id' => 'Selected device is not in the selected province',
+                        ],
+                    ], 422);
+                    return;
+                }
+
+                $derivedLocation = trim((string) ($meta['location'] ?? ''));
+                $derivedLocation = $derivedLocation !== '' ? $derivedLocation : null;
             }
 
-            // 9) insert request
+            // 10) insert request
             $payload = [
                 'request_type' => $requestType,
-                'request_sub_type' => (int) $requestSubType,
+
+                // ✅ conference/other ใช้ subtype, repair = NULL
+                'request_sub_type' => ($requestType === self::REQUEST_TYPE_REPAIR) ? null : (int) $requestSubType,
+
                 'subject' => $subject,
-                'device_id' => null,
+                'device_id' => ($requestType === self::REQUEST_TYPE_REPAIR) ? (int) $deviceId : null,
                 'detail' => $detail,
                 'requester_id' => $requesterId,
                 'province_id' => $provinceId,
 
-                // ✅ location: มีเฉพาะ other (ถ้าไม่ใช้ก็เป็น null)
-                'location' => ($location !== '') ? $location : null,
+                // ✅ other: ใช้ location จากฟอร์ม, repair: ใช้ derived, conference: null
+                'location' => ($requestType === self::REQUEST_TYPE_OTHER)
+                    ? (($location !== '') ? $location : null)
+                    : (($requestType === self::REQUEST_TYPE_REPAIR) ? $derivedLocation : null),
 
                 'hasAttachment' => $hasAttachment,
                 'head_of_request_id' => null,
@@ -249,10 +296,9 @@ class RequestsController
                 'urgency_id' => null,
                 'approve_at' => null,
 
-                // ✅ conference มีค่า, other เป็น null
+                // ✅ conference/other มีค่า (ตาม validation), repair เป็น null
                 'start_date_time' => ($start !== '') ? $start : null,
                 'end_date_time' => ($end !== '') ? $end : null,
-
             ];
 
             $this->pdo->beginTransaction();
@@ -386,7 +432,8 @@ class RequestsController
         $safeExt = preg_match('/^[a-z0-9]{1,10}$/', $ext) ? $ext : 'bin';
 
         $stamp = date('Ymd_His');
-        $stored = "req_{$requestId}_u{$uploadedBy}_{$stamp}." . $safeExt;
+        $rand = bin2hex(random_bytes(3));
+        $stored = "req_{$requestId}_u{$uploadedBy}_{$stamp}_{$rand}." . $safeExt;
 
         // ✅ ใช้ path แบบแน่นอน
         $dir = __DIR__ . '/../public/uploads/requests';
@@ -423,6 +470,36 @@ class RequestsController
         }
         $dt = DateTime::createFromFormat('Y-m-d H:i:s', $s);
         return $dt !== false;
+    }
+
+    /**
+     * ใช้สำหรับ repair: หา organization/location/province ของอุปกรณ์
+     */
+    private function getDeviceOrganizationMeta(int $deviceId): ?array
+    {
+        $sql = "
+            SELECT
+                org.organization_id,
+                org.province_id,
+                org.location
+            FROM device d
+            LEFT JOIN contact_info ci ON ci.contact_info_id = d.contact_info_id
+            LEFT JOIN organization org ON org.organization_id = ci.organization_id
+            WHERE d.device_id = :device_id
+            LIMIT 1
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':device_id' => $deviceId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) return null;
+
+        // ถ้าอุปกรณ์ไม่มี org ก็ถือว่าใช้ไม่ได้สำหรับ flow นี้
+        if (!isset($row['organization_id']) || !is_numeric($row['organization_id'])) {
+            return null;
+        }
+
+        return $row;
     }
 }
 ?>

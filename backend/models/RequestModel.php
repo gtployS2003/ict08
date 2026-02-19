@@ -87,7 +87,10 @@ class RequestModel
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
             ':request_type'       => (int)$data['request_type'],
-            ':request_sub_type'   => (int)($data['request_sub_type'] ?? 0),
+            // ✅ allow NULL (repair flow requires request_sub_type = NULL)
+            ':request_sub_type'   => array_key_exists('request_sub_type', $data)
+                ? $this->toNullableInt($data['request_sub_type'])
+                : null,
             ':subject'            => (string)$data['subject'],
 
             ':device_id'          => array_key_exists('device_id', $data) ? $this->toNullableInt($data['device_id']) : null,

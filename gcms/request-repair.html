@@ -36,7 +36,7 @@
     <script src="/ict8/assets/js/main.js" defer></script>
 
     <!-- Page JS (ไว้ทำ submit ทีหลัง) -->
-    <!-- <script src="/ict8/assets/js/request-repair.js" defer></script> -->
+    <script src="/ict8/assets/js/request-repair.js" defer></script>
 </head>
 
 <body>
@@ -62,68 +62,77 @@
                                 placeholder="เช่น แจ้งซ่อมคอมพิวเตอร์ห้องธุรการ / แจ้งเสีย Printer ชั้น 2" required />
                         </div>
 
-                        <!-- type_of_device -->
+                        <!-- province -->
                         <div class="request-form-field">
-                            <label class="request-form-label" for="type_of_device">
-                                ประเภทอุปกรณ์ <span class="request-form-req">*</span>
-                            </label>
-                            <select class="request-form-select" id="type_of_device" name="type_of_device" required>
-                                <option value="">-- กรุณาเลือก --</option>
-                            </select>
-                        </div>
-
-                        <!-- device_name -->
-                        <div class="request-form-field">
-                            <label class="request-form-label" for="device_name">ชื่ออุปกรณ์<span
-                                    class="request-form-req">*</span></label>
-
-                            <select class="request-form-select" name="device_name" id="device_name" required>
-                                <option value="">-- กรุณาเลือก --</option>
-                            </select>
-                        </div>
-
-                        <!-- ip address (ถ้ามีจะกรอกเองอัตโนมัติ) -->
-                        <div class="request-form-field request-form-span-2">
-                            <label class="request-form-label" for="ip_address">
-                                IP Address (ถ้ามี)
-                            </label>
-                            <input class="request-form-input" id="ip_address" name="ip_address" type="text"
-                                placeholder="เช่น 192.168.1.10" />
-                            <div class="request-form-hint">ถ้าไม่มี IP ให้เว้นว่าง</div>
-                        </div>
-
-                        <!-- location -->
-                        <div class="request-form-field">
-                            <label class="request-form-label" for="location">
-                                สถานที่ <span class="request-form-req">*</span>
-                            </label>
-                            <input class="request-form-input" id="location" name="location" type="text" />
-                        </div>
-
-                        <!-- province (จะกรอกเองอัตโนมัติ)-->
-                        <div class="request-form-field">
-                            <label class="request-form-label" for="province">
+                            <label class="request-form-label" for="province_id">
                                 จังหวัด <span class="request-form-req">*</span>
                             </label>
-                            <input class="request-form-input" id="province" name="province" type="text" />
+                            <select class="request-form-select" id="province_id" name="province_id" required>
+                                <option value="">-- กรุณาเลือก --</option>
+                            </select>
+                        </div>
+
+                        <!-- organization -->
+                        <div class="request-form-field">
+                            <label class="request-form-label" for="organization_id">
+                                หน่วยงาน <span class="request-form-req">*</span>
+                            </label>
+                            <select class="request-form-select" id="organization_id" name="organization_id" required>
+                                <option value="">-- กรุณาเลือกจังหวัดก่อน --</option>
+                            </select>
+                        </div>
+
+                        <!-- device -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="device_id">ชื่ออุปกรณ์ <span class="request-form-req">*</span></label>
+                            <select class="request-form-select" id="device_id" name="device_id" required>
+                                <option value="">-- กรุณาเลือกหน่วยงานก่อน --</option>
+                            </select>
+                        </div>
+
+                        <!-- type_of_device (auto) -->
+                        <div class="request-form-field">
+                            <label class="request-form-label" for="type_of_device_title">
+                                ประเภทอุปกรณ์
+                            </label>
+                            <input class="request-form-input" id="type_of_device_title" type="text" readonly
+                                placeholder="เลือกชื่ออุปกรณ์เพื่อแสดงประเภท" />
+                        </div>
+
+                        <!-- ip address (auto) -->
+                        <div class="request-form-field">
+                            <label class="request-form-label" for="ip_address">
+                                IP Address
+                            </label>
+                            <input class="request-form-input" id="ip_address" type="text" readonly
+                                placeholder="เลือกชื่ออุปกรณ์เพื่อแสดง IP" />
+                        </div>
+
+                        <!-- location (auto) -->
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label" for="location">
+                                สถานที่
+                            </label>
+                            <input class="request-form-input" id="location" name="location" type="text" readonly
+                                placeholder="เลือกหน่วยงานเพื่อแสดงสถานที่" />
                         </div>
 
                         <!-- detail -->
                         <div class="request-form-field request-form-span-2">
                             <label class="request-form-label" for="detail">
-                                รายละเอียดเพิ่มเติม <span class="request-form-req">*</span>
+                                รายละเอียดเพิ่มเติม
                             </label>
-                            <textarea class="request-form-textarea" id="detail" name="detail" rows="7" required
+                            <textarea class="request-form-textarea" id="detail" name="detail" rows="7"
                                 placeholder="อธิบายเพิ่มเติมโดยละเอียด เช่น เปิดเครื่องแล้วมีเสียงดัง/หน้าจอดับ, ขึ้น error อะไร, เริ่มมีปัญหาตั้งแต่เมื่อไร, ได้ลองทำอะไรไปแล้วบ้าง"></textarea>
                         </div>
 
                         <!-- attachments -->
                         <div class="request-form-field request-form-span-2">
                             <label class="request-form-label" for="attachments">
-                                แนบเอกสารประกอบ (หนังสือ/กำหนดการ/เอกสาร/รูปภาพ) รวมเป็นไฟล์เดียว (ถ้ามี)
+                                แนบเอกสารประกอบ (ถ้ามี)
                             </label>
 
-                            <input class="request-form-file" id="attachments" name="attachments" type="file" multiple
+                            <input class="request-form-file" id="attachments" name="attachments[]" type="file" multiple
                                 accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" />
 
                             <div class="request-form-hint">
