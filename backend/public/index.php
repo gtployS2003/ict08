@@ -37,7 +37,7 @@ require_once __DIR__ . '/../routes/user_notification_channel.routes.php';
 require_once __DIR__ . '/../routes/type_of_device.routes.php';
 require_once __DIR__ . '/../routes/main_type_of_device.routes.php';
 require_once __DIR__ . '/../routes/contact_info.routes.php';
-
+require_once __DIR__ . '/../routes/devices.routes.php';
 
 
 
@@ -88,6 +88,7 @@ try {
     if (type_of_device_routes($method, $segments, $pdo)) exit;
     if (main_type_of_device_routes($pdo, $method, $segments)) exit;
     if (contact_info_routes($method, $segments, $pdo)) exit;
+    if (devices_routes($method, $segments, $pdo)) exit;
 
     fail("Route not found", 404, ["path" => $path, "method" => $method]);
 

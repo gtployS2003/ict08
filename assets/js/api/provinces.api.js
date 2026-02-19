@@ -1,5 +1,5 @@
 // assets/js/api/provinces.api.js
-import * as http from "./http.js";
+import * as http from "./http.esm.js";
 
 /**
  * พยายามเลือก method จาก http.js ให้เข้ากับของโปรเจกต์

@@ -1,56 +1,66 @@
 // navbar
 function initNavbar() {
-    const toggle = document.querySelector(".nav-toggle");
-    const menu = document.querySelector(".nav-menu");
+    // รองรับหลายหน้า: navbar ใช้ .nav-menu แต่ device/schedule ใช้ ul คนละ class
+    document.querySelectorAll(".main-nav").forEach((nav) => {
+        const toggle = nav.querySelector(".nav-toggle");
+        const menu = nav.querySelector(".nav-menu") || nav.querySelector("ul");
 
-    if (!toggle || !menu) return;
+        if (!toggle || !menu) return;
 
-    toggle.onclick = null;
-    menu.querySelectorAll("a").forEach(link => (link.onclick = null));
+        // GCMS nav มีสคริปต์เฉพาะ (assets/js/gcms-nav.js) จัดการอยู่แล้ว
+        // ถ้า bind ซ้ำจะเกิดอาการ toggle 2 ครั้ง (เปิดแล้วปิดทันที)
+        if (toggle.id === "gcmsNavToggle" || menu.id === "gcmsNavMenu") return;
 
-    // ============ ปุ่ม ☰ (เมนูมือถือ) ============
-    toggle.addEventListener("click", () => {
-        menu.classList.toggle("open");
-    });
+        // กัน bind ซ้ำ (include.js อาจเรียก initNavbar() หลายครั้ง)
+        if (toggle.dataset.navBound === "1") return;
+        toggle.dataset.navBound = "1";
 
-    // คลิกลิงก์ไหนก็ปิดเมนู (ตอนหน้าจอเล็ก)
-    menu.querySelectorAll("a").forEach(link => {
-        link.addEventListener("click", () => {
-            menu.classList.remove("open");
+        // ============ ปุ่ม ☰ (เมนูมือถือ) ============
+        toggle.addEventListener("click", () => {
+            menu.classList.toggle("open");
+        });
+
+        // คลิกลิงก์ไหนก็ปิดเมนู (ตอนหน้าจอเล็ก)
+        menu.querySelectorAll("a").forEach((link) => {
+            link.addEventListener("click", () => {
+                menu.classList.remove("open");
+            });
+        });
+
+        // ============ DROPDOWN (คลิกแล้วเปิด/ปิด + ลูกศรหมุน) ============
+        const dropdownLinks = menu.querySelectorAll(".dropdown > a");
+
+        dropdownLinks.forEach((trigger) => {
+            trigger.addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const parent = this.parentElement;
+                const isOpen = parent.classList.contains("open");
+
+                // ปิด dropdown ที่เปิดอยู่ทั้งหมดก่อน
+                menu.querySelectorAll(".dropdown.open").forEach((d) => {
+                    d.classList.remove("open");
+                });
+
+                if (!isOpen) {
+                    parent.classList.add("open");
+                }
+            });
         });
     });
 
-    // ============ DROPDOWN (คลิกแล้วเปิด/ปิด + ลูกศรหมุน) ============
-    const dropdownLinks = menu.querySelectorAll(".dropdown > a");
-
-    dropdownLinks.forEach(trigger => {
-        trigger.addEventListener("click", function (e) {
-            e.preventDefault();    // กันไม่ให้กระโดดไปบนสุดหน้า
-            e.stopPropagation();   // กันไม่ให้หลุดไปถึง document click
-
-            const parent = this.parentElement;
-            const isOpen = parent.classList.contains("open");
-
-            // ปิด dropdown ที่เปิดอยู่ทั้งหมดก่อน
-            menu.querySelectorAll(".dropdown.open").forEach(d => {
-                d.classList.remove("open");
-            });
-
-            // ถ้าอันที่คลิกเดิมยังไม่เปิด → ให้เปิด
-            if (!isOpen) {
-                parent.classList.add("open");
+    // คลิกนอก .dropdown ให้ปิด dropdown ทั้งหมด (ผูกครั้งเดียว)
+    if (!document.documentElement.dataset.navDropdownDocBound) {
+        document.documentElement.dataset.navDropdownDocBound = "1";
+        document.addEventListener("click", function (e) {
+            if (!e.target.closest(".dropdown")) {
+                document.querySelectorAll(".main-nav .dropdown.open").forEach((d) => {
+                    d.classList.remove("open");
+                });
             }
         });
-    });
-
-    // คลิกนอก .dropdown ให้ปิด dropdown ทั้งหมด
-    document.addEventListener("click", function (e) {
-        if (!e.target.closest(".dropdown")) {
-            menu.querySelectorAll(".dropdown.open").forEach(d => {
-                d.classList.remove("open");
-            });
-        }
-    });
+    }
 }
 
 // hero slider

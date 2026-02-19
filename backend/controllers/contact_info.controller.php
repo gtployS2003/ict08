@@ -41,6 +41,31 @@ final class ContactInfoController
         }
     }
 
+        /* =========================
+       GET /api/contact-info/dropdown?q=
+       ========================= */
+    public function dropdown(): void
+    {
+        try {
+            $q = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
+
+            $model = new ContactInfoModel($this->pdo);
+            $items = $model->dropdown($q);
+
+            $this->json(200, [
+                'error' => false,
+                'data' => $items,
+            ]);
+        } catch (Throwable $e) {
+            $this->json(500, [
+                'error' => true,
+                'message' => 'Failed to get contact info dropdown',
+                'detail' => $e->getMessage(),
+            ]);
+        }
+    }
+
+
     /* =========================
        GET /api/contact-info/{id}
        ========================= */

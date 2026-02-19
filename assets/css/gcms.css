@@ -1467,13 +1467,15 @@ select option {
 @media (max-width: 992px) {
   .main-nav {
     position: fixed;
-    top: 87px;
+    top: 80px;
     z-index: 9998;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    height: 50px;
   }
 
   .nav-inner {
     justify-content: flex-start;
+    margin-top: 15px;
   }
 
   .nav-toggle {
@@ -1486,6 +1488,7 @@ select option {
     left: 0;
     right: 0;
     top: 100%;
+    margin-top: 10px;
     background: #fff;
     flex-direction: column;
     gap: 0;

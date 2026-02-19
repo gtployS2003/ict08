@@ -21,6 +21,19 @@ function contact_info_routes(string $method, array $segments, PDO $pdo): bool
     // ✅ controller นี้ต้องรับ PDO (เพราะใน controller เราสร้าง Model ด้วย PDO)
     $controller = new ContactInfoController($pdo);
 
+    // ✅ /contact-info/dropdown
+    if (($segments[1] ?? '') === 'dropdown') {
+        if ($method === 'GET') {
+            $controller->dropdown();
+            return true;
+        }
+
+        http_response_code(405);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['success' => false, 'message' => 'Method not allowed'], JSON_UNESCAPED_UNICODE);
+        return true;
+    }
+
     // /contact-info
     if (count($segments) === 1) {
         if ($method === 'GET') {

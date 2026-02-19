@@ -13,7 +13,7 @@ body {
 }
 
 main {
-  padding-top: 190px;
+  padding-top: 200px;
 }
 
 *::before,
@@ -71,6 +71,54 @@ main {
 .nav-device a:hover,
 .nav-device a.active {
   color: #532274;
+}
+
+/* ==========================
+   device NAV (mobile toggle)
+   หมายเหตุ: device.css ถูกโหลดหลัง style.css
+   ดังนั้นต้องมี rule มือถือของตัวเองเพื่อไม่ให้ .nav-device override .nav-menu
+=========================== */
+
+@media (max-width: 900px) {
+  .nav-inner {
+    justify-content: flex-start;
+    height: auto;
+    padding: 25px 10px;
+  }
+
+  .nav-toggle {
+    display: block;
+  }
+
+  .nav-device {
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    padding: 8px 0;
+    margin-top: 34px;
+    background: #ffffff;
+    border-top: 1px solid #e0e0e0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 10;
+  }
+
+  .nav-device.open {
+    display: flex;
+  }
+
+  .nav-device li {
+    padding: 8px 16px;
+    text-align: left;
+  }
+
+  .nav-device a {
+    display: block;
+    width: 100%;
+  }
 }
 
 /* ==========================
@@ -419,30 +467,74 @@ main {
 =========================== */
 
 .device-list {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 24px 20px 40px;
+  padding-top: 40px;
 }
 
 .device-list-title {
   font-size: 28px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin: 0;
   color: #532274;
 }
 
 .device-list-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  gap: 20px;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 30px;
 }
 
-.device-toolbar {
+.device-titlebar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.device-filterbar {
+  display: flex;
+  align-items: center;
+  gap: 19px;
+  flex-wrap: wrap;
+}
+
+/* legacy class kept for compatibility (not used as the main layout anymore) */
+.device-toolbar {
+  display: contents;
+}
+
+.device-filter-select,
+.device-limit-select {
+  height: 46px;
+  padding: 0 12px;
+  border:  solid rgba(0, 0, 0, 0.10);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.9rem;
+  font-family: inherit;
+  min-width: 170px;
+  max-width: 280px;
+}
+
+@media (max-width: 860px) {
+  .device-filter-select,
+  .device-limit-select {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    flex: 1 1 220px;
+  }
+}
+
+.device-filter-select:focus,
+.device-limit-select:focus {
+  outline: none;
+  border-color: #532274;
+  box-shadow: 0 0 0 3px rgba(83, 34, 116, 0.12);
 }
 
 .device-list-table-container {
@@ -453,11 +545,72 @@ main {
   overflow-x: auto;
 }
 
+.device-meta {
+  margin-top: 10px;
+}
+
+.device-meta-bottom {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding-top: 30px;
+}
+
+.device-meta-bottom .device-total {
+  justify-self: start;
+}
+
+.device-meta-bottom .device-pagination {
+  justify-self: center;
+}
+
+.device-meta-spacer {
+  justify-self: end;
+}
+
+@media (max-width: 860px) {
+  .device-meta-bottom {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .device-meta-bottom .device-pagination {
+    justify-self: center;
+  }
+
+  .device-meta-bottom .device-total {
+    justify-self: center;
+  }
+
+  .device-meta-spacer {
+    display: none;
+  }
+}
+
+.device-total {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.device-pagination {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.device-pagination .is-active {
+  background: #efe9ff;
+  border-color: rgba(83, 34, 116, 0.35);
+  font-weight: 700;
+}
+
 .device-list-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 900px;
-  table-layout: fixed;
+  min-width: 980px;
+  table-layout: auto;
   font-size: 14px;
 }
 
@@ -482,10 +635,10 @@ main {
   background: #f9fafb;
 }
 
-/* ลำดับ */
+/* ID */
 .device-list-table th:nth-child(1),
 .device-list-table td:nth-child(1) {
-  width: 40px;
+  width: 70px;
   text-align: center;
   white-space: nowrap;
 }
@@ -493,41 +646,60 @@ main {
 /* ชื่ออุปกรณ์ */
 .device-list-table th:nth-child(2),
 .device-list-table td:nth-child(2) {
-  width: 200px;
+  width: 260px;
+  white-space: normal;
+  word-break: break-word;
 }
 
-/* ประเภท */
+/* ประเภทหลัก */
 .device-list-table th:nth-child(3),
 .device-list-table td:nth-child(3) {
-  width: 130px;
+  width: 180px;
   white-space: nowrap;
 }
 
-/* IP Address */
+/* ประเภทอุปกรณ์ */
 .device-list-table th:nth-child(4),
 .device-list-table td:nth-child(4) {
-  width: 120px;
+  width: 180px;
   white-space: nowrap;
 }
 
-/* สถานะ */
+/* ip */
 .device-list-table th:nth-child(5),
 .device-list-table td:nth-child(5) {
-  width: 110px;
+  width: 140px;
   white-space: nowrap;
 }
 
-/* สถานที่ */
+/* หน่วยงาน */
 .device-list-table th:nth-child(6),
 .device-list-table td:nth-child(6) {
-  width: 220px;
-  white-space: pre-line;
+  width: 260px;
+  white-space: normal;
+  word-break: break-word;
 }
 
 /* จังหวัด */
 .device-list-table th:nth-child(7),
 .device-list-table td:nth-child(7) {
+  width: 140px;
+  white-space: nowrap;
+}
+
+/* สถานะ */
+.device-list-table th:nth-child(8),
+.device-list-table td:nth-child(8) {
   width: 120px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* จัดการ */
+.device-list-table th:nth-child(9),
+.device-list-table td:nth-child(9) {
+  width: 160px;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -555,6 +727,13 @@ main {
   font-size: 14px;
 }
 
+.device-titlebar .add-device {
+  width: 150px;
+  height: 46px;
+  padding: 0;
+  justify-content: center;
+}
+
 .add-device i {
   font-size: 16px;
 }
@@ -562,12 +741,14 @@ main {
 .device-list-search {
   display: flex;
   align-items: center;
-  border: 2px solid #532274;
   border-radius: 999px;
   padding: 12px 12px;
-  max-width: 280px;
-  width: 100%;
-  background: #ffffff;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+}
+
+.device-titlebar .device-list-search {
+  flex: 1 1 360px;
 }
 
 .device-list-search input {
@@ -585,11 +766,81 @@ main {
   font-size: 16px;
 }
 
+/* Refresh button: align size with selects in toolbar */
+.device-filterbar #device-refresh {
+  height: 46px;
+  width: 46px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==========================
+   Responsive (phone)
+=========================== */
+
+@media (max-width: 640px) {
+  /* Row 1: title + add (same row), search full width */
+  .device-titlebar {
+    display: grid;
+    grid-template-columns: 1fr 46px;
+    gap: 10px;
+    align-items: center;
+    justify-content: initial;
+  }
+
+  .device-list-title {
+    grid-column: 1 / 2;
+  }
+
+  .device-titlebar .add-device {
+    grid-column: 2 / 3;
+    justify-self: end;
+  }
+
+  .device-titlebar .device-list-search {
+    grid-column: 1 / -1;
+    width: 100%;
+    flex: initial;
+  }
+
+  /* Row 2: stack filters, keep limit + refresh on one line */
+  .device-filterbar {
+    display: grid;
+    grid-template-columns: 1fr 46px;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .device-filterbar > select {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  #device-limit {
+    grid-column: 1 / 2;
+  }
+
+  #device-refresh {
+    grid-column: 2 / 3;
+    justify-self: end;
+  }
+
+  /* Below table: keep pagination centered */
+  .device-meta-bottom {
+    justify-items: center;
+    text-align: center;
+  }
+}
+
 .device-filter-icon {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  border: 2px solid #ffffff00;
   background: #ffffff00;
   cursor: pointer;
   display: flex;
@@ -648,20 +899,15 @@ main {
   white-space: nowrap;
 }
 
-.status-pill-online {
+.status-pill.status-online {
   color: #15803d;
   background: #15803d1c;
   border: 1px solid #15803d;
 }
 
-.status-pill-offline {
+.status-pill.status-offline {
   color: #b91c1c;
   background: #b91c1c1c;
   border: 1px solid #b91c1c;
 }
 
-.status-pill-maintenance {
-  color: #facc15;
-  border: 1px solid #facc15;
-  background: #facc151c;
-}

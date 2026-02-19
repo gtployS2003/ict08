@@ -304,4 +304,65 @@ final class ContactInfoModel
         $s = trim((string)$v);
         return $s === '' ? null : $s;
     }
+
+        /* =========================
+           DROPDOWN (JOIN organization + province)
+           - คืน: contact_info_id, organization_id, organization_name, province_id, province_name
+           ========================= */
+
+    /**
+     * @return array<int, array{
+    *   contact_info_id:int,
+    *   organization_id:int,
+     *   organization_name:string,
+     *   province_id:int,
+     *   province_name:string
+     * }>
+     */
+    public function dropdown(string $q = ''): array
+    {
+        $q = trim($q);
+        $where = '';
+        $params = [];
+
+        if ($q !== '') {
+            // search ได้ทั้งชื่อหน่วยงาน/รหัส/จังหวัด
+            $where = "WHERE (
+                o.name LIKE :q1
+                OR o.code LIKE :q2
+                OR p.nameTH LIKE :q3
+                OR p.nameEN LIKE :q4
+            )";
+            $like = '%' . $q . '%';
+            $params = [
+                ':q1' => $like,
+                ':q2' => $like,
+                ':q3' => $like,
+                ':q4' => $like,
+            ];
+        }
+
+        $sql = "
+            SELECT
+                ci.contact_info_id,
+                ci.organization_id,
+                o.name AS organization_name,
+                o.province_id,
+                -- เลือกใช้ TH ก่อน ถ้าไม่มีค่อยใช้ EN
+                COALESCE(NULLIF(p.nameTH, ''), p.nameEN) AS province_name
+            FROM contact_info ci
+            INNER JOIN organization o ON ci.organization_id = o.organization_id
+            INNER JOIN province p ON o.province_id = p.province_id
+            $where
+            ORDER BY province_name ASC, organization_name ASC
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
 }
+
+

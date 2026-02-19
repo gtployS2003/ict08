@@ -7,7 +7,8 @@ function detectBasePath() {
 
   const u = new URL(script.src);
   const p = u.pathname; // เช่น /ict8/assets/js/include.js
-  const marker = "/ict8/assets/js/";
+  // หา prefix ก่อน "/assets/js/" เพื่อได้ BASE_PATH เช่น "/ict8"
+  const marker = "/assets/js/";
   const idx = p.indexOf(marker);
 
   return idx >= 0 ? p.slice(0, idx) : "";
@@ -49,26 +50,32 @@ function patchAssetPaths(html) {
 
 
 document.addEventListener("DOMContentLoaded", async () => {
-  await loadHtml("head", "/ict8/assets/include/head.html");
+  // หมายเหตุ: loadHtml() จะ prepend BASE_PATH (เช่น "/ict8") ให้เอง
+  // ดังนั้น filePath ควรขึ้นต้นด้วย "/assets/..." เสมอ
+  await loadHtml("head", "/assets/include/head.html");
 
-  await loadHtml("header", "/ict8/assets/include/header.html");
-  await loadHtml("navbar", "/ict8/assets/include/navbar.html");
+  await loadHtml("header", "/assets/include/header.html");
+  await loadHtml("navbar", "/assets/include/navbar.html");
 
-  // initNavbar ถ้ามี
-  if (typeof window.initNavbar === "function") window.initNavbar();
+  await loadHtml("footer", "/assets/include/footer.html");
 
-  await loadHtml("footer", "/ict8/assets/include/footer.html");
+  await loadHtml("header-index", "/assets/include/header-schedule.html");
+  await loadHtml("footer-index", "/assets/include/footer_index.html");
 
-  await loadHtml("header-index", "/ict8/assets/include/header-schedule.html");
-  await loadHtml("footer-index", "/ict8/assets/include/footer_index.html");
+  await loadHtml("schedule-nav", "/assets/include/nav-schedule.html");
 
-  await loadHtml("schedule-nav", "/ict8/assets/include/nav-schedule.html");
-
-  await loadHtml("device-nav", "/ict8/assets/include/nav-device.html");
-  await loadHtml("header-device", "/ict8/assets/include/header-device.html");
+  await loadHtml("device-nav", "/assets/include/nav-device.html");
+  await loadHtml("header-device", "/assets/include/header-device.html");
 
   await loadHtml("gcms-nav", "/assets/include/nav-gcms.html");
   await loadHtml("header-gcms", "/assets/include/header-gcms.html");
 
   await loadHtml("header-form", "/assets/include/header-form.html");
+
+  // initNavbar หลัง inject nav ต่าง ๆ แล้ว (กันกรณี include โหลดช้ากว่า DOMContentLoaded)
+  try {
+    if (typeof window.initNavbar === "function") window.initNavbar();
+  } catch (e) {
+    console.warn("initNavbar failed", e);
+  }
 });
