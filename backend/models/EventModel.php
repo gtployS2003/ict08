@@ -7,6 +7,172 @@ final class EventModel
     public function __construct(private PDO $pdo) {}
 
     /**
+     * List events for schedule/events.html table.
+     * Includes request info, requester display name, participant display names, province name and event status.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listForTable(string $q = '', int $page = 1, int $limit = 200): array
+    {
+        $q = trim($q);
+        $page = max(1, $page);
+        $limit = max(1, min(500, $limit));
+        $offset = ($page - 1) * $limit;
+
+        $where = [];
+        $params = [
+            ':limit' => $limit,
+            ':offset' => $offset,
+        ];
+
+        if ($q !== '') {
+            $where[] = '(
+                e.title LIKE :q
+                OR e.detail LIKE :q
+                OR COALESCE(pReq.display_name, uReq.line_user_name, CONCAT(\'user#\', r.requester_id)) LIKE :q
+                OR COALESCE(prov.nameTH, prov.nameEN) LIKE :q
+                OR COALESCE(rt.type_name, \'\') LIKE :q
+                OR COALESCE(rst.name, \'\') LIKE :q
+                OR COALESCE(es.status_name, es.status_code, \'\') LIKE :q
+                OR COALESCE(GROUP_CONCAT(DISTINCT COALESCE(pPart.display_name, uPart.line_user_name, CONCAT(\'user#\', uPart.user_id)) SEPARATOR \' , \'), \'\') LIKE :q
+            )';
+            $params[':q'] = '%' . $q . '%';
+        }
+
+        $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+        $sql = "
+            SELECT
+                e.event_id,
+                e.request_id,
+                e.title,
+                e.province_id,
+                e.start_datetime,
+                e.end_datetime,
+                e.event_status_id,
+
+                -- province
+                prov.nameTH AS province_name_th,
+                prov.nameEN AS province_name_en,
+
+                -- request type/subtype
+                r.request_type AS request_type_id,
+                rt.type_name AS request_type_name,
+                r.request_sub_type AS request_sub_type_id,
+                rst.name AS request_sub_type_name,
+
+                -- requester
+                r.requester_id,
+                COALESCE(pReq.display_name, uReq.line_user_name, CONCAT('user#', r.requester_id)) AS requester_name,
+
+                -- status
+                es.request_type_id AS event_status_request_type_id,
+                es.status_code AS event_status_code,
+                es.status_name AS event_status_name,
+
+                -- participants (names)
+                GROUP_CONCAT(DISTINCT uPart.user_id ORDER BY uPart.user_id SEPARATOR ',') AS participant_user_ids,
+                GROUP_CONCAT(
+                    DISTINCT COALESCE(pPart.display_name, uPart.line_user_name, CONCAT('user#', uPart.user_id))
+                    ORDER BY COALESCE(pPart.display_name, uPart.line_user_name, CONCAT('user#', uPart.user_id))
+                    SEPARATOR ' , '
+                ) AS participant_names
+            FROM event e
+            LEFT JOIN province prov
+                ON prov.province_id = e.province_id
+            LEFT JOIN request r
+                ON r.request_id = e.request_id
+            LEFT JOIN request_type rt
+                ON rt.request_type_id = r.request_type
+            LEFT JOIN request_sub_type rst
+                ON rst.request_sub_type_id = r.request_sub_type
+            LEFT JOIN event_status es
+                ON es.event_status_id = e.event_status_id
+               AND (r.request_type IS NULL OR es.request_type_id = r.request_type)
+            LEFT JOIN person pReq
+                ON pReq.person_user_id = r.requester_id
+            LEFT JOIN `user` uReq
+                ON uReq.user_id = r.requester_id
+            LEFT JOIN event_participant ep
+                ON ep.event_id = e.event_id
+               AND (ep.is_active = 1 OR ep.is_active IS NULL)
+            LEFT JOIN `user` uPart
+                ON uPart.user_id = ep.user_id
+            LEFT JOIN person pPart
+                ON pPart.person_user_id = uPart.user_id
+            {$whereSql}
+            GROUP BY e.event_id
+            ORDER BY e.event_id ASC
+            LIMIT :limit OFFSET :offset
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+
+        foreach ($params as $k => $v) {
+            if ($k === ':limit' || $k === ':offset') {
+                $stmt->bindValue($k, (int)$v, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue($k, (string)$v, PDO::PARAM_STR);
+            }
+        }
+
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function countForTable(string $q = ''): int
+    {
+        $q = trim($q);
+
+        $where = [];
+        $params = [];
+
+        if ($q !== '') {
+            $where[] = '(
+                e.title LIKE :q
+                OR e.detail LIKE :q
+                OR COALESCE(pReq.display_name, uReq.line_user_name, CONCAT(\'user#\', r.requester_id)) LIKE :q
+                OR COALESCE(prov.nameTH, prov.nameEN) LIKE :q
+                OR COALESCE(rt.type_name, \'\') LIKE :q
+                OR COALESCE(rst.name, \'\') LIKE :q
+                OR COALESCE(es.status_name, es.status_code, \'\') LIKE :q
+            )';
+            $params[':q'] = '%' . $q . '%';
+        }
+
+        $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+        $sql = "
+            SELECT COUNT(DISTINCT e.event_id) AS cnt
+            FROM event e
+            LEFT JOIN province prov
+                ON prov.province_id = e.province_id
+            LEFT JOIN request r
+                ON r.request_id = e.request_id
+            LEFT JOIN request_type rt
+                ON rt.request_type_id = r.request_type
+            LEFT JOIN request_sub_type rst
+                ON rst.request_sub_type_id = r.request_sub_type
+            LEFT JOIN event_status es
+                ON es.event_status_id = e.event_status_id
+               AND (r.request_type IS NULL OR es.request_type_id = r.request_type)
+            LEFT JOIN person pReq
+                ON pReq.person_user_id = r.requester_id
+            LEFT JOIN `user` uReq
+                ON uReq.user_id = r.requester_id
+            {$whereSql}
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, (string)$v, PDO::PARAM_STR);
+        }
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        return (int)($row['cnt'] ?? 0);
+    }
+
+    /**
      * List events in a datetime range (inclusive).
      * Includes province name and aggregated participant info.
      *
@@ -116,7 +282,7 @@ final class EventModel
             LEFT JOIN event_status es
                 ON es.event_status_id = e.event_status_id
             WHERE e.request_id = :rid
-            ORDER BY e.event_id DESC
+            ORDER BY e.event_id ASC
             LIMIT 1
         ";
 

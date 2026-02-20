@@ -12,8 +12,10 @@
     <script src="/ict8/assets/js/include.js" defer></script>
     <script src="/ict8/assets/js/auth.js" defer></script>
     <script src="/ict8/assets/js/main.js" defer></script>
+    <script src="/ict8/backend/public/config.js.php" defer></script>
+    <script src="/ict8/assets/js/api/http.js" defer></script>
     <!-- event script-->
-    <script src="/ict8/assets/js/schedule-events.js" defer></script>
+    <script src="/ict8/assets/js/schedule-events-db.js" defer></script>
 
 
 </head>
@@ -49,9 +51,10 @@
                 <table class="evnt-list-table">
                     <thead>
                         <tr>
-                            <th>ลำดับ</th>
+                            <th>รหัสงาน</th>
+                            <th>รหัสคำร้อง</th>
                             <th>ชื่องาน</th>
-                            <th>ประเภทหลัก / ย่อย</th>
+                            <th>ประเภทย่อย / ประเภทหลัก</th>
                             <th>ผู้ร้องขอ</th>
                             <th>ผู้เข้าร่วม</th>
                             <th>จังหวัด</th>
@@ -75,141 +78,62 @@
                 </div>
 
                 <form id="task-add-form" class="task-add-body">
-                    <!-- ชื่องาน / รายละเอียด -->
+                    <!-- ชื่องาน -->
                     <div class="task-add-row">
                         <label for="add-title">ชื่องาน</label>
-                        <input type="text" id="add-title" name="ชื่อ" required>
+                        <input type="text" id="add-title" name="title" required>
                     </div>
 
+                    <!-- รายละเอียด -->
                     <div class="task-add-row">
                         <label for="add-desc">รายละเอียดงาน</label>
-                        <textarea id="add-desc" name="รายละเอียด" rows="3"></textarea>
+                        <textarea id="add-desc" name="detail" rows="3"></textarea>
                     </div>
 
-                    <!-- ประเภท / ประเภทย่อย -->
+                    <!-- ตำแหน่งที่ตั้ง + จังหวัด -->
                     <div class="task-add-row task-add-row-2col">
-                        <div>
-                            <label for="add-type">ประเภทงาน</label>
-                            <select id="add-type" name="ประเภท" required>
-                                <option value="">-- เลือกประเภท --</option>
-                                <option value="เชื่อมโยงเครือข่าย">เชื่อมโยงเครือข่าย</option>
-                                <option value="ประสานข้อมูล">ประสานข้อมูล</option>
-                                <option value="แนะแนวด้านเทคโนโลยี">แนะแนวด้านเทคโนโลยี</option>
-                                <option value="ติดตามและประเมินผล">ติดตามและประเมินผล</option>
-                                <option value="สนับสนุนอุปกรณ์">สนับสนุนอุปกรณ์</option>
-                                <option value="ถวายความปลอดภัย">ถวายความปลอดภัย</option>
-                                <option value="ธุรการ/พัสดุ">ธุรการ/พัสดุ</option>
-                                <option value="ความปลอดภัยเครือข่าย">ความปลอดภัยเครือข่าย</option>
-                                <option value="วิดีทัศน์ทางไกล">วิดีทัศน์ทางไกล</option>
-                                <option value="ดาวเทียมวิทยุ">ดาวเทียมวิทยุ</option>
-                                <option value="CCTV">CCTV</option>
-                                <option value="งานอื่นๆ">งานอื่นๆ</option>
+                        <div class="location">
+                            <label for="add-location">ตำแหน่งที่ตั้ง</label>
+                            <input type="text" id="add-location" name="location">
+                        </div>
+                        <div class="province">
+                            <label for="add-province">จังหวัด</label>
+                            <select id="add-province" name="province_id" required>
+                                <option value="">-- เลือกจังหวัด --</option>
                             </select>
                         </div>
-
-                        <div>
-                            <label for="add-subtype">ประเภทย่อย</label>
-                            <select id="add-subtype" name="ประเภทย่อย">
-                                <option value="-">-</option>
-                                <!-- สนับสนุนอุปกรณ์ -->
-                                <option value="ติดตั้ง">ติดตั้ง</option>
-                                <option value="ตรวจซ่อม">ตรวจซ่อม</option>
-                                <option value="บำรุงรักษา">บำรุงรักษา</option>
-                                <!-- วิดีทัศน์ทางไกล -->
-                                <option value="vcs">vcs</option>
-                                <option value="webex">webex</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- สร้างโดย (ตัวเอง) -->
-                    <div class="task-add-row">
-                        <label for="add-created-by">สร้างโดย</label>
-                        <input type="text" id="add-created-by" name="สร้างโดย" value="เจ้าหน้าที่ศูนย์เขต 8 (admin)"
-                            readonly>
                     </div>
 
                     <!-- ผู้เข้าร่วม -->
                     <div class="task-add-row">
-                        <label>ผู้เข้าร่วม (เลือกได้หลายคน)</label>
-                        <div class="participant-grid">
-                            <label><input type="checkbox" class="add-participant" value="นาย a"> นาย a</label>
-                            <label><input type="checkbox" class="add-participant" value="นาย b"> นาย b</label>
-                            <label><input type="checkbox" class="add-participant" value="นาย c"> นาย c</label>
-                            <label><input type="checkbox" class="add-participant" value="นาย d"> นาย d</label>
-                            <label><input type="checkbox" class="add-participant" value="ศูนย์เขต 8"> ศูนย์เขต 8</label>
-                            <label><input type="checkbox" class="add-participant" value="พิษณุโลก"> พิษณุโลก</label>
-                            <label><input type="checkbox" class="add-participant" value="ตาก"> ตาก</label>
-                            <label><input type="checkbox" class="add-participant" value="สุโขทัย"> สุโขทัย</label>
-                            <label><input type="checkbox" class="add-participant" value="อุตรดิตถ์"> อุตรดิตถ์</label>
-                            <label><input type="checkbox" class="add-participant" value="แพร่"> แพร่</label>
-                            <label><input type="checkbox" class="add-participant" value="น่าน"> น่าน</label>
+                        <label>ผู้เข้าร่วมงาน (เลือกได้หลายคน)</label>
+                        <div class="participant-grid" id="add-participant-grid">
+                            <!-- JS จะมาใส่รายการผู้เข้าร่วมตรงนี้ -->
                         </div>
                     </div>
 
-                    <!-- วันที่เริ่ม / สิ้นสุด + เวลา -->
+                    <!-- ลิงค์เข้าประชุม -->
+                    <div class="task-add-row">
+                        <label for="add-meeting-link">ลิงค์เข้าประชุม</label>
+                        <input type="url" id="add-meeting-link" name="meeting_link" placeholder="https://...">
+                    </div>
+
+                    <!-- หมายเหตุ -->
+                    <div class="task-add-row">
+                        <label for="add-note">หมายเหตุ</label>
+                        <textarea id="add-note" name="note" rows="2"></textarea>
+                    </div>
+
+                    <!-- วันที่เริ่มต้น / สิ้นสุด -->
                     <div class="task-add-row task-add-row-2col">
                         <div class="start-date">
-                            <label for="add-start-date">วันที่เริ่มทำงาน</label>
-                            <input type="date" id="add-start-date" name="วันที่เริ่มต้น">
+                            <label for="add-start-date">วันที่เริ่มต้น</label>
+                            <input type="date" id="add-start-date" name="start_date" required>
                         </div>
-                        <div class="start-time">
-                            <label for="add-start-time">เวลาเริ่มทำงาน</label>
-                            <input type="time" id="add-start-time" name="เวลาเริ่มต้น">
-                        </div>
-
-                    </div>
-
-                    <div class="task-add-row task-add-row-2col">
                         <div class="end-date">
-                            <label for="add-end-date">วันที่ทำงานเสร็จสิ้น</label>
-                            <input type="date" id="add-end-date" name="วันที่สิ้นสุด">
+                            <label for="add-end-date">วันที่สิ้นสุด</label>
+                            <input type="date" id="add-end-date" name="end_date" required>
                         </div>
-                        <div class="end-time">
-                            <label for="add-end-time">เวลาสิ้นสุดการทำงาน</label>
-                            <input type="time" id="add-end-time" name="เวลาสิ้นสุด">
-                        </div>
-                    </div>
-
-                    <!-- สถานที่ / จังหวัด -->
-                    <div class="task-add-row task-add-row-2col">
-                        <div class="location">
-                            <label for="add-location">สถานที่</label>
-                            <input type="text" id="add-location" name="สถานที่">
-                        </div>
-                        <div class="province">
-                            <label for="add-province">จังหวัด</label>
-                            <select id="add-province" name="จังหวัด">
-                                <option value="">-- เลือกจังหวัด --</option>
-                                <option value="พิษณุโลก">พิษณุโลก</option>
-                                <option value="ตาก">ตาก</option>
-                                <option value="สุโขทัย">สุโขทัย</option>
-                                <option value="อุตรดิตถ์">อุตรดิตถ์</option>
-                                <option value="แพร่">แพร่</option>
-                                <option value="น่าน">น่าน</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- ลิงก์แนบ / เอกสารแนบ -->
-                    <div class="task-add-row">
-                        <label for="add-link">ลิงก์ที่เกี่ยวข้อง</label>
-                        <input type="url" id="add-link" name="ลิงก์แนบ" placeholder="https://...">
-                    </div>
-
-                    <div class="task-add-row">
-                        <label for="add-file">เอกสารแนบ</label>
-                        <input type="file" id="add-file" name="เอกสารแนบ">
-                    </div>
-
-                    <!-- สถานะ (แสดงว่าเริ่มต้น = รอการตรวจสอบ) -->
-                    <div class="task-add-row">
-                        <label>สถานะเริ่มต้น</label>
-                        <input type="text" value="รอการตรวจสอบ" readonly>
-                        <input type="hidden" id="add-status" name="สถานะ" value="รอการตรวจสอบ">
-                        <p class="task-add-hint">
-                            * สถานะจะเปลี่ยนเป็น "กำลังดำเนินการ" เมื่อผู้เข้าร่วมทุกคนกดรับทราบ (กำหนด logic ภายหลัง)
-                        </p>
                     </div>
 
 
@@ -217,168 +141,12 @@
 
                 <div class="task-add-footer">
                     <button type="button" class="task-add-cancel task-add-close">ยกเลิก</button>
-                    <button type="submit" class="task-add-save">บันทึกงาน</button>
+                    <button type="submit" class="task-add-save" form="task-add-form">บันทึกงาน</button>
                 </div>
             </div>
         </div>
 
     </main>
-
-    <!-- POPUP เพิ่มงาน (ภายในหน่วยงาน) -->
-    <div class="task-add-overlay" id="task-add-overlay">
-        <div class="task-add-modal">
-            <div class="task-add-header">
-                <h3 class="task-add-title">เพิ่มงาน (ภายในหน่วยงาน)</h3>
-                <button type="button" class="task-add-close" id="task-add-close-top">×</button>
-            </div>
-
-            <form id="task-add-form" class="task-add-body">
-                <!-- ชื่องาน / รายละเอียด -->
-                <div class="task-add-row">
-                    <label for="add-title">ชื่องาน</label>
-                    <input type="text" id="add-title" name="ชื่อ" required>
-                </div>
-
-                <div class="task-add-row">
-                    <label for="add-desc">รายละเอียดงาน</label>
-                    <textarea id="add-desc" name="รายละเอียด" rows="3"></textarea>
-                </div>
-
-                <!-- ประเภท / ประเภทย่อย -->
-                <div class="task-add-row task-add-row-2col">
-                    <div>
-                        <label for="add-type">ประเภทงาน</label>
-                        <select id="add-type" name="ประเภท" required>
-                            <option value="">-- เลือกประเภท --</option>
-                            <option value="เชื่อมโยงเครือข่าย">เชื่อมโยงเครือข่าย</option>
-                            <option value="ประสานข้อมูล">ประสานข้อมูล</option>
-                            <option value="แนะแนวด้านเทคโนโลยี">แนะแนวด้านเทคโนโลยี</option>
-                            <option value="ติดตามและประเมินผล">ติดตามและประเมินผล</option>
-                            <option value="สนับสนุนอุปกรณ์">สนับสนุนอุปกรณ์</option>
-                            <option value="ถวายความปลอดภัย">ถวายความปลอดภัย</option>
-                            <option value="ธุรการ/พัสดุ">ธุรการ/พัสดุ</option>
-                            <option value="ความปลอดภัยเครือข่าย">ความปลอดภัยเครือข่าย</option>
-                            <option value="วิดีทัศน์ทางไกล">วิดีทัศน์ทางไกล</option>
-                            <option value="ดาวเทียมวิทยุ">ดาวเทียมวิทยุ</option>
-                            <option value="CCTV">CCTV</option>
-                            <option value="งานอื่นๆ">งานอื่นๆ</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="add-subtype">ประเภทย่อย</label>
-                        <select id="add-subtype" name="ประเภทย่อย">
-                            <option value="-">-</option>
-                            <!-- สนับสนุนอุปกรณ์ -->
-                            <option value="ติดตั้ง">ติดตั้ง</option>
-                            <option value="ตรวจซ่อม">ตรวจซ่อม</option>
-                            <option value="บำรุงรักษา">บำรุงรักษา</option>
-                            <!-- วิดีทัศน์ทางไกล -->
-                            <option value="vcs">vcs</option>
-                            <option value="webex">webex</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- สร้างโดย (ตัวเอง) -->
-                <div class="task-add-row">
-                    <label for="add-created-by">สร้างโดย</label>
-                    <input type="text" id="add-created-by" name="สร้างโดย" value="เจ้าหน้าที่ศูนย์เขต 8 (admin)"
-                        readonly>
-                </div>
-
-                <!-- ผู้เข้าร่วม -->
-                <div class="task-add-row">
-                    <label>ผู้เข้าร่วม (เลือกได้หลายคน)</label>
-                    <div class="participant-grid">
-                        <label><input type="checkbox" class="add-participant" value="นาย a"> นาย a</label>
-                        <label><input type="checkbox" class="add-participant" value="นาย b"> นาย b</label>
-                        <label><input type="checkbox" class="add-participant" value="นาย c"> นาย c</label>
-                        <label><input type="checkbox" class="add-participant" value="นาย d"> นาย d</label>
-                        <label><input type="checkbox" class="add-participant" value="ศูนย์เขต 8"> ศูนย์เขต 8</label>
-                        <label><input type="checkbox" class="add-participant" value="พิษณุโลก"> พิษณุโลก</label>
-                        <label><input type="checkbox" class="add-participant" value="ตาก"> ตาก</label>
-                        <label><input type="checkbox" class="add-participant" value="สุโขทัย"> สุโขทัย</label>
-                        <label><input type="checkbox" class="add-participant" value="อุตรดิตถ์"> อุตรดิตถ์</label>
-                        <label><input type="checkbox" class="add-participant" value="แพร่"> แพร่</label>
-                        <label><input type="checkbox" class="add-participant" value="น่าน"> น่าน</label>
-                    </div>
-                </div>
-
-                <!-- วันที่เริ่ม / สิ้นสุด + เวลา -->
-                <div class="task-add-row task-add-row-2col">
-                    <div class="start-date">
-                        <label for="add-start-date">วันที่เริ่มทำงาน</label>
-                        <input type="date" id="add-start-date" name="วันที่เริ่มต้น">
-                    </div>
-                    <div class="start-time">
-                        <label for="add-start-time">เวลาเริ่มทำงาน</label>
-                        <input type="time" id="add-start-time" name="เวลาเริ่มต้น">
-                    </div>
-
-                </div>
-
-                <div class="task-add-row task-add-row-2col">
-                    <div class="end-date">
-                        <label for="add-end-date">วันที่ทำงานเสร็จสิ้น</label>
-                        <input type="date" id="add-end-date" name="วันที่สิ้นสุด">
-                    </div>
-                    <div class="end-time">
-                        <label for="add-end-time">เวลาสิ้นสุดการทำงาน</label>
-                        <input type="time" id="add-end-time" name="เวลาสิ้นสุด">
-                    </div>
-                </div>
-
-                <!-- สถานที่ / จังหวัด -->
-                <div class="task-add-row task-add-row-2col">
-                    <div class="location">
-                        <label for="add-location">สถานที่</label>
-                        <input type="text" id="add-location" name="สถานที่">
-                    </div>
-                    <div class="province">
-                        <label for="add-province">จังหวัด</label>
-                        <select id="add-province" name="จังหวัด">
-                            <option value="">-- เลือกจังหวัด --</option>
-                            <option value="พิษณุโลก">พิษณุโลก</option>
-                            <option value="ตาก">ตาก</option>
-                            <option value="สุโขทัย">สุโขทัย</option>
-                            <option value="อุตรดิตถ์">อุตรดิตถ์</option>
-                            <option value="แพร่">แพร่</option>
-                            <option value="น่าน">น่าน</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- ลิงก์แนบ / เอกสารแนบ -->
-                <div class="task-add-row">
-                    <label for="add-link">ลิงก์ที่เกี่ยวข้อง</label>
-                    <input type="url" id="add-link" name="ลิงก์แนบ" placeholder="https://...">
-                </div>
-
-                <div class="task-add-row">
-                    <label for="add-file">เอกสารแนบ</label>
-                    <input type="file" id="add-file" name="เอกสารแนบ">
-                </div>
-
-                <!-- สถานะ (แสดงว่าเริ่มต้น = รอการตรวจสอบ) -->
-                <div class="task-add-row">
-                    <label>สถานะเริ่มต้น</label>
-                    <input type="text" value="รอการตรวจสอบ" readonly>
-                    <input type="hidden" id="add-status" name="สถานะ" value="รอการตรวจสอบ">
-                    <p class="task-add-hint">
-                        * สถานะจะเปลี่ยนเป็น "กำลังดำเนินการ" เมื่อผู้เข้าร่วมทุกคนกดรับทราบ (กำหนด logic ภายหลัง)
-                    </p>
-                </div>
-
-
-            </form>
-
-            <div class="task-add-footer">
-                <button type="button" class="task-add-cancel task-add-close">ยกเลิก</button>
-                <button type="submit" class="task-add-save">บันทึกงาน</button>
-            </div>
-        </div>
-    </div>
 
     <div class="task-modal-overlay" id="task-modal-overlay">
         <div class="task-modal">

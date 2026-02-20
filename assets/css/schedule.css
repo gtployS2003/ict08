@@ -12,9 +12,6 @@ body {
     font-family: 'Inter', 'Noto Sans Thai', sans-serif;
 }
 
-main {
-    padding-top: 190px;
-}
 
 *::before,
 *::after {
@@ -24,6 +21,15 @@ main {
 /* ==========================
    SCHEDULE NAV
 =========================== */
+
+.main-evnt-list {
+    padding-top: 140px;
+    /* เผื่อ header fixed */
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: 24px;
+    flex: 1;
+}
 
 .main-nav {
     position: fixed;
@@ -1181,7 +1187,7 @@ body.modal-open {
 =========================== */
 
 .evnt-list-main {
-    max-width: 1200px;
+    max-width: 95%;
     margin: 0 auto;
     padding: 24px 20px 40px;
 }
@@ -1218,7 +1224,7 @@ body.modal-open {
 .evnt-list-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 900px;
+    min-width: 1200px;
     table-layout: fixed;
     font-size: 14px;
 }
@@ -1245,63 +1251,89 @@ body.modal-open {
     background: #f9fafb;
 }
 
-/* คอลัมน์เล็กๆ เช่น ลำดับ / วันที่ */
+/* Tablet: ลดการบังคับความกว้างคอลัมน์ ให้แสดงได้พอดีจอมากขึ้น */
+@media (max-width: 1024px) {
+    .evnt-list-table {
+        min-width: 0;
+        table-layout: auto;
+    }
+
+    .evnt-list-table th,
+    .evnt-list-table td {
+        width: auto !important;
+    }
+
+    .evnt-list-table tbody td {
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+        word-break: break-word;
+    }
+}
+
+/* คอลัมน์เล็กๆ เช่น รหัส / จังหวัด */
 .evnt-list-table td:nth-child(1),
-.evnt-list-table td:nth-child(6),
-.evnt-list-table td:nth-child(7) {
+.evnt-list-table td:nth-child(2),
+.evnt-list-table td:nth-child(7),
+.evnt-list-table td:nth-child(10) {
     white-space: nowrap;
 }
 
-/* ลำดับ */
+/* รหัสงาน */
 .evnt-list-table th:nth-child(1),
 .evnt-list-table td:nth-child(1) {
-    width: 20px;
-    text-align: center;
+    width: 80px;
 }
 
-/* ชื่องาน */
+/* รหัสคำร้อง */
 .evnt-list-table th:nth-child(2),
 .evnt-list-table td:nth-child(2) {
-    width: 180px;
-}
-
-/* ประเภทหลัก / ย่อย */
-.evnt-list-table th:nth-child(3),
-.evnt-list-table td:nth-child(3) {
-    width: 130px;
-}
-
-/* ผู้ร้องขอ */
-.evnt-list-table th:nth-child(4),
-.evnt-list-table td:nth-child(4) {
     width: 90px;
 }
 
-/* ผู้เข้าร่วม */
+/* ชื่องาน */
+.evnt-list-table th:nth-child(3),
+.evnt-list-table td:nth-child(3) {
+    width: 240px;
+}
+
+/* ประเภทย่อย / ประเภทหลัก */
+.evnt-list-table th:nth-child(4),
+.evnt-list-table td:nth-child(4) {
+    width: 170px;
+}
+
+/* ผู้ร้องขอ */
 .evnt-list-table th:nth-child(5),
 .evnt-list-table td:nth-child(5) {
-    width: 120px;
+    width: 140px;
+}
+
+/* ผู้เข้าร่วม */
+.evnt-list-table th:nth-child(6),
+.evnt-list-table td:nth-child(6) {
+    width: 180px;
 }
 
 /* จังหวัด */
-.evnt-list-table th:nth-child(6),
-.evnt-list-table td:nth-child(6) {
-    width: 70px;
+.evnt-list-table th:nth-child(7),
+.evnt-list-table td:nth-child(7) {
+    width: 100px;
 }
 
 /* เริ่มต้น / สิ้นสุด (วันที่+เวลา) */
-.evnt-list-table th:nth-child(7),
-.evnt-list-table td:nth-child(7),
 .evnt-list-table th:nth-child(8),
-.evnt-list-table td:nth-child(8) {
-    width: 80px;
+.evnt-list-table td:nth-child(8),
+.evnt-list-table th:nth-child(9),
+.evnt-list-table td:nth-child(9) {
+    width: 140px;
     white-space: pre-line;
 }
 
 /* สถานะ */
-.evnt-list-table th:nth-child(9),
-.evnt-list-table td:nth-child(9) {
-    width: 120px;
+.evnt-list-table th:nth-child(10),
+.evnt-list-table td:nth-child(10) {
+    width: 150px;
     white-space: nowrap;
 }
 
@@ -1315,6 +1347,135 @@ body.modal-open {
 
 .evnt-list-table .job-title-link:hover {
     text-decoration: underline;
+}
+
+/* ===============================
+   Responsive: รายการงาน
+================================*/
+
+@media (max-width: 900px) {
+    .evnt-list-main {
+        padding: 18px 14px 32px;
+    }
+
+    .event-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .schedule-toolbar {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .schedule-search {
+        max-width: none;
+        flex: 1 1 260px;
+    }
+}
+
+@media (max-width: 768px) {
+    /* เปลี่ยนตารางเป็นการ์ด เพื่ออ่านง่ายบนมือถือ */
+    .evnt-list-table-wrapper {
+        padding: 10px;
+        overflow-x: visible;
+    }
+
+    .evnt-list-table {
+        min-width: 0;
+        table-layout: auto;
+        border-collapse: separate;
+        border-spacing: 0 10px;
+    }
+
+    .evnt-list-table thead {
+        display: none;
+    }
+
+    .evnt-list-table,
+    .evnt-list-table tbody,
+    .evnt-list-table tr,
+    .evnt-list-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .evnt-list-table tbody tr {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        padding: 10px 12px;
+        margin-bottom: 15px;
+    }
+
+    .evnt-list-table tbody td {
+        border: none;
+        padding: 10px 0;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: start;
+        gap: 4px;
+    }
+
+    .evnt-list-table tbody td + td {
+        border-top: 1px dashed #eef2f7;
+    }
+
+    .evnt-list-table tbody td::before {
+        content: attr(data-label);
+        grid-column: 1;
+        color: #6b7280;
+        font-weight: 600;
+        line-height: 1.2;
+        font-size: 13px;
+    }
+
+    .evnt-list-table tbody td .evnt-cell-value {
+        grid-column: 1;
+        text-align: left;
+        color: #111827;
+        line-height: 1.35;
+        word-break: break-word;
+        font-size: 15px;
+    }
+
+    /* ฟิลด์ยาว: เพิ่มระยะห่างเล็กน้อย */
+    .evnt-list-table tbody td.evnt-cell-block .evnt-cell-value {
+        margin-top: 2px;
+    }
+
+    .evnt-list-table .job-title-link {
+        word-break: break-word;
+    }
+
+    .evnt-list-table .job-title-link {
+        font-weight: 600;
+        color: #111827;
+    }
+}
+
+@media (max-width: 480px) {
+    .evnt-list-title {
+        font-size: 24px;
+    }
+
+    .add-task {
+        width: 48px;
+        height: 48px;
+        padding: 0;
+        justify-content: center;
+    }
+
+    .schedule-search {
+        padding: 10px 12px;
+    }
 }
 
 .status-flow {

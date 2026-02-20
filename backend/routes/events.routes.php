@@ -25,6 +25,12 @@ function events_routes(string $method, array $segments, PDO $pdo): bool
         return true;
     }
 
+    // GET /events/table?page=&limit=&q=
+    if ($method === 'GET' && count($segments) === 2 && $segments[1] === 'table') {
+        $ctl->table();
+        return true;
+    }
+
     // POST /events/internal
     if ($method === 'POST' && count($segments) === 2 && $segments[1] === 'internal') {
         $ctl->createInternal();

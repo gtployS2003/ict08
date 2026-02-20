@@ -29,6 +29,42 @@ final class EventsController
     public function __construct(private PDO $pdo) {}
 
     /**
+     * GET /events/table?page=&limit=&q=
+     * List events for schedule/events.html table.
+     */
+    public function table(): void
+    {
+        try {
+            $this->requireStaffAccess();
+
+            $page = max(1, (int)($_GET['page'] ?? 1));
+            $limit = max(1, min(500, (int)($_GET['limit'] ?? 200)));
+            $q = trim((string)($_GET['q'] ?? ''));
+
+            $m = new EventModel($this->pdo);
+            $rows = $m->listForTable($q, $page, $limit);
+            $total = $m->countForTable($q);
+
+            json_response([
+                'error' => false,
+                'data' => $rows,
+                'pagination' => [
+                    'page' => $page,
+                    'limit' => $limit,
+                    'total' => $total,
+                    'totalPages' => (int)ceil($total / max(1, $limit)),
+                ],
+            ]);
+        } catch (Throwable $e) {
+            json_response([
+                'error' => true,
+                'message' => 'Failed to list events table',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * GET /events?from=YYYY-MM-DD&to=YYYY-MM-DD
      * Returns events in date range for calendar.
      */
