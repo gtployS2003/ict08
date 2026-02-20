@@ -203,6 +203,7 @@
     hide($("#btn-add-request-type"));
     hide($("#btn-add-request-sub-type"));
     hide($("#btn-add-request-status"));
+    hide($("#btn-add-event-status"));
     hide($("#btn-add-head-of-request"));
     hide($("#btn-add-urgency"));
     hide($("#btn-add-notification-type"));
@@ -281,6 +282,12 @@
         show($("#section-request-status"));
         show($("#btn-add-request-status"));
         setTitle("ตั้งค่าสถานะคำขอ");
+        break;
+
+      case "event-status":
+        show($("#section-event-status"));
+        show($("#btn-add-event-status"));
+        setTitle("ตั้งค่าสถานะกิจกรรม");
         break;
 
       case "head-of-request":
@@ -3578,6 +3585,243 @@
   }
 
   /* =========================
+    Event Status UI (สถานะกิจกรรม)
+    - CRUD + search + filter ตามประเภทคำขอหลัก (request_type_id)
+  ========================= */
+  const eventStatusEls = {
+    section: $("#section-event-status"),
+    tbody: $("#event-status-tbody"),
+    search: $("#event-status-search"),
+    limit: $("#event-status-limit"),
+    refresh: $("#event-status-refresh"),
+    pagination: $("#event-status-pagination"),
+    total: $("#event-status-total"),
+
+    filterType: $("#event-status-filter-type"),
+
+    btnAdd: $("#btn-add-event-status"),
+
+    modal: $("#event-status-modal"),
+    form: $("#event-status-form"),
+    modalTitle: $("#event-status-modal-title"),
+    submitText: $("#event-status-submit-text"),
+
+    inputId: $("#event-status-id"),
+    inputName: $("#event-status-name"),
+    inputCode: $("#event-status-code"),
+    inputDesc: $("#event-status-desc"),
+    inputSort: $("#event-status-sort"),
+    selectType: $("#event-status-request-type"),
+
+    formError: $("#event-status-form-error"),
+  };
+
+  const eventStatusState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    request_type_id: 0,
+    total: 0,
+    totalPages: 1,
+    loading: false,
+    refsLoaded: false,
+  };
+
+  function refreshEventStatusEls() {
+    eventStatusEls.section = $("#section-event-status");
+    eventStatusEls.tbody = $("#event-status-tbody");
+    eventStatusEls.search = $("#event-status-search");
+    eventStatusEls.limit = $("#event-status-limit");
+    eventStatusEls.refresh = $("#event-status-refresh");
+    eventStatusEls.pagination = $("#event-status-pagination");
+    eventStatusEls.total = $("#event-status-total");
+
+    eventStatusEls.filterType = $("#event-status-filter-type");
+    eventStatusEls.btnAdd = $("#btn-add-event-status");
+
+    eventStatusEls.modal = $("#event-status-modal");
+    eventStatusEls.form = $("#event-status-form");
+    eventStatusEls.modalTitle = $("#event-status-modal-title");
+    eventStatusEls.submitText = $("#event-status-submit-text");
+
+    eventStatusEls.inputId = $("#event-status-id");
+    eventStatusEls.inputName = $("#event-status-name");
+    eventStatusEls.inputCode = $("#event-status-code");
+    eventStatusEls.inputDesc = $("#event-status-desc");
+    eventStatusEls.inputSort = $("#event-status-sort");
+    eventStatusEls.selectType = $("#event-status-request-type");
+
+    eventStatusEls.formError = $("#event-status-form-error");
+  }
+
+  function renderEventStatusRows(items = []) {
+    if (!eventStatusEls.tbody) return;
+
+    if (!items.length) {
+      eventStatusEls.tbody.innerHTML = `<tr><td colspan="7" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    eventStatusEls.tbody.innerHTML = items
+      .map((row) => {
+        const id = row.event_status_id ?? row.id ?? "";
+        const typeName = row.type_name ?? row.request_type_name ?? "-";
+        const sortOrder = row.sort_order ?? "-";
+        const code = row.status_code ?? "-";
+        const name = row.status_name ?? "-";
+        const meaning = row.meaning ?? "-";
+        const typeId = row.request_type_id ?? "";
+
+        return `
+        <tr data-id="${escapeHtml(String(id))}">
+          <td>${escapeHtml(String(id))}</td>
+          <td>${escapeHtml(String(typeName))}</td>
+          <td>${escapeHtml(String(sortOrder))}</td>
+          <td>${escapeHtml(String(code))}</td>
+          <td>${escapeHtml(String(name))}</td>
+          <td class="muted">${escapeHtml(String(meaning))}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" type="button"
+              data-action="edit"
+              data-id="${escapeHtml(String(id))}"
+              data-type="${escapeHtml(String(typeId))}"
+              data-sort="${escapeHtml(String(sortOrder))}"
+              data-code="${escapeHtml(String(code))}"
+              data-name="${escapeHtml(String(name))}"
+              data-meaning="${escapeHtml(String(meaning))}"
+            >แก้ไข</button>
+            <button class="btn btn-danger btn-sm" type="button"
+              data-action="delete"
+              data-id="${escapeHtml(String(id))}"
+            >ลบ</button>
+          </td>
+        </tr>
+      `;
+      })
+      .join("");
+  }
+
+  function renderEventStatusPagination() {
+    if (!eventStatusEls.pagination) return;
+    renderPager(eventStatusEls.pagination, {
+      page: eventStatusState.page,
+      totalPages: eventStatusState.totalPages,
+    });
+  }
+
+  function renderEventStatusTotal() {
+    if (!eventStatusEls.total) return;
+    eventStatusEls.total.textContent = `ทั้งหมด ${eventStatusState.total} รายการ`;
+  }
+
+  async function loadEventStatusTypeRefs({ force = false } = {}) {
+    refreshEventStatusEls();
+
+    const filterEl = eventStatusEls.filterType;
+    const modalEl = eventStatusEls.selectType;
+
+    if (!filterEl && !modalEl) return;
+    if (!force && eventStatusState.refsLoaded && filterEl && modalEl) return;
+
+    if (filterEl) filterEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
+    if (modalEl) modalEl.innerHTML = `<option value="">กำลังโหลด...</option>`;
+
+    try {
+      const api = window.RequestTypesAPI || window.requestTypesApi;
+      if (!api?.list) throw new Error("RequestTypesAPI.list not found");
+
+      const res = await api.list({ q: "", page: 1, limit: 500 });
+
+      const items =
+        Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.data?.items)
+            ? res.data.items
+            : Array.isArray(res?.items)
+              ? res.items
+              : [];
+
+      const optAll = [`<option value="">ทุกประเภทคำขอหลัก</option>`]
+        .concat(
+          items.map((it) => {
+            const id = it.request_type_id ?? it.id ?? "";
+            const label = it.type_name ?? it.name ?? "-";
+            return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
+          })
+        )
+        .join("");
+
+      const optPick = [`<option value="">เลือกประเภทคำขอหลัก</option>`]
+        .concat(
+          items.map((it) => {
+            const id = it.request_type_id ?? it.id ?? "";
+            const label = it.type_name ?? it.name ?? "-";
+            return `<option value="${escapeHtml(String(id))}">${escapeHtml(String(label))}</option>`;
+          })
+        )
+        .join("");
+
+      if (filterEl) filterEl.innerHTML = optAll;
+      if (modalEl) modalEl.innerHTML = optPick;
+
+      eventStatusState.refsLoaded = true;
+    } catch (e) {
+      console.warn("load request type refs for event status failed:", e);
+      if (filterEl) filterEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
+      if (modalEl) modalEl.innerHTML = `<option value="">โหลดไม่สำเร็จ</option>`;
+    }
+  }
+
+  async function loadEventStatuses() {
+    refreshEventStatusEls();
+    if (eventStatusState.loading) return;
+    eventStatusState.loading = true;
+
+    try {
+      if (!eventStatusEls.tbody) return;
+      eventStatusEls.tbody.innerHTML = `<tr><td colspan="7" class="muted">กำลังโหลด...</td></tr>`;
+
+      const api = window.EventStatusAPI || window.eventStatusApi;
+      if (!api?.list) throw new Error("EventStatusAPI.list not found (check include event-status.api.js)");
+
+      const res = await api.list({
+        q: eventStatusState.q,
+        page: eventStatusState.page,
+        limit: eventStatusState.limit,
+        request_type_id: eventStatusState.request_type_id,
+      });
+
+      const items =
+        Array.isArray(res)
+          ? res
+          : Array.isArray(res?.data)
+            ? res.data
+            : Array.isArray(res?.data?.items)
+              ? res.data.items
+              : Array.isArray(res?.items)
+                ? res.items
+                : [];
+
+      const pg = res?.pagination ?? res?.data?.pagination ?? {};
+      eventStatusState.total = Number(pg.total ?? res?.total ?? items.length ?? 0);
+      eventStatusState.totalPages =
+        Number(pg.total_pages ?? pg.totalPages ?? res?.total_pages ?? 0) ||
+        Math.max(1, Math.ceil(eventStatusState.total / Math.max(1, eventStatusState.limit)));
+
+      renderEventStatusRows(items);
+      renderEventStatusPagination();
+      renderEventStatusTotal();
+    } catch (err) {
+      console.error(err);
+      if (eventStatusEls.tbody) {
+        eventStatusEls.tbody.innerHTML = `<tr><td colspan="7" class="muted">${escapeHtml(err.message || err)}</td></tr>`;
+      }
+    } finally {
+      eventStatusState.loading = false;
+    }
+  }
+
+  /* =========================
     Urgency UI (ความเร่งด่วน) - CRUD urgency
   ========================= */
   const urgencyEls = {
@@ -5629,6 +5873,37 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
     document.body.style.overflow = "";
   }
 
+  function openEventStatusModal({ mode, row = null } = {}) {
+    refreshEventStatusEls();
+    if (!eventStatusEls.modal) return;
+
+    if (eventStatusEls.formError) {
+      eventStatusEls.formError.textContent = "";
+      hide(eventStatusEls.formError);
+    }
+
+    const isEdit = mode === "edit";
+    if (eventStatusEls.modalTitle) eventStatusEls.modalTitle.textContent = isEdit ? "แก้ไขสถานะกิจกรรม" : "เพิ่มสถานะกิจกรรม";
+    if (eventStatusEls.submitText) eventStatusEls.submitText.textContent = isEdit ? "บันทึกการแก้ไข" : "บันทึก";
+
+    if (eventStatusEls.inputId) eventStatusEls.inputId.value = isEdit ? String(row?.event_status_id ?? "") : "";
+    if (eventStatusEls.inputCode) eventStatusEls.inputCode.value = isEdit ? String(row?.status_code ?? "") : "";
+    if (eventStatusEls.inputName) eventStatusEls.inputName.value = isEdit ? String(row?.status_name ?? "") : "";
+    if (eventStatusEls.inputDesc) eventStatusEls.inputDesc.value = isEdit ? String(row?.meaning ?? "") : "";
+    if (eventStatusEls.selectType) eventStatusEls.selectType.value = isEdit ? String(row?.request_type_id ?? "") : "";
+    if (eventStatusEls.inputSort) eventStatusEls.inputSort.value = isEdit ? String(row?.sort_order ?? 1) : "1";
+
+    show(eventStatusEls.modal);
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeEventStatusModal() {
+    refreshEventStatusEls();
+    if (!eventStatusEls.modal) return;
+    hide(eventStatusEls.modal);
+    document.body.style.overflow = "";
+  }
+
   function openNotificationTypeModal(mode, row = null) {
     if (notificationTypeEls.formError) notificationTypeEls.formError.hidden = true;
     if (notificationTypeEls.form) notificationTypeEls.form.reset();
@@ -6113,6 +6388,19 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
       await loadRequestStatuses();
     }
 
+    if (sectionKey === "event-status") {
+      refreshEventStatusEls();
+
+      eventStatusState.page = 1;
+      eventStatusState.q = (eventStatusEls.search?.value || "").trim();
+      eventStatusState.limit = Number(eventStatusEls.limit?.value || 50);
+
+      await loadEventStatusTypeRefs({ force: true });
+      eventStatusState.request_type_id = Number(eventStatusEls.filterType?.value || 0);
+
+      await loadEventStatuses();
+    }
+
     if (sectionKey === "head-of-request") {
       refreshHorEls();
 
@@ -6232,6 +6520,11 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
     openRequestStatusModal({ mode: "create" });
   });
 
+  eventStatusEls.btnAdd?.addEventListener("click", async () => {
+    await loadEventStatusTypeRefs();
+    openEventStatusModal({ mode: "create" });
+  });
+
   urgencyEls.btnAdd?.addEventListener("click", () => {
     openUrgencyModal({ mode: "create" });
   });
@@ -6346,6 +6639,13 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
     loadRequestStatuses();
   });
 
+  eventStatusEls.search?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    eventStatusState.page = 1;
+    eventStatusState.q = (eventStatusEls.search.value || "").trim();
+    loadEventStatuses();
+  });
+
   urgencyEls.search?.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
     urgencyState.page = 1;
@@ -6449,6 +6749,12 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
     loadRequestStatuses();
   });
 
+  eventStatusEls.limit?.addEventListener("change", () => {
+    eventStatusState.page = 1;
+    eventStatusState.limit = Number(eventStatusEls.limit.value || 50);
+    loadEventStatuses();
+  });
+
   urgencyEls.limit?.addEventListener("change", () => {
     urgencyState.page = 1;
     urgencyState.limit = Number(urgencyEls.limit.value || 50);
@@ -6520,6 +6826,10 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
 
   requestStatusEls.refresh?.addEventListener("click", () => {
     loadRequestStatuses();
+  });
+
+  eventStatusEls.refresh?.addEventListener("click", () => {
+    loadEventStatuses();
   });
 
   urgencyEls.refresh?.addEventListener("click", () => {
@@ -6672,6 +6982,17 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
 
     requestStatusState.page = next;
     loadRequestStatuses();
+  });
+
+  eventStatusEls.pagination?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-page]");
+    if (!btn || btn.disabled) return;
+
+    const next = Number(btn.getAttribute("data-page"));
+    if (!next || next < 1 || next > eventStatusState.totalPages) return;
+
+    eventStatusState.page = next;
+    loadEventStatuses();
   });
 
   urgencyEls.pagination?.addEventListener("click", (e) => {
@@ -7281,6 +7602,50 @@ orgEls.tbody?.addEventListener("click", async (e) => {
         if (requestStatusState.page > requestStatusState.totalPages) {
           requestStatusState.page = requestStatusState.totalPages;
           await loadRequestStatuses();
+        }
+      } catch (err) {
+        alert(`ลบไม่สำเร็จ: ${err.message || err}`);
+      }
+    }
+  });
+
+  eventStatusEls.tbody?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+
+    const action = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id") || "";
+
+    const api = window.EventStatusAPI || window.eventStatusApi;
+    if (!api) return alert("EventStatusAPI not found");
+
+    if (action === "edit") {
+      await loadEventStatusTypeRefs();
+
+      const row = {
+        event_status_id: Number(btn.getAttribute("data-id") || 0),
+        request_type_id: Number(btn.getAttribute("data-type") || 0),
+        sort_order: Number(btn.getAttribute("data-sort") || 1),
+        status_code: btn.getAttribute("data-code") || "",
+        status_name: btn.getAttribute("data-name") || "",
+        meaning: btn.getAttribute("data-meaning") || "",
+      };
+
+      openEventStatusModal({ mode: "edit", row });
+      return;
+    }
+
+    if (action === "delete") {
+      if (!confirm(`ต้องการลบสถานะกิจกรรม ID ${id} ใช่ไหม?`)) return;
+
+      try {
+        if (!api.remove) throw new Error("EventStatusAPI.remove not found");
+        await api.remove(id);
+
+        await loadEventStatuses();
+        if (eventStatusState.page > eventStatusState.totalPages) {
+          eventStatusState.page = eventStatusState.totalPages;
+          await loadEventStatuses();
         }
       } catch (err) {
         alert(`ลบไม่สำเร็จ: ${err.message || err}`);
@@ -7947,6 +8312,44 @@ orgEls.tbody?.addEventListener("click", async (e) => {
     }
   });
 
+  eventStatusEls.form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    try {
+      const api = window.EventStatusAPI || window.eventStatusApi;
+      if (!api) throw new Error("EventStatusAPI not found");
+
+      const isEdit = String(eventStatusEls.inputId?.value || "").trim() !== "";
+      const id = String(eventStatusEls.inputId?.value || "").trim();
+
+      const payload = {
+        status_name: String(eventStatusEls.inputName?.value || "").trim(),
+        status_code: String(eventStatusEls.inputCode?.value || "").trim(),
+        meaning: String(eventStatusEls.inputDesc?.value || "").trim(),
+        request_type_id: Number(eventStatusEls.selectType?.value || 0),
+        sort_order: Number(eventStatusEls.inputSort?.value || 1),
+      };
+
+      if (!payload.status_name) throw new Error("กรุณากรอกชื่อสถานะกิจกรรม");
+      if (!payload.status_code) throw new Error("กรุณากรอกรหัสสถานะ");
+      if (!payload.request_type_id) throw new Error("กรุณาเลือกประเภทคำขอหลัก");
+
+      if (isEdit) await api.update(id, payload);
+      else await api.create(payload);
+
+      closeEventStatusModal();
+      await loadEventStatuses();
+    } catch (err) {
+      console.error(err);
+      if (eventStatusEls.formError) {
+        eventStatusEls.formError.textContent = err.message || String(err);
+        show(eventStatusEls.formError);
+      } else {
+        alert(err.message || err);
+      }
+    }
+  });
+
   notificationTypeEls.form?.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -8274,6 +8677,12 @@ orgEls.tbody?.addEventListener("click", async (e) => {
     loadRequestStatuses();
   });
 
+  eventStatusEls.filterType?.addEventListener("change", () => {
+    eventStatusState.page = 1;
+    eventStatusState.request_type_id = Number(eventStatusEls.filterType.value || 0);
+    loadEventStatuses();
+  });
+
   notificationTypeStaffEls.filterType?.addEventListener("change", () => {
     notificationTypeStaffState.page = 1;
     notificationTypeStaffState.notification_type_id = notificationTypeStaffEls.filterType.value || "";
@@ -8321,6 +8730,7 @@ orgEls.tbody?.addEventListener("click", async (e) => {
   hide(document.getElementById("btn-add-request-type"));
   hide(document.getElementById("btn-add-request-sub-type"));
   hide(document.getElementById("btn-add-request-status"));
+  hide(document.getElementById("btn-add-event-status"));
   hide(document.getElementById("btn-add-notification-type"));
   hide(document.getElementById("btn-add-notification-type-staff"));
   hide(document.getElementById("btn-add-channel"));

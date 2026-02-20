@@ -42,6 +42,7 @@
     <script src="/ict8/assets/js/api/request-types.api.js"></script>
     <script src="/ict8/assets/js/api/request-sub-types.api.js"></script>
     <script src="/ict8/assets/js/api/request-status.api.js"></script>
+    <script src="/ict8/assets/js/api/event-status.api.js"></script>
     <script src="/ict8/assets/js/api/head-of-request.api.js"></script>
     <script src="/ict8/assets/js/api/urgency.api.js"></script>
     <script src="/ict8/assets/js/api/notification-types.api.js"></script>
@@ -120,9 +121,7 @@
                             <span class="arrow">▾</span>
                         </button>
                         <ul id="menu-event" class="testing-dropdown-menu" hidden>
-                            <li><a href="#">รายการกิจกรรม</a></li>
-                            <li><a href="#">สถานะกิจกรรม</a></li>
-                            <li><a href="#">ผู้เข้าร่วมกิจกรรม</a></li>
+                            <li><a href="#" data-section="event-status">สถานะกิจกรรม</a></li>
                         </ul>
                     </div>
 
@@ -238,6 +237,10 @@
 
                             <button id="btn-add-request-status" class="btn btn-primary" type="button" hidden>
                                 <i class="fa-solid fa-plus"></i> เพิ่มสถานะคำขอ
+                            </button>
+
+                            <button id="btn-add-event-status" class="btn btn-primary" type="button" hidden>
+                                <i class="fa-solid fa-plus"></i> เพิ่มสถานะกิจกรรม
                             </button>
 
                             <button id="btn-add-head-of-request" class="btn btn-primary" type="button" hidden>
@@ -902,6 +905,59 @@
                         <div class="table-footer">
                             <div id="request-status-pagination" class="pagination"></div>
                             <div id="request-status-total" class="muted"></div>
+                        </div>
+                    </section>
+
+                    <!-- SECTION: EVENT STATUS (สถานะกิจกรรม) -->
+                    <section id="section-event-status" class="setting-section" hidden>
+                        <div class="table-toolbar">
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input id="event-status-search" type="search" placeholder="ค้นหาสถานะกิจกรรม..." />
+                            </div>
+
+                            <div class="toolbar-right">
+                                <select id="event-status-filter-type">
+                                    <option value="">ทุกประเภทคำขอหลัก</option>
+                                </select>
+
+                                <select id="event-status-limit">
+                                    <option value="20">20/หน้า</option>
+                                    <option value="50" selected>50/หน้า</option>
+                                    <option value="100">100/หน้า</option>
+                                </select>
+
+                                <button id="event-status-refresh" class="btn btn-ghost" type="button">
+                                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table class="data-table" aria-label="Event Status table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 60px">ID</th>
+                                        <th>ประเภทคำขอหลัก</th>
+                                        <th style="width: 60px">ลำดับ</th>
+                                        <th style="width: 120px">รหัสสถานะ</th>
+                                        <th>ชื่อสถานะ</th>
+                                        <th>ความหมาย</th>
+                                        <th style="width: 220px">จัดการ</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody id="event-status-tbody">
+                                    <tr>
+                                        <td colspan="7" class="muted">ยังไม่มีข้อมูล (หรือยังไม่ได้โหลด)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="table-footer">
+                            <div id="event-status-pagination" class="pagination"></div>
+                            <div id="event-status-total" class="muted"></div>
                         </div>
                     </section>
 
@@ -2042,6 +2098,62 @@
                     <button type="button" class="btn btn-ghost" data-close="request-status-modal">ยกเลิก</button>
                     <button type="submit" class="btn btn btn-primary">
                         <span id="request-status-submit-text">บันทึก</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: EVENT STATUS (สถานะกิจกรรม) -->
+    <div id="event-status-modal" class="modal" hidden>
+        <div class="modal__overlay" data-close="event-status-modal"></div>
+
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="event-status-modal-title">
+            <div class="modal__header">
+                <h3 id="event-status-modal-title">เพิ่มสถานะกิจกรรม</h3>
+                <button class="modal__close" type="button" aria-label="Close" data-close="event-status-modal">
+                    ✕
+                </button>
+            </div>
+
+            <form id="event-status-form" class="modal__body">
+                <input type="hidden" id="event-status-id" name="event_status_id" />
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label for="event-status-name">ชื่อสถานะกิจกรรม</label>
+                        <input id="event-status-name" name="status_name" type="text" required />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="event-status-code">รหัสสถานะ</label>
+                        <input id="event-status-code" name="status_code" type="text" required />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="event-status-request-type">ประเภทคำขอหลัก</label>
+                        <select id="event-status-request-type" name="request_type_id" required>
+                            <option value="">เลือกประเภทคำขอ</option>
+                        </select>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="event-status-desc">รายละเอียด</label>
+                        <textarea id="event-status-desc" name="meaning" rows="3" placeholder="อธิบายเพิ่มเติม (ถ้ามี)"></textarea>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="event-status-sort">ลำดับ</label>
+                        <input id="event-status-sort" name="sort_order" type="number" min="0" value="1" />
+                    </div>
+                </div>
+
+                <div id="event-status-form-error" class="form-error" hidden></div>
+
+                <div class="modal__footer">
+                    <button type="button" class="btn btn-ghost" data-close="event-status-modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn btn-primary">
+                        <span id="event-status-submit-text">บันทึก</span>
                     </button>
                 </div>
             </form>
