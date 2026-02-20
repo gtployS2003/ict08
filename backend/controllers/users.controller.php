@@ -51,6 +51,46 @@ class UsersController
         }
     }
 
+    /**
+     * GET /users/options
+     * Returns lightweight user options for checkbox/select usage.
+     * Requirement: allow listing users of all roles (staff/admin/user/etc.).
+     */
+    public function options(): void
+    {
+        try {
+            $this->requireStaffAccess();
+
+            $sql = "
+                SELECT
+                    u.user_id,
+                    u.user_role_id,
+                    u.line_user_id,
+                    u.line_user_name,
+                    p.display_name,
+                    p.first_name_th,
+                    p.last_name_th
+                FROM `user` u
+                LEFT JOIN person p
+                    ON p.person_user_id = u.user_id
+                ORDER BY
+                    u.user_role_id DESC,
+                    COALESCE(p.display_name, u.line_user_name, '') ASC,
+                    u.user_id ASC
+            ";
+            $stmt = $this->pdo->query($sql);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            json_response(['error' => false, 'data' => $rows], 200);
+        } catch (Throwable $e) {
+            json_response([
+                'error' => true,
+                'message' => 'Failed to list user options',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     private function requireStaffAccess(): void
     {
         // 1) Token auth

@@ -146,6 +146,8 @@ class RequestsController
                     r.*,
                     rt.type_name AS request_type_name,
                     rst.name AS request_sub_type_name,
+                    d.device_name AS device_name,
+                    d.ip AS device_ip,
                     pv.nameTH AS province_name_th,
                     COALESCE(p.display_name, u.line_user_name, CONCAT('user#', r.requester_id)) AS requester_name,
                     rs.status_code,
@@ -153,6 +155,7 @@ class RequestsController
                 FROM request r
                 LEFT JOIN request_type rt ON rt.request_type_id = r.request_type
                 LEFT JOIN request_sub_type rst ON rst.request_sub_type_id = r.request_sub_type
+                LEFT JOIN device d ON d.device_id = r.device_id
                 LEFT JOIN province pv ON pv.province_id = r.province_id
                 LEFT JOIN person p ON p.person_user_id = r.requester_id
                 LEFT JOIN `user` u ON u.user_id = r.requester_id
@@ -469,13 +472,21 @@ class RequestsController
 
             if ($setApproveMeta) {
                 // side effects when request transitions to approved
+                $updatedBy = (int)($me['user_id'] ?? 0);
+                if ($updatedBy <= 0) {
+                    $updatedBy = (int)($this->getAuthUserId() ?? 0);
+                }
+                if ($updatedBy <= 0) {
+                    $updatedBy = 0;
+                }
+
                 $eventMeta = $this->handleApprovedSideEffects($id, $req, [
                     'subject' => $subject,
                     'detail' => $detail,
                     'start_date_time' => $startVal,
                     'end_date_time' => $endVal,
                     'head_of_request_id' => $headId,
-                ]);
+                ], $updatedBy);
 
                 $dispatchJobs = $eventMeta['dispatch_jobs'] ?? [];
             }
@@ -1135,7 +1146,7 @@ class RequestsController
             }
 
             if ($isApprovedTransition) {
-                $eventMeta = $this->handleApprovedSideEffects($requestId, $req, []);
+                $eventMeta = $this->handleApprovedSideEffects($requestId, $req, [], $approverId);
                 $dispatchJobs = $eventMeta['dispatch_jobs'] ?? [];
             }
 
@@ -1178,9 +1189,12 @@ class RequestsController
      * @param array<string,mixed> $overrides Optional updated values (subject/detail/start/end/head_of_request_id)
      * @return array{event_id:int, created_event:bool, notification_ids:array<int,int>, dispatch_jobs:array<int,array{user_id:int,message:string}>}
      */
-    private function handleApprovedSideEffects(int $requestId, array $requestRow, array $overrides): array
+    private function handleApprovedSideEffects(int $requestId, array $requestRow, array $overrides, int $updatedByUserId): array
     {
         $requestId = max(1, (int)$requestId);
+
+        $updatedByUserId = (int)$updatedByUserId;
+        if ($updatedByUserId < 0) $updatedByUserId = 0;
 
         $req = array_merge($requestRow, $overrides);
 
@@ -1218,6 +1232,7 @@ class RequestsController
                 'event_status_id' => $eventStatusId,
                 'start_datetime' => $req['start_date_time'] ?? null,
                 'end_datetime' => $req['end_date_time'] ?? null,
+                'updated_by' => $updatedByUserId,
             ]);
             $createdEvent = true;
         }

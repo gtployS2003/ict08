@@ -20,6 +20,15 @@ function users_routes(string $method, array $segments, PDO $pdo): bool
 
     $controller = new UsersController($pdo);
 
+    // /users/options
+    if (count($segments) === 2 && ($segments[1] ?? '') === 'options') {
+        if ($method === 'GET') {
+            $controller->options();
+            return true;
+        }
+        return false;
+    }
+
     // /users/participants
     if (count($segments) === 2 && ($segments[1] ?? '') === 'participants') {
         if ($method === 'GET') {

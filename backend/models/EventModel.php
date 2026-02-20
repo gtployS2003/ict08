@@ -359,7 +359,48 @@ final class EventModel
             ':end_datetime' => $this->toNullableString($data['end_datetime'] ?? null),
         ]);
 
-        return (int)$this->pdo->lastInsertId();
+        $eventId = (int)$this->pdo->lastInsertId();
+
+        // Insert initial log row for every event insert.
+        // NOTE: event_log columns are NOT NULL, so we coerce nulls to empty strings.
+        $updatedBy = isset($data['updated_by']) ? (int)$data['updated_by'] : 0;
+        if ($updatedBy < 0) $updatedBy = 0;
+
+        $titleLog = trim((string)($data['title'] ?? ''));
+        if (mb_strlen($titleLog) > 255) {
+            $titleLog = mb_substr($titleLog, 0, 255);
+        }
+        $detailLog = (string)($data['detail'] ?? '');
+        $locationLog = (string)($data['location'] ?? '');
+        $noteLog = (string)($data['note'] ?? '');
+
+        $stmtLog = $this->pdo->prepare('
+            INSERT INTO event_log (
+                event_id,
+                title,
+                detail,
+                location,
+                note,
+                updated_by
+            ) VALUES (
+                :event_id,
+                :title,
+                :detail,
+                :location,
+                :note,
+                :updated_by
+            )
+        ');
+        $stmtLog->execute([
+            ':event_id' => $eventId,
+            ':title' => $titleLog,
+            ':detail' => $detailLog,
+            ':location' => $locationLog,
+            ':note' => $noteLog,
+            ':updated_by' => $updatedBy,
+        ]);
+
+        return $eventId;
     }
 
     /**

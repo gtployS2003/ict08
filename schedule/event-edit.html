@@ -5,46 +5,146 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
-    <title>แก้ไขงาน (Event)</title>
+    <title>แก้ไขงาน</title>
 
-    <link rel="stylesheet" href="/ict8/assets/css/device.css"/>
+    <link rel="stylesheet" href="/ict8/assets/css/request-form.css" />
 
     <style>
-        .event-edit-readonly {
+        .request-form-readonly {
             background: #f9fafb;
         }
 
-        .event-edit-danger {
+        /* ===== Event edit sections ===== */
+        .ee-section {
+            padding: 14px 0;
+        }
+
+        .ee-section-title {
+            font-weight: 800;
+            font-size: 14px;
+            margin: 0 0 10px 0;
+        }
+
+        .ee-muted {
+            color: #6b7280;
+            font-size: 12px;
+        }
+
+        /* ===== Stepper ===== */
+        .ee-stepper {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .ee-step {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 10px 10px;
+            background: #fff;
+            position: relative;
+        }
+
+        .ee-step::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            right: -10px;
+            width: 10px;
+            height: 2px;
+            background: #e5e7eb;
+            transform: translateY(-50%);
+        }
+
+        .ee-step:last-child::after {
+            display: none;
+        }
+
+        .ee-step-label {
+            font-weight: 800;
+            font-size: 13px;
+            line-height: 1.2;
+        }
+
+        .ee-step-sub {
+            margin-top: 4px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .ee-step.completed {
+            border-color: rgba(16, 185, 129, .35);
+            background: #ecfdf5;
+        }
+
+        .ee-step.active {
+            border-color: rgba(83, 34, 116, .45);
+            box-shadow: 0 0 0 4px rgba(83, 34, 116, .10);
+        }
+
+        /* ===== Participants checklist ===== */
+        .ee-checklist {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 12px;
+            background: #fafafa;
+            max-height: 320px;
+            overflow: auto;
+        }
+
+        .ee-checklist-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        @media (min-width: 768px) {
+            .ee-checklist-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .ee-check-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 8px 10px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+        }
+
+        .ee-check-item input {
+            margin-top: 2px;
+        }
+
+        .ee-check-name {
+            font-weight: 700;
+            font-size: 13px;
+            line-height: 1.25;
+        }
+
+        .ee-check-meta {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+
+        .request-form-btn-danger {
             background: #b91c1c;
             color: #fff;
             border: 1px solid #b91c1c;
         }
 
-        .event-edit-danger:disabled {
+        .request-form-btn-danger:disabled {
             opacity: .6;
             cursor: not-allowed;
         }
 
-        .event-edit-hint {
-            font-size: 12px;
-            color: #666;
-            margin-top: 4px;
-        }
-
-        .event-edit-info {
-            display: none;
-            padding: 10px 12px;
-            border-radius: 10px;
-            background: #fff7ed;
-            border: 1px solid #fed7aa;
-            color: #7c2d12;
-            margin-bottom: 12px;
-        }
-
-        .event-edit-info.error {
-            background: #fff1f2;
+        .request-form-info-box.error {
+            border-style: solid;
             border-color: #fecaca;
-            color: #7f1d1d;
+            background: #fff1f2;
         }
     </style>
 
@@ -63,84 +163,169 @@
     <div id="header-index"></div>
     <div id="schedule-nav"></div>
 
-    <main class="main schedule-edit-main">
-        <div class="schedule-edit-container">
-            <h1 class="schedule-edit-title">แก้ไขงานในระบบ (Event)</h1>
-
-            <div id="ee-info" class="event-edit-info"></div>
-
-            <form id="event-edit-form" class="schedule-edit-form" style="display:none;">
-                <div class="edit-row">
-                    <label for="ee-event-id">รหัสงาน (event_id)</label>
-                    <input type="text" id="ee-event-id" class="event-edit-readonly" readonly>
-                </div>
-
-                <div class="edit-row">
-                    <label for="ee-request-id">อ้างอิงคำขอ (request_id)</label>
-                    <input type="text" id="ee-request-id" class="event-edit-readonly" readonly>
-                    <div class="event-edit-hint">* งานนี้ถูกสร้างจากคำขอที่อนุมัติแล้ว</div>
-                </div>
-
-                <div class="edit-row">
-                    <label for="ee-title">ชื่องาน</label>
-                    <input type="text" id="ee-title" required>
-                </div>
-
-                <div class="edit-row">
-                    <label for="ee-detail">รายละเอียด</label>
-                    <textarea id="ee-detail" rows="4"></textarea>
-                </div>
-
-                <div class="edit-row edit-row-2col">
-                    <div class="edit-location">
-                        <label for="ee-province">จังหวัด</label>
-                        <select id="ee-province">
-                            <option value="">-- เลือกจังหวัด --</option>
-                        </select>
-                    </div>
-                    <div class="edit-province">
-                        <label for="ee-location">สถานที่</label>
-                        <input type="text" id="ee-location">
+    <main class="request-form-page">
+        <div class="request-form-container">
+            <div class="request-form-card">
+                <div class="request-form-card-header">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                        <div>
+                            <div class="request-form-card-title" id="ee-page-title">กำลังโหลด...</div>
+                            <div class="request-form-card-subtitle" id="ee-subtitle">กำลังโหลด...</div>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <a class="request-form-btn request-form-btn-ghost" id="ee-back-btn" href="/ict8/schedule/calendar.html">← กลับไปปฏิทิน</a>
+                        </div>
                     </div>
                 </div>
 
-                <div class="edit-row edit-row-2col">
-                    <div>
-                        <label for="ee-start">วัน/เวลาเริ่ม</label>
-                        <input type="datetime-local" id="ee-start">
+                <div id="ee-info" class="request-form-info-box" style="display:none;"></div>
+
+                <form class="request-form-form" id="event-edit-form" style="display:none;">
+                    <!-- Section: IDs + progress -->
+                    <div class="ee-section">
+                        <div style="margin-top:12px;">
+                            <div class="ee-stepper" id="ee-stepper"></div>
+                            <div class="ee-muted" id="ee-stepper-hint" style="margin-top:8px;"></div>
+                        </div>
                     </div>
-                    <div>
-                        <label for="ee-end">วัน/เวลาสิ้นสุด</label>
-                        <input type="datetime-local" id="ee-end">
+
+                    <div class="request-form-divider"></div>
+
+                    <!-- Section: main fields -->
+                    <div class="ee-section">
+                        <div class="request-form-grid">
+                            <div class="request-form-field request-form-span-2">
+                                <label class="request-form-label" for="ee-title">ชื่องาน <span class="request-form-req">*</span></label>
+                                <input class="request-form-input" type="text" id="ee-title" required>
+                                <div class="ee-muted">event_id=<span id="ee-event-id-text">-</span></div>
+                                <input type="hidden" id="ee-event-id" />
+                                <input type="hidden" id="ee-request-id" />
+                                <input type="hidden" id="ee-event-status-id" />
+                            </div>
+
+                            <div class="request-form-field" id="ee-request-type-field">
+                                <label class="request-form-label" for="ee-request-type">ประเภทหลัก</label>
+                                <input class="request-form-input request-form-readonly" type="text" id="ee-request-type" disabled>
+                            </div>
+
+                            <div class="request-form-field" id="ee-request-sub-type-field">
+                                <label class="request-form-label" for="ee-request-sub-type">ประเภทย่อย</label>
+                                <input class="request-form-input request-form-readonly" type="text" id="ee-request-sub-type" disabled>
+                            </div>
+
+                            <div class="request-form-field request-form-span-2" id="ee-device-field" style="display:none;">
+                                <label class="request-form-label" for="ee-device">อุปกรณ์ (แจ้งเสีย-ซ่อม)</label>
+                                <input class="request-form-input request-form-readonly" type="text" id="ee-device" disabled>
+                            </div>
+
+                            <div class="request-form-field request-form-span-2">
+                                <label class="request-form-label" for="ee-detail">รายละเอียด</label>
+                                <textarea class="request-form-textarea" id="ee-detail" rows="4"></textarea>
+                            </div>
+
+                            <div class="request-form-field">
+                                <label class="request-form-label" for="ee-province">จังหวัด</label>
+                                <select class="request-form-select request-form-readonly" id="ee-province" disabled>
+                                    <option value="">-- เลือกจังหวัด --</option>
+                                </select>
+                            </div>
+
+                            <div class="request-form-field">
+                                <label class="request-form-label" for="ee-location">สถานที่</label>
+                                <input class="request-form-input request-form-readonly" type="text" id="ee-location" disabled>
+                            </div>
+
+                            <div class="request-form-field">
+                                <label class="request-form-label" for="ee-start">วันที่เริ่มต้น</label>
+                                <input class="request-form-input request-form-readonly" type="datetime-local" id="ee-start" disabled>
+                            </div>
+
+                            <div class="request-form-field">
+                                <label class="request-form-label" for="ee-end">วันที่สิ้นสุด</label>
+                                <input class="request-form-input request-form-readonly" type="datetime-local" id="ee-end" disabled>
+                            </div>
+
+                            <div class="request-form-field" id="ee-meeting-link-field" style="display:none;">
+                                <label class="request-form-label" for="ee-meeting-link">ลิงก์เข้าร่วมประชุม</label>
+                                <input class="request-form-input" type="url" id="ee-meeting-link" placeholder="https://...">
+                            </div>
+
+                            <div class="request-form-field" id="ee-repair-status-field" style="display:none;">
+                                <label class="request-form-label" for="ee-repair-status">สถานะ (งานซ่อม)</label>
+                                <select class="request-form-select" id="ee-repair-status">
+                                    <option value="">-- เลือกสถานะ --</option>
+                                </select>
+                                <div class="request-form-hint">* แสดงเฉพาะ: รออะไหล่, ส่งซ่อมภายนอก, ดำเนินการแก้ไขแล้ว</div>
+                            </div>
+
+                            <!-- hidden legacy select (kept for compatibility) -->
+                            <div class="request-form-field" style="display:none;">
+                                <label class="request-form-label" for="ee-status">event_status_id (hidden)</label>
+                                <select class="request-form-select" id="ee-status">
+                                    <option value="">-- เลือกสถานะ --</option>
+                                </select>
+                            </div>
+
+                            <div class="request-form-field request-form-span-2">
+                                <label class="request-form-label" for="ee-note">หมายเหตุ</label>
+                                <textarea class="request-form-textarea" id="ee-note" rows="3"></textarea>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <div class="edit-row">
-                    <label for="ee-status">สถานะงาน</label>
-                    <select id="ee-status">
-                        <option value="">-- เลือกสถานะ --</option>
-                    </select>
-                </div>
+                    <div class="request-form-divider"></div>
 
-                <div class="edit-row">
-                    <label for="ee-meeting-link">ลิงก์ประชุม (ถ้ามี)</label>
-                    <input type="url" id="ee-meeting-link" placeholder="https://...">
-                </div>
-
-                <div class="edit-row">
-                    <label for="ee-note">หมายเหตุ</label>
-                    <textarea id="ee-note" rows="3"></textarea>
-                </div>
-
-                <div class="edit-footer" style="display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;">
-                    <button type="button" class="edit-btn-cancel" id="ee-back-btn">ย้อนกลับ</button>
-
-                    <div style="display:flex;gap:10px;">
-                        <button type="button" class="edit-btn-save event-edit-danger" id="ee-delete-btn">ลบงาน</button>
-                        <button type="submit" class="edit-btn-save" id="ee-save-btn">บันทึก</button>
+                    <!-- Section: participants -->
+                    <div class="ee-section">
+                        <div class="ee-muted" style="margin-bottom:10px;">เลือกผู้เข้าร่วม (checkbox) จากตาราง user ทุก role</div>
+                        <div class="ee-checklist" id="ee-participants">
+                            <div class="ee-muted">กำลังโหลดรายชื่อ...</div>
+                        </div>
                     </div>
-                </div>
-            </form>
+
+                    <div class="request-form-divider"></div>
+
+                    <!-- Section: attachments (for internal events) -->
+                    <div class="ee-section" id="ee-internal-attachments-section" style="display:none;">
+                        <div class="request-form-grid">
+                            <div class="request-form-field request-form-span-2">
+                                <label class="request-form-label">ไฟล์แนบเดิม</label>
+                                <div id="ee-event-pictures">-</div>
+                                <div class="request-form-hint">* งานภายในจะเก็บรูปที่รายงานงาน (event_report_picture)</div>
+                            </div>
+                            <div class="request-form-field request-form-span-2">
+                                <label class="request-form-label" for="ee-new-event-pictures">เพิ่มรูปภาพ</label>
+                                <input class="request-form-file" type="file" id="ee-new-event-pictures" multiple accept="image/*" />
+                                <ul class="request-form-file-list" id="ee-new-event-pictures-preview" style="display:none;"></ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: attachments (for request-based events) -->
+                    <div class="ee-section" id="ee-attachments-section" style="display:none;">
+                        <div class="request-form-grid">
+                            <div class="request-form-field request-form-span-2">
+                                <label class="request-form-label">ไฟล์แนบเดิม</label>
+                                <div id="ee-attachments">-</div>
+                                <div class="request-form-hint">* งานที่มาจาก request จะเก็บไฟล์แนบไว้ที่ request</div>
+                            </div>
+                            <div class="request-form-field request-form-span-2">
+                                <label class="request-form-label" for="ee-new-attachments">เพิ่มรูปภาพ</label>
+                                <input class="request-form-file" type="file" id="ee-new-attachments" multiple accept="image/*" />
+                                <ul class="request-form-file-list" id="ee-new-attachments-preview" style="display:none;"></ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="request-form-divider"></div>
+
+                    <div class="request-form-actions">
+                        <button type="button" class="request-form-btn request-form-btn-danger" id="ee-delete-btn" style="display:none;">ลบ</button>
+                        <button type="button" class="request-form-btn request-form-btn-ghost" id="ee-finish-btn">เสร็จสิ้น</button>
+                        <button type="submit" class="request-form-btn request-form-btn-primary" id="ee-save-btn">บันทึก</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </main>
 

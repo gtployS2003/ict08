@@ -61,5 +61,33 @@ function events_routes(string $method, array $segments, PDO $pdo): bool
         }
     }
 
+    // /events/{id}/report
+    if (count($segments) === 3 && is_numeric($segments[1]) && $segments[2] === 'report') {
+        $id = (int)$segments[1];
+        if ($method === 'GET') {
+            $ctl->report($id);
+            return true;
+        }
+    }
+
+    // /events/{id}/report/pictures
+    if (count($segments) === 4 && is_numeric($segments[1]) && $segments[2] === 'report' && $segments[3] === 'pictures') {
+        $id = (int)$segments[1];
+        if ($method === 'POST') {
+            $ctl->uploadReportPictures($id);
+            return true;
+        }
+    }
+
+    // /events/{id}/report/pictures/{pictureId}
+    if (count($segments) === 5 && is_numeric($segments[1]) && $segments[2] === 'report' && $segments[3] === 'pictures' && is_numeric($segments[4])) {
+        $id = (int)$segments[1];
+        $pid = (int)$segments[4];
+        if ($method === 'DELETE') {
+            $ctl->deleteReportPicture($id, $pid);
+            return true;
+        }
+    }
+
     return false;
 }
