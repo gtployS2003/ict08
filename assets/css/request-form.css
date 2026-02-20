@@ -227,7 +227,7 @@ body{
 /* Desktop / Tablet */
 @media (min-width: 768px){
   .request-form-page{
-    padding-top: 150px;
+    padding-top: 180px;
     padding-left: 20px;
     padding-right: 20px;
   }

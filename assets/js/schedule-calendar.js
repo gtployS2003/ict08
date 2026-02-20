@@ -242,7 +242,21 @@ function renderTodayTasks(tasks, containerEl, todayDate) {
             <div class="sidebar-task-meta">${escapeHtml(metaTextParts.join(' · '))}</div>
         `;
 
-        item.addEventListener('click', () => openTaskModal(task));
+        item.addEventListener('click', () => {
+            const basePathRaw = (window.__APP_CONFIG__ && window.__APP_CONFIG__.BASE_PATH)
+                ? String(window.__APP_CONFIG__.BASE_PATH)
+                : '/ict8';
+            const basePath = basePathRaw.trim().replace(/\/+$/, '');
+
+            const eventId = task?.id;
+            if (!eventId) {
+                // fallback: keep previous behavior if id missing
+                openTaskModal(task);
+                return;
+            }
+
+            window.location.href = `${basePath}/schedule/event-edit.html?event_id=${encodeURIComponent(String(eventId))}`;
+        });
         containerEl.appendChild(item);
     });
 }
@@ -363,6 +377,19 @@ function initCalendar(tasks) {
 
         eventClick(info) {
             const task = info.event.extendedProps;
+            const eventId = info?.event?.id;
+
+            const basePathRaw = (window.__APP_CONFIG__ && window.__APP_CONFIG__.BASE_PATH)
+                ? String(window.__APP_CONFIG__.BASE_PATH)
+                : '/ict8';
+            const basePath = basePathRaw.trim().replace(/\/+$/, '');
+
+            if (eventId) {
+                window.location.href = `${basePath}/schedule/event-edit.html?event_id=${encodeURIComponent(String(eventId))}`;
+                return;
+            }
+
+            // fallback: keep modal behavior if id missing
             task.id = info.event.id;
             openTaskModal(task);
         },
