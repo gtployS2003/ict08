@@ -5,6 +5,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../models/RequestModel.php';
+require_once __DIR__ . '/../models/EventModel.php';
+require_once __DIR__ . '/../models/NotificationModel.php';
 require_once __DIR__ . '/../services/NotificationService.php';
 
 // ✅ auth middleware (มี get_auth_user(), require_auth())
@@ -457,12 +459,38 @@ class RequestsController
                 $params[':approve_channel_id'] = ($webChannelId !== null && $webChannelId > 0) ? $webChannelId : null;
             }
 
+            $dispatchJobs = [];
+            $eventMeta = null;
+
+            $this->pdo->beginTransaction();
+
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
+
+            if ($setApproveMeta) {
+                // side effects when request transitions to approved
+                $eventMeta = $this->handleApprovedSideEffects($id, $req, [
+                    'subject' => $subject,
+                    'detail' => $detail,
+                    'start_date_time' => $startVal,
+                    'end_date_time' => $endVal,
+                    'head_of_request_id' => $headId,
+                ]);
+
+                $dispatchJobs = $eventMeta['dispatch_jobs'] ?? [];
+            }
+
+            $this->pdo->commit();
+
+            // Dispatch LINE after commit (best effort)
+            $this->dispatchApprovedJobs($dispatchJobs);
 
             // return updated in the same shape as show()
             $this->show($id);
         } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             json_response([
                 'error' => true,
                 'message' => 'Failed to update request',
@@ -1059,8 +1087,17 @@ class RequestsController
             $statusCodeNorm = strtolower($statusCode);
             $isApprovedTarget = ($statusCodeNorm === 'approved');
 
-            // Stamp approve meta when status becomes approved
-            if ($isApprovedTarget) {
+            $existingStatusId = (int)($req['current_status_id'] ?? 0);
+            $oldCode = $existingStatusId > 0 ? $this->getStatusCodeById($existingStatusId) : null;
+            $isApprovedTransition = ($isApprovedTarget && $oldCode !== 'approved');
+
+            $dispatchJobs = [];
+            $eventMeta = null;
+
+            $this->pdo->beginTransaction();
+
+            // Stamp approve meta when status transitions to approved
+            if ($isApprovedTransition) {
                 $webChannelId = $this->getChannelIdByName('web');
                 $approveById = ($approverId > 0 && $requestTypeId > 0)
                     ? $this->resolveApproveById($requestTypeId, $approverId)
@@ -1097,20 +1134,277 @@ class RequestsController
                 ]);
             }
 
+            if ($isApprovedTransition) {
+                $eventMeta = $this->handleApprovedSideEffects($requestId, $req, []);
+                $dispatchJobs = $eventMeta['dispatch_jobs'] ?? [];
+            }
+
+            $this->pdo->commit();
+
+            // Dispatch LINE after commit (best effort)
+            $this->dispatchApprovedJobs($dispatchJobs);
+
             // return updated
             $updated = $model->findById($requestId);
             json_response([
                 'error' => false,
                 'message' => 'Updated',
-                'data' => $updated ?? ['request_id' => $requestId, 'current_status_id' => $targetStatusId],
+                'data' => array_merge(
+                    $updated ?? ['request_id' => $requestId, 'current_status_id' => $targetStatusId],
+                    $eventMeta && isset($eventMeta['event_id']) ? ['event_id' => (int)$eventMeta['event_id']] : []
+                ),
             ]);
         } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             json_response([
                 'error' => true,
                 'message' => 'Failed to update request status',
                 'detail' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Handle side effects when a request transitions to approved:
+     * - create event (idempotent by request_id)
+     * - insert notification rows (request_accepted)
+     * - prepare LINE dispatch jobs (best effort)
+     *
+     * IMPORTANT: Call this inside an existing DB transaction.
+     *
+     * @param array<string,mixed> $requestRow Row from request table (RequestModel::findById)
+     * @param array<string,mixed> $overrides Optional updated values (subject/detail/start/end/head_of_request_id)
+     * @return array{event_id:int, created_event:bool, notification_ids:array<int,int>, dispatch_jobs:array<int,array{user_id:int,message:string}>}
+     */
+    private function handleApprovedSideEffects(int $requestId, array $requestRow, array $overrides): array
+    {
+        $requestId = max(1, (int)$requestId);
+
+        $req = array_merge($requestRow, $overrides);
+
+        $requestTypeId = (int)($req['request_type'] ?? 0);
+        $subject = trim((string)($req['subject'] ?? ''));
+        $detail = (string)($req['detail'] ?? '');
+
+        // 1) create/find event
+        $eventModel = new EventModel($this->pdo);
+        $existingEvent = $eventModel->findByRequestId($requestId);
+
+        $createdEvent = false;
+        $eventId = 0;
+
+        if ($existingEvent && isset($existingEvent['event_id'])) {
+            $eventId = (int)$existingEvent['event_id'];
+        } else {
+            $eventStatusId = $this->getDefaultEventStatusIdByRequestType($requestTypeId);
+
+            // round_no should run per year, and event_year stored as Thai B.E. year (พ.ศ.)
+            $startDt = $req['start_date_time'] ?? null;
+            $eventYearBE = $this->computeEventYearBE(is_string($startDt) ? $startDt : null);
+            $roundNo = $this->getNextEventRoundNo($eventYearBE);
+
+            $eventId = $eventModel->create([
+                'request_id' => $requestId,
+                'title' => ($subject !== '' ? $subject : ('Request #' . $requestId)),
+                'detail' => $detail,
+                'location' => $req['location'] ?? null,
+                'province_id' => $req['province_id'] ?? null,
+                'meeting_link' => null,
+                'round_no' => $roundNo,
+                'event_year' => $eventYearBE,
+                'note' => null,
+                'event_status_id' => $eventStatusId,
+                'start_datetime' => $req['start_date_time'] ?? null,
+                'end_datetime' => $req['end_date_time'] ?? null,
+            ]);
+            $createdEvent = true;
+        }
+
+        // 2) build link
+        $eventLink = $this->buildEventEditUrl($eventId);
+        $suffix = $subject !== '' ? (' — ' . $subject) : '';
+        $linkLine = $eventLink !== '' ? ("\nแก้ไขรายละเอียดงาน: " . $eventLink) : '';
+
+        // 3) recipients
+        $requesterId = (int)($req['requester_id'] ?? 0);
+        $headOfRequestId = $req['head_of_request_id'] ?? null;
+        $headUserId = $this->resolveHeadStaffUserId($headOfRequestId);
+
+        $dispatchJobs = [];
+        $notificationIds = [];
+
+        // 4) insert notifications (request_accepted = 7)
+        $notifModel = new NotificationModel($this->pdo);
+
+        if ($requesterId > 0) {
+            $msg = "คำขอได้รับการอนุมัติแล้ว (#{$requestId}){$suffix}{$linkLine}";
+            $notificationIds[] = $notifModel->createRequestAccepted([
+                'request_id' => $requestId,
+                'event_id' => $eventId,
+                'notification_type_id' => 7,
+                'message' => $msg,
+            ]);
+            $dispatchJobs[] = ['user_id' => $requesterId, 'message' => $msg];
+        }
+
+        // IMPORTANT: requirement is to insert 2 notifications (requester + head_of_request)
+        // even when head_of_request is the same person as requester.
+        if ($headUserId > 0) {
+            $msg = "มีงานเข้ามาในความรับผิดชอบของคุณ (#{$requestId}){$suffix}{$linkLine}";
+            $notificationIds[] = $notifModel->createRequestAccepted([
+                'request_id' => $requestId,
+                'event_id' => $eventId,
+                'notification_type_id' => 7,
+                'message' => $msg,
+            ]);
+            // Requirement: also push message for head_of_request via LINE (even if same user as requester)
+            $dispatchJobs[] = ['user_id' => $headUserId, 'message' => $msg];
+        }
+
+        return [
+            'event_id' => $eventId,
+            'created_event' => $createdEvent,
+            'notification_ids' => $notificationIds,
+            'dispatch_jobs' => $dispatchJobs,
+        ];
+    }
+
+    /**
+     * Dispatch prepared LINE jobs (best effort). Safe to call outside transaction.
+     *
+     * @param array<int,array{user_id:int,message:string}> $jobs
+     */
+    private function dispatchApprovedJobs(array $jobs): void
+    {
+        if (empty($jobs)) return;
+
+        try {
+            $svc = new NotificationService($this->pdo);
+            foreach ($jobs as $j) {
+                $uid = (int)($j['user_id'] ?? 0);
+                $msg = trim((string)($j['message'] ?? ''));
+                if ($uid <= 0 || $msg === '') continue;
+                $resp = $svc->dispatchToUsers([$uid], $msg);
+                if (($resp['ok'] ?? false) !== true) {
+                    error_log('[REQUESTS] dispatchToUsers not ok: ' . json_encode($resp, JSON_UNESCAPED_UNICODE));
+                    continue;
+                }
+
+                // Even when ok=true, LINE push might have failed for that user (e.g. invalid/missing line_user_id)
+                if (!empty($resp['errors'])) {
+                    error_log('[REQUESTS] dispatchToUsers errors: ' . json_encode($resp, JSON_UNESCAPED_UNICODE));
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('[REQUESTS] dispatchToUsers failed: ' . $e->getMessage());
+        }
+    }
+
+    private function getDefaultEventStatusIdByRequestType(int $requestTypeId): ?int
+    {
+        $requestTypeId = max(0, (int)$requestTypeId);
+        if ($requestTypeId <= 0) return null;
+
+        $stmt = $this->pdo->prepare('
+            SELECT event_status_id
+            FROM event_status
+            WHERE request_type_id = :rt
+            ORDER BY sort_order ASC, event_status_id ASC
+            LIMIT 1
+        ');
+        $stmt->execute([':rt' => $requestTypeId]);
+        $id = $stmt->fetchColumn();
+        return (is_numeric($id) && (int)$id > 0) ? (int)$id : null;
+    }
+
+    /**
+     * Compute Thai B.E. year (พ.ศ.) for event.
+     * - Prefer start datetime year if provided
+     * - Fallback to current year
+     */
+    private function computeEventYearBE(?string $startDatetime): int
+    {
+        $y = 0;
+        $startDatetime = $startDatetime !== null ? trim($startDatetime) : '';
+
+        if ($startDatetime !== '') {
+            try {
+                $dt = new DateTimeImmutable($startDatetime);
+                $y = (int)$dt->format('Y');
+            } catch (Throwable $e) {
+                $y = 0;
+            }
+        }
+
+        if ($y <= 0) {
+            $y = (int)date('Y');
+        }
+
+        // Convert to Thai B.E.
+        return $y + 543;
+    }
+
+    /**
+     * Get next round number for a given event year (B.E.).
+     * IMPORTANT: call inside an existing transaction.
+     */
+    private function getNextEventRoundNo(int $eventYearBE): int
+    {
+        $eventYearBE = (int)$eventYearBE;
+        if ($eventYearBE <= 0) {
+            $eventYearBE = $this->computeEventYearBE(null);
+        }
+
+        // Lock rows for this year to reduce chance of duplicate round_no under concurrency.
+        $stmt = $this->pdo->prepare('
+            SELECT MAX(round_no) AS max_round
+            FROM event
+            WHERE event_year = :y
+            FOR UPDATE
+        ');
+        $stmt->execute([':y' => $eventYearBE]);
+        $max = $stmt->fetchColumn();
+        $maxNo = (is_numeric($max) ? (int)$max : 0);
+        return max(0, $maxNo) + 1;
+    }
+
+    private function resolveHeadStaffUserId(mixed $headOfRequestId): int
+    {
+        if ($headOfRequestId === null || $headOfRequestId === '' || !is_numeric($headOfRequestId)) {
+            return 0;
+        }
+        $hid = (int)$headOfRequestId;
+        if ($hid <= 0) return 0;
+
+        // Join with `user` via head_of_request.staff_id (FK -> user.user_id)
+        $stmt = $this->pdo->prepare('
+            SELECT u.user_id
+            FROM head_of_request h
+            INNER JOIN user u ON u.user_id = h.staff_id
+            WHERE h.id = :id
+            LIMIT 1
+        ');
+        $stmt->execute([':id' => $hid]);
+        $uid = $stmt->fetchColumn();
+        return (is_numeric($uid) && (int)$uid > 0) ? (int)$uid : 0;
+    }
+
+    private function buildEventEditUrl(int $eventId): string
+    {
+        $eventId = max(0, (int)$eventId);
+        if ($eventId <= 0) return '';
+
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+        if ($host === '') return '';
+
+        $basePath = env('BASE_PATH', '/ict8') ?: '/ict8';
+        if ($basePath === '') $basePath = '/ict8';
+        if ($basePath[0] !== '/') $basePath = '/' . $basePath;
+
+        return $scheme . '://' . $host . rtrim($basePath, '/') . '/schedule/event-edit.html?event_id=' . $eventId;
     }
 
     private function getStatusIdByCode(int $requestTypeId, string $statusCode): ?int

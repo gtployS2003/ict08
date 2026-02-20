@@ -7,6 +7,64 @@ class NotificationModel
     public function __construct(private PDO $pdo) {}
 
     /**
+     * สร้างแจ้งเตือน: คำขอได้รับการอนุมัติแล้ว (request_accepted)
+     *
+     * Requirements:
+     * - request_id ต้องมี
+     * - event_id (optional)
+     * - notification_type_id ต้องมี (โดยปกติ = 7)
+     * - message ต้องมี
+     * - schedule_at = null
+     */
+    public function createRequestAccepted(array $data): int
+    {
+        $requestId = isset($data['request_id']) ? (int) $data['request_id'] : 0;
+        if ($requestId <= 0) {
+            throw new InvalidArgumentException('request_id is required');
+        }
+
+        $eventId = isset($data['event_id']) && is_numeric($data['event_id']) ? (int)$data['event_id'] : 0;
+        if ($eventId <= 0) $eventId = 0;
+
+        $notificationTypeId = isset($data['notification_type_id']) ? (int) $data['notification_type_id'] : 0;
+        if ($notificationTypeId <= 0) {
+            throw new InvalidArgumentException('notification_type_id is required');
+        }
+
+        $message = trim((string)($data['message'] ?? ''));
+        if ($message === '') {
+            throw new InvalidArgumentException('message is required');
+        }
+
+        $sql = "
+            INSERT INTO notification (
+                request_id,
+                event_id,
+                notification_type_id,
+                message,
+                schedule_at
+            ) VALUES (
+                :request_id,
+                :event_id,
+                :notification_type_id,
+                :message,
+                :schedule_at
+            )
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            ':request_id' => $requestId,
+            ':event_id' => ($eventId > 0 ? $eventId : null),
+            ':notification_type_id' => $notificationTypeId,
+            ':message' => $message,
+            ':schedule_at' => null,
+        ]);
+
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    /**
      * สร้างแจ้งเตือน: มีคำขอใหม่เข้ามา (request)
      *
      * Requirements (ตาม DB):

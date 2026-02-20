@@ -14,7 +14,8 @@ final class NotificationService
     // notification_type_id ที่คุณต้องการใช้ (ปรับได้)
     public const NOTIF_TYPE_REQUEST_REPAIR = 5;
     public const NOTIF_TYPE_REQUEST_OTHER = 6;
-    public const NOTIF_TYPE_REQUEST_CONFERENCE = 7;
+    // IMPORTANT: DB uses id=4 for request_conferance_pending, while id=7 is request_accepted
+    public const NOTIF_TYPE_REQUEST_CONFERENCE = 4;
 
     public function __construct(private PDO $pdo)
     {
@@ -136,6 +137,90 @@ final class NotificationService
         ];
     }
 
+    /**
+     * Dispatch a message to specific user IDs (best effort).
+     * - Respects user_notification_channel.enable
+     * - LINE: push message if enabled and user has line_user_id
+     * - WEB: no-op (caller may have already inserted notification rows)
+     *
+     * @param array<int,int> $userIds
+     */
+    public function dispatchToUsers(array $userIds, string $message): array
+    {
+        $message = trim($message);
+        if ($message === '') {
+            return ['ok' => false, 'error' => 'Empty message'];
+        }
+
+        $clean = [];
+        foreach ($userIds as $id) {
+            $id = (int)$id;
+            if ($id > 0) $clean[] = $id;
+        }
+        $clean = array_values(array_unique($clean));
+        if (empty($clean)) {
+            return ['ok' => true, 'recipients' => 0, 'sent_line' => 0, 'skipped' => 0, 'errors' => []];
+        }
+
+        $uncModel = new UserNotificationChannelModel($this->pdo);
+
+        $token = env('LINE_CHANNEL_ACCESS_TOKEN');
+        $line = ($token !== null && $token !== '') ? new LineService($token) : null;
+
+        $sentLine = 0;
+        $skipped = 0;
+        $errors = [];
+
+        foreach ($clean as $uid) {
+            // Ensure default channel rows exist (idempotent)
+            try {
+                if ($uncModel->countByUser($uid) <= 0) {
+                    $roleId = $this->getUserRoleId($uid);
+                    $uncModel->bootstrapDefaults($uid, $roleId);
+                }
+            } catch (Throwable $e) {
+                $errors[] = ['user_id' => $uid, 'step' => 'bootstrapDefaults', 'error' => $e->getMessage()];
+            }
+
+            $enabledChannels = [];
+            try {
+                $enabledChannels = $uncModel->listEnabledChannelNamesByUser($uid);
+            } catch (Throwable $e) {
+                $errors[] = ['user_id' => $uid, 'step' => 'listEnabledChannels', 'error' => $e->getMessage()];
+                $skipped++;
+                continue;
+            }
+
+            if (in_array('line', $enabledChannels, true)) {
+                $lineUserId = $this->getLineUserId($uid);
+                if ($line && $lineUserId !== '') {
+                    try {
+                        $resp = $line->pushMessage($lineUserId, [
+                            ['type' => 'text', 'text' => $message]
+                        ]);
+                        if (($resp['ok'] ?? false) === true) {
+                            $sentLine++;
+                        } else {
+                            $errors[] = ['user_id' => $uid, 'step' => 'linePush', 'resp' => $resp];
+                        }
+                    } catch (Throwable $e) {
+                        $errors[] = ['user_id' => $uid, 'step' => 'linePush', 'error' => $e->getMessage()];
+                    }
+                } else {
+                    $skipped++;
+                }
+            }
+        }
+
+        return [
+            'ok' => true,
+            'recipients' => count($clean),
+            'sent_line' => $sentLine,
+            'skipped' => $skipped,
+            'errors' => $errors,
+        ];
+    }
+
     /* ===================== internal helpers ===================== */
 
     private function getUserRoleId(int $userId): int
@@ -145,6 +230,14 @@ final class NotificationService
         $stmt->execute();
         $role = $stmt->fetchColumn();
         return $role ? (int)$role : 1;
+    }
+
+    private function getLineUserId(int $userId): string
+    {
+        $stmt = $this->pdo->prepare('SELECT line_user_id FROM `user` WHERE user_id = :uid LIMIT 1');
+        $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+        return trim((string)($stmt->fetchColumn() ?? ''));
     }
 
     private function resolveRequestNotificationTypeId(int $requestTypeId): int

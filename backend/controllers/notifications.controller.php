@@ -87,6 +87,16 @@ final class NotificationsController
 
             foreach ($items as &$it) {
                 $rid = (int)($it['request_id'] ?? 0);
+                $eid = (int)($it['event_id'] ?? 0);
+                $ntid = (int)($it['notification_type_id'] ?? 0);
+
+                // For accepted notifications, prefer linking to event edit when event_id is present
+                if ($ntid === 7 && $eid > 0) {
+                    $it['link_url'] = $basePath . "/schedule/event-edit.html?event_id=" . $eid;
+                    continue;
+                }
+
+                // Default: if notification is tied to a request, link to check_request
                 if ($rid > 0) {
                     $it['link_url'] = $basePath . "/check_request.html?request_id=" . $rid;
                 }

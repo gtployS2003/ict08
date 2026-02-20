@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
+    <title>แก้ไขงาน (Event)</title>
+
+    <style>
+        .event-edit-readonly {
+            background: #f9fafb;
+        }
+
+        .event-edit-danger {
+            background: #b91c1c;
+            color: #fff;
+            border: 1px solid #b91c1c;
+        }
+
+        .event-edit-danger:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        .event-edit-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .event-edit-info {
+            display: none;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #7c2d12;
+            margin-bottom: 12px;
+        }
+
+        .event-edit-info.error {
+            background: #fff1f2;
+            border-color: #fecaca;
+            color: #7f1d1d;
+        }
+    </style>
+
+    <!-- include head -->
+    <script src="/ict8/assets/js/include.js" defer></script>
+    <script src="/ict8/assets/js/auth.js" defer></script>
+    <script src="/ict8/assets/js/main.js" defer></script>
+    <script src="/ict8/backend/public/config.js.php" defer></script>
+    <script src="/ict8/assets/js/api/http.js" defer></script>
+
+    <!-- page script -->
+    <script src="/ict8/assets/js/event-edit.js" defer></script>
+</head>
+
+<body>
+    <div id="header-index"></div>
+    <div id="schedule-nav"></div>
+
+    <main class="main schedule-edit-main">
+        <div class="schedule-edit-container">
+            <h1 class="schedule-edit-title">แก้ไขงานในระบบ (Event)</h1>
+
+            <div id="ee-info" class="event-edit-info"></div>
+
+            <form id="event-edit-form" class="schedule-edit-form" style="display:none;">
+                <div class="edit-row">
+                    <label for="ee-event-id">รหัสงาน (event_id)</label>
+                    <input type="text" id="ee-event-id" class="event-edit-readonly" readonly>
+                </div>
+
+                <div class="edit-row">
+                    <label for="ee-request-id">อ้างอิงคำขอ (request_id)</label>
+                    <input type="text" id="ee-request-id" class="event-edit-readonly" readonly>
+                    <div class="event-edit-hint">* งานนี้ถูกสร้างจากคำขอที่อนุมัติแล้ว</div>
+                </div>
+
+                <div class="edit-row">
+                    <label for="ee-title">ชื่องาน</label>
+                    <input type="text" id="ee-title" required>
+                </div>
+
+                <div class="edit-row">
+                    <label for="ee-detail">รายละเอียด</label>
+                    <textarea id="ee-detail" rows="4"></textarea>
+                </div>
+
+                <div class="edit-row edit-row-2col">
+                    <div class="edit-location">
+                        <label for="ee-province">จังหวัด</label>
+                        <select id="ee-province">
+                            <option value="">-- เลือกจังหวัด --</option>
+                        </select>
+                    </div>
+                    <div class="edit-province">
+                        <label for="ee-location">สถานที่</label>
+                        <input type="text" id="ee-location">
+                    </div>
+                </div>
+
+                <div class="edit-row edit-row-2col">
+                    <div>
+                        <label for="ee-start">วัน/เวลาเริ่ม</label>
+                        <input type="datetime-local" id="ee-start">
+                    </div>
+                    <div>
+                        <label for="ee-end">วัน/เวลาสิ้นสุด</label>
+                        <input type="datetime-local" id="ee-end">
+                    </div>
+                </div>
+
+                <div class="edit-row">
+                    <label for="ee-status">สถานะงาน</label>
+                    <select id="ee-status">
+                        <option value="">-- เลือกสถานะ --</option>
+                    </select>
+                </div>
+
+                <div class="edit-row">
+                    <label for="ee-meeting-link">ลิงก์ประชุม (ถ้ามี)</label>
+                    <input type="url" id="ee-meeting-link" placeholder="https://...">
+                </div>
+
+                <div class="edit-row">
+                    <label for="ee-note">หมายเหตุ</label>
+                    <textarea id="ee-note" rows="3"></textarea>
+                </div>
+
+                <div class="edit-footer" style="display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;">
+                    <button type="button" class="edit-btn-cancel" id="ee-back-btn">ย้อนกลับ</button>
+
+                    <div style="display:flex;gap:10px;">
+                        <button type="button" class="edit-btn-save event-edit-danger" id="ee-delete-btn">ลบงาน</button>
+                        <button type="submit" class="edit-btn-save" id="ee-save-btn">บันทึก</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <div id="footer-index"></div>
+</body>
+
+</html>
