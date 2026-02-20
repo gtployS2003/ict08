@@ -19,6 +19,18 @@ function events_routes(string $method, array $segments, PDO $pdo): bool
 
     $ctl = new EventsController($pdo);
 
+    // GET /events?from=YYYY-MM-DD&to=YYYY-MM-DD
+    if ($method === 'GET' && count($segments) === 1) {
+        $ctl->index();
+        return true;
+    }
+
+    // POST /events/internal
+    if ($method === 'POST' && count($segments) === 2 && $segments[1] === 'internal') {
+        $ctl->createInternal();
+        return true;
+    }
+
     // GET /events/by-request/{requestId}
     if ($method === 'GET' && count($segments) === 3 && $segments[1] === 'by-request' && is_numeric($segments[2])) {
         $ctl->showByRequest((int)$segments[2]);

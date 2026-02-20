@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png">
     <title>รายการงาน</title>
+    
 
     <!-- include head -->
     <script src="/ict8/assets/js/include.js" defer></script>
@@ -40,11 +41,6 @@
                         <input type="text" id="schedule-search-input" placeholder="ค้นหา">
                         <button id="schedule-search-clear" class="schedule-search-clear">x</button>
                     </div>
-
-                    <!--ตัวกรอง-->
-                    <button id="schedule-filter-toggle" class="schedule-filter-icon">
-                        <i class="fa-solid fa-filter"></i>
-                    </button>
                 </div>
             </div>
 
@@ -227,98 +223,6 @@
         </div>
 
     </main>
-
-    <div class="schedule-filter-popup-overlay" id="schedule-filter-overlay">
-        <div class="schedule-filter-popup">
-            <h3 class="filter-title">ตัวกรองงาน</h3>
-
-            <!-- ประเภท -->
-            <div class="filter-row filter-row-grid">
-
-                <span>ประเภทงาน</span>
-                <label><input type="checkbox" id="schedule-type-all" class="schedule-filter-type" checked>
-                    ทั้งหมด</label>
-                <label><input type="checkbox" class="schedule-filter-type" value="เชื่อมโยงเครือข่าย">
-                    เชื่อมโยงเครือข่าย</label>
-                <label><input type="checkbox" class="schedule-filter-type" value="ประสานข้อมูล">
-                    ประสานข้อมูล</label>
-                <label><input type="checkbox" class="schedule-filter-type" value="แนะแนวด้านเทคโนโลยี">
-                    แนะแนวด้านเทคโนโลยี</label>
-                <label><input type="checkbox" class="schedule-filter-type" value="ติดตามและประเมินผล">
-                    ติดตามและประเมินผล</label>
-                <label><input type="checkbox" class="schedule-filter-type" value="สนับสนุนอุปกรณ์">
-                    สนับสนุนอุปกรณ์</label>
-                <label><input type="checkbox" class="schedule-filter-type" value="ถวายความปลอดภัย">
-                    ถวายความปลอดภัย</label>
-                <label><input type="checkbox" class="schedule-filter-type" value="ธุรการ/พัสดุ">
-                    ธุรการ/พัสดุ</label>
-                <label><input type="checkbox" class="schedule-filter-type" value="ความปลอดภัยเครือข่าย">
-                    ความปลอดภัยเครือข่าย</label>
-                <label><input type="checkbox" class="schedule-filter-type" value="วิดีทัศน์ทางไกล">
-                    วิดีทัศน์ทางไกล</label>
-                <label><input type="checkbox" class="schedule-filter-type" value="ดาวเทียมวิทยุ">
-                    ดาวเทียมวิทยุ</label>
-                <label><input type="checkbox" class="schedule-filter-type" value="CCTV"> CCTV</label>
-                <label><input type="checkbox" class="schedule-filter-type" value="งานอื่นๆ">
-                    งานอื่นๆ</label>
-            </div>
-
-            <!-- ประเภทย่อย -->
-            <div class="filter-row filter-row-grid">
-                <span>ประเภทย่อย</span>
-                <label><input type="checkbox" id="schedule-subtype-all" class="schedule-filter-subtype" checked>
-                    ทั้งหมด</label>
-                <label><input type="checkbox" class="schedule-filter-subtype" value="ติดตั้ง">
-                    ติดตั้ง</label>
-                <label><input type="checkbox" class="schedule-filter-subtype" value="ตรวจซ่อม">
-                    ตรวจซ่อม</label>
-                <label><input type="checkbox" class="schedule-filter-subtype" value="บำรุงรักษา">
-                    บำรุงรักษา</label>
-                <label><input type="checkbox" class="schedule-filter-subtype" value="vcs"> vcs</label>
-                <label><input type="checkbox" class="schedule-filter-subtype" value="webex"> webex</label>
-                <label><input type="checkbox" class="schedule-filter-subtype" value="-"> -</label>
-            </div>
-
-            <!-- จังหวัด -->
-            <div class="filter-row filter-row-grid">
-                <span>จังหวัดลูกข่าย</span>
-                <label><input type="checkbox" id="schedule-province-all" class="schedule-filter-province" checked>
-                    ทั้งหมด</label>
-                <label><input type="checkbox" class="schedule-filter-province" value="พิษณุโลก">
-                    พิษณุโลก</label>
-                <label><input type="checkbox" class="schedule-filter-province" value="ตาก"> ตาก</label>
-                <label><input type="checkbox" class="schedule-filter-province" value="สุโขทัย">
-                    สุโขทัย</label>
-                <label><input type="checkbox" class="schedule-filter-province" value="อุตรดิตถ์">
-                    อุตรดิตถ์</label>
-                <label><input type="checkbox" class="schedule-filter-province" value="แพร่"> แพร่</label>
-                <label><input type="checkbox" class="schedule-filter-province" value="น่าน"> น่าน</label>
-            </div>
-
-            <!-- สถานะ -->
-            <div class="filter-row filter-row-grid">
-                <span>สถานะ</span>
-                <label><input type="checkbox" id="schedule-status-all" class="schedule-filter-status" checked>
-                    ทั้งหมด</label>
-                <label><input type="checkbox" class="schedule-filter-status" value="รอการตรวจสอบ">
-                    รอการตรวจสอบ</label>
-                <label><input type="checkbox" class="schedule-filter-status" value="กำลังดำเนินการ">
-                    กำลังดำเนินการ</label>
-                <label><input type="checkbox" class="schedule-filter-status" value="เสร็จสิ้น">
-                    เสร็จสิ้น</label>
-                <label><input type="checkbox" class="schedule-filter-status" value="ยกเลิก"> ยกเลิก</label>
-                <label><input type="checkbox" class="schedule-filter-status" value="อนุมัติ">
-                    อนุมัติ</label>
-                <label><input type="checkbox" class="schedule-filter-status" value="ได้รับลิงก์การประชุม">
-                    ได้รับลิงก์การประชุม</label>
-            </div>
-
-            <div class="filter-actions">
-                <button type="button" class="schedule-filter-clear">ล้างตัวกรอง</button>
-                <button type="button" class="schedule-filter-apply">ใช้ตัวกรอง</button>
-            </div>
-        </div>
-    </div>
 
     <!-- POPUP เพิ่มงาน (ภายในหน่วยงาน) -->
     <div class="task-add-overlay" id="task-add-overlay">

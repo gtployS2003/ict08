@@ -20,6 +20,15 @@ function users_routes(string $method, array $segments, PDO $pdo): bool
 
     $controller = new UsersController($pdo);
 
+    // /users/participants
+    if (count($segments) === 2 && ($segments[1] ?? '') === 'participants') {
+        if ($method === 'GET') {
+            $controller->participants();
+            return true;
+        }
+        return false;
+    }
+
     // /users
     if (count($segments) === 1) {
         if ($method === 'GET') {
@@ -31,6 +40,15 @@ function users_routes(string $method, array $segments, PDO $pdo): bool
             return true;
         }
         // ไม่รองรับ PUT/DELETE ที่ /users ตรง ๆ
+        return false;
+    }
+
+    // /users/participants
+    if (count($segments) === 2 && ($segments[1] ?? '') === 'participants') {
+        if ($method === 'GET') {
+            $controller->participants();
+            return true;
+        }
         return false;
     }
 

@@ -7,6 +7,61 @@ class NotificationModel
     public function __construct(private PDO $pdo) {}
 
     /**
+     * สร้างแจ้งเตือนแบบผูกกับ event (เช่น ผู้เข้าร่วมงานภายใน)
+     *
+     * Requirements (ตาม DB):
+     * - request_id = null
+     * - event_id ต้องมี
+     * - notification_type_id ต้องมี (เช่น 8)
+     * - message ต้องมี
+     * - schedule_at = null
+     */
+    public function createEventNotification(array $data): int
+    {
+        $eventId = isset($data['event_id']) ? (int)$data['event_id'] : 0;
+        if ($eventId <= 0) {
+            throw new InvalidArgumentException('event_id is required');
+        }
+
+        $notificationTypeId = isset($data['notification_type_id']) ? (int) $data['notification_type_id'] : 0;
+        if ($notificationTypeId <= 0) {
+            throw new InvalidArgumentException('notification_type_id is required');
+        }
+
+        $message = trim((string)($data['message'] ?? ''));
+        if ($message === '') {
+            throw new InvalidArgumentException('message is required');
+        }
+
+        $sql = "
+            INSERT INTO notification (
+                request_id,
+                event_id,
+                notification_type_id,
+                message,
+                schedule_at
+            ) VALUES (
+                :request_id,
+                :event_id,
+                :notification_type_id,
+                :message,
+                :schedule_at
+            )
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            ':request_id' => null,
+            ':event_id' => $eventId,
+            ':notification_type_id' => $notificationTypeId,
+            ':message' => $message,
+            ':schedule_at' => null,
+        ]);
+
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    /**
      * สร้างแจ้งเตือน: คำขอได้รับการอนุมัติแล้ว (request_accepted)
      *
      * Requirements:
@@ -255,6 +310,166 @@ class NotificationModel
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * List notifications for a user.
+     * - Includes notifications by enabled typeIds (notification_type_staff)
+     * - PLUS: includes internal event participant notifications (type 8)
+     *   where the user is in event_participant and is_notification_recipient=1.
+     *
+     * @param array<int,int> $typeIds
+     * @return array<int, array<string,mixed>>
+     */
+    public function listForUser(int $userId, array $typeIds, int $limit = 50, int $offset = 0): array
+    {
+        $userId = max(1, (int)$userId);
+        $limit = max(1, min(200, $limit));
+        $offset = max(0, $offset);
+
+        $clean = [];
+        foreach ($typeIds as $id) {
+            $id = (int)$id;
+            if ($id > 0) $clean[] = $id;
+        }
+        $clean = array_values(array_unique($clean));
+
+        $parts = [];
+        $params = [':uid' => $userId];
+
+        if (!empty($clean)) {
+            $placeholders = [];
+            foreach ($clean as $i => $id) {
+                $k = ':t' . $i;
+                $placeholders[] = $k;
+                $params[$k] = $id;
+            }
+            $in = implode(',', $placeholders);
+
+            $parts[] = "
+                SELECT
+                    n.notification_id,
+                    n.request_id,
+                    n.event_id,
+                    n.notification_type_id,
+                    nt.notification_type,
+                    nt.meaning,
+                    n.message,
+                    n.create_at,
+                    n.schedule_at
+                FROM notification n
+                LEFT JOIN notification_type nt
+                    ON nt.notification_type_id = n.notification_type_id
+                WHERE n.notification_type_id IN ($in)
+            ";
+        }
+
+        // Participant-targeted internal event notifications (type 8)
+        $parts[] = "
+            SELECT
+                n.notification_id,
+                n.request_id,
+                n.event_id,
+                n.notification_type_id,
+                nt.notification_type,
+                nt.meaning,
+                n.message,
+                n.create_at,
+                n.schedule_at
+            FROM notification n
+            LEFT JOIN notification_type nt
+                ON nt.notification_type_id = n.notification_type_id
+            INNER JOIN event_participant ep
+                ON ep.event_id = n.event_id
+            WHERE n.notification_type_id = 8
+              AND ep.user_id = :uid
+              AND (ep.is_active = 1 OR ep.is_active IS NULL)
+              AND (ep.is_notification_recipient = 1 OR ep.is_notification_recipient IS NULL)
+        ";
+
+        $union = implode("\nUNION\n", $parts);
+
+        $sql = "
+            SELECT *
+            FROM (
+                $union
+            ) x
+            ORDER BY x.notification_id DESC
+            LIMIT :lim OFFSET :off
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+
+        foreach ($params as $k => $v) {
+            if ($k === ':uid') {
+                $stmt->bindValue($k, (int)$v, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue($k, (int)$v, PDO::PARAM_INT);
+            }
+        }
+        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * Count notifications for a user (same rules as listForUser).
+     *
+     * @param array<int,int> $typeIds
+     */
+    public function countForUser(int $userId, array $typeIds): int
+    {
+        $userId = max(1, (int)$userId);
+
+        $clean = [];
+        foreach ($typeIds as $id) {
+            $id = (int)$id;
+            if ($id > 0) $clean[] = $id;
+        }
+        $clean = array_values(array_unique($clean));
+
+        $parts = [];
+        $params = [':uid' => $userId];
+
+        if (!empty($clean)) {
+            $placeholders = [];
+            foreach ($clean as $i => $id) {
+                $k = ':t' . $i;
+                $placeholders[] = $k;
+                $params[$k] = $id;
+            }
+            $in = implode(',', $placeholders);
+
+            $parts[] = "
+                SELECT n.notification_id
+                FROM notification n
+                WHERE n.notification_type_id IN ($in)
+            ";
+        }
+
+        $parts[] = "
+            SELECT n.notification_id
+            FROM notification n
+            INNER JOIN event_participant ep
+                ON ep.event_id = n.event_id
+            WHERE n.notification_type_id = 8
+              AND ep.user_id = :uid
+              AND (ep.is_active = 1 OR ep.is_active IS NULL)
+              AND (ep.is_notification_recipient = 1 OR ep.is_notification_recipient IS NULL)
+        ";
+
+        $union = implode("\nUNION\n", $parts);
+        $sql = "SELECT COUNT(*) AS cnt FROM ( $union ) x";
+
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, (int)$v, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        return (int)($row['cnt'] ?? 0);
     }
 
     /**

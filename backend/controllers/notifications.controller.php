@@ -58,23 +58,10 @@ final class NotificationsController
 
             $nts = new NotificationTypeStaffModel($this->pdo);
             $typeIds = $nts->listEnabledTypeIdsByUser($userId);
-            if (empty($typeIds)) {
-                json_response([
-                    'error' => false,
-                    'data' => [],
-                    'pagination' => [
-                        'page' => $page,
-                        'limit' => $limit,
-                        'total' => 0,
-                        'totalPages' => 0,
-                    ],
-                ]);
-                return;
-            }
 
             $nm = new NotificationModel($this->pdo);
-            $items = $nm->listByTypeIds($typeIds, $limit, $offset);
-            $total = $nm->countByTypeIds($typeIds);
+            $items = $nm->listForUser($userId, $typeIds, $limit, $offset);
+            $total = $nm->countForUser($userId, $typeIds);
 
             // ✅ เพิ่ม link ไปหน้า check_request.html สำหรับ notification ที่ผูกกับ request_id
             $basePathRaw = (string)env('BASE_PATH', '/ict8');
@@ -91,7 +78,7 @@ final class NotificationsController
                 $ntid = (int)($it['notification_type_id'] ?? 0);
 
                 // For accepted notifications, prefer linking to event edit when event_id is present
-                if ($ntid === 7 && $eid > 0) {
+                if (($ntid === 7 || $ntid === 8) && $eid > 0) {
                     $it['link_url'] = $basePath . "/schedule/event-edit.html?event_id=" . $eid;
                     continue;
                 }

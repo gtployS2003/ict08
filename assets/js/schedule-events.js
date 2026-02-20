@@ -34,10 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupFilters() {
     const searchInput = document.getElementById('schedule-search-input');
     const searchClear = document.getElementById('schedule-search-clear');
-    const filterToggle = document.getElementById('schedule-filter-toggle');
-    const filterOverlay = document.getElementById('schedule-filter-overlay');
-    const filterApply = document.querySelector('.schedule-filter-apply');
-    const filterClear = document.querySelector('.schedule-filter-clear');
 
     // ค้นหาแบบพิมพ์แล้วกรองทันที
     if (searchInput) {
@@ -53,99 +49,6 @@ function setupFilters() {
             applyFilters();
         });
     }
-
-    // เปิด/ปิด popup ตัวกรอง
-    if (filterToggle && filterOverlay) {
-        filterToggle.addEventListener('click', () => {
-            filterOverlay.classList.toggle('open');
-        });
-
-        // คลิกพื้นหลัง overlay เพื่อปิด
-        filterOverlay.addEventListener('click', (e) => {
-            if (e.target === filterOverlay) {
-                filterOverlay.classList.remove('open');
-            }
-        });
-    }
-
-    // ปุ่ม "ใช้ตัวกรอง"
-    if (filterApply && filterOverlay) {
-        filterApply.addEventListener('click', () => {
-            applyFilters();
-            filterOverlay.classList.remove('open');
-        });
-    }
-
-    // ปุ่ม "ล้างตัวกรอง"
-    if (filterClear) {
-        filterClear.addEventListener('click', () => {
-            resetFilters();
-            applyFilters();
-        });
-    }
-
-    // ============ จัดการ checkbox "ทั้งหมด" ในแต่ละกลุ่ม ============
-    setupFilterGroup('schedule-type-all', '.schedule-filter-type');
-    setupFilterGroup('schedule-subtype-all', '.schedule-filter-subtype');
-    setupFilterGroup('schedule-province-all', '.schedule-filter-province');
-    setupFilterGroup('schedule-status-all', '.schedule-filter-status');
-}
-
-// กด "ทั้งหมด" = เช็คทั้งหมดตัวนี้ตัวเดียว / กดตัวอื่น = ยกเลิก "ทั้งหมด"
-function setupFilterGroup(allId, selector) {
-    const allCheckbox = document.getElementById(allId);
-    const boxes = Array.from(document.querySelectorAll(selector));
-
-    if (!allCheckbox || boxes.length === 0) return;
-
-    // กด "ทั้งหมด"
-    allCheckbox.addEventListener('change', () => {
-        if (allCheckbox.checked) {
-            boxes.forEach(cb => {
-                if (cb !== allCheckbox) cb.checked = false;
-            });
-            applyFilters();
-        }
-    });
-
-    // กด checkbox ย่อย
-    boxes.forEach(cb => {
-        if (cb === allCheckbox) return;
-        cb.addEventListener('change', () => {
-            if (cb.checked) {
-                allCheckbox.checked = false;
-            } else {
-                // ถ้าไม่มีอันไหนถูกเลย → กลับไปที่ "ทั้งหมด"
-                const anyChecked = boxes.some(b => b !== allCheckbox && b.checked);
-                if (!anyChecked) allCheckbox.checked = true;
-            }
-            applyFilters();
-        });
-    });
-}
-
-// รีเซ็ตตัวกรองทั้งหมดกลับเป็น "ทั้งหมด"
-function resetFilters() {
-    const groups = [
-        { allId: 'schedule-type-all', selector: '.schedule-filter-type' },
-        { allId: 'schedule-subtype-all', selector: '.schedule-filter-subtype' },
-        { allId: 'schedule-province-all', selector: '.schedule-filter-province' },
-        { allId: 'schedule-status-all', selector: '.schedule-filter-status' },
-    ];
-
-    groups.forEach(g => {
-        const allCheckbox = document.getElementById(g.allId);
-        const boxes = Array.from(document.querySelectorAll(g.selector));
-        if (!allCheckbox || boxes.length === 0) return;
-
-        allCheckbox.checked = true;
-        boxes.forEach(cb => {
-            if (cb !== allCheckbox) cb.checked = false;
-        });
-    });
-
-    const searchInput = document.getElementById('schedule-search-input');
-    if (searchInput) searchInput.value = '';
 }
 
 // ใช้ตัวกรองทั้งหมดกับ allItems แล้ว render ใหม่
@@ -159,36 +62,8 @@ function applyFilters() {
     const searchInput = document.getElementById('schedule-search-input');
     const searchText = (searchInput ? searchInput.value : '').trim().toLowerCase();
 
-    const selectedTypes = getCheckedValues('.schedule-filter-type', 'schedule-type-all');
-    const selectedSubtypes = getCheckedValues('.schedule-filter-subtype', 'schedule-subtype-all');
-    const selectedProvinces = getCheckedValues('.schedule-filter-province', 'schedule-province-all');
-    const selectedStatuses = getCheckedValues('.schedule-filter-status', 'schedule-status-all');
-
     const filtered = allItems.filter(item => {
-        // ประเภทหลัก
-        if (selectedTypes.length && !selectedTypes.includes(item['ประเภท'])) {
-            return false;
-        }
-
-        // ประเภทย่อย
-        const subtype = item['ประเภทย่อย'] || '-';
-        if (selectedSubtypes.length && !selectedSubtypes.includes(subtype)) {
-            return false;
-        }
-
-        // จังหวัด
-        const province = item['จังหวัด'] || '';
-        if (selectedProvinces.length && !selectedProvinces.includes(province)) {
-            return false;
-        }
-
-        // สถานะ (ใช้ค่าในฟิลด์ "สถานะ" ตรง ๆ)
-        const status = item['สถานะ'] || '';
-        if (selectedStatuses.length && !selectedStatuses.includes(status)) {
-            return false;
-        }
-
-        // ค้นหาข้อความ
+        // ค้นหาข้อความ (search-only)
         if (searchText) {
             const participants = formatParticipants(item['คนเข้าร่วม']);
             const haystack = (
@@ -208,21 +83,6 @@ function applyFilters() {
     });
 
     renderTable(filtered, tbodyEl);
-}
-
-// ดึงค่าที่ถูกเลือกจาก checkbox กลุ่มหนึ่ง (ถ้า "ทั้งหมด" ถูกเลือก → return [])
-function getCheckedValues(selector, allId) {
-    const allCheckbox = document.getElementById(allId);
-    const boxes = Array.from(document.querySelectorAll(selector));
-    if (!boxes.length) return [];
-
-    if (allCheckbox && allCheckbox.checked) {
-        return []; // หมายถึงไม่กรอง (ทั้งหมด)
-    }
-
-    return boxes
-        .filter(cb => cb.checked && cb.id !== allId)
-        .map(cb => cb.value);
 }
 
 

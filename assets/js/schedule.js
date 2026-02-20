@@ -1,6 +1,111 @@
+/*
+ * DEPRECATED
+ * This file is no longer used by `schedule/calendar.html`.
+ * The calendar page now uses `/ict8/assets/js/schedule-calendar.js` (search-only).
+ *
+ * The old contents of this file are intentionally commented out to prevent
+ * syntax/runtime issues if it remains in the workspace.
+ *
+
 let allTasks = [];
 let filteredTasks = [];
 let calendar = null;
+let currentTask = null;
+
+let __provincesLoaded = false;
+let __participantsLoaded = false;
+
+function toIsoDate(d) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function addDays(date, days) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
+}
+
+function mapApiEventToTask(ev) {
+    const start = (ev?.start_datetime ? String(ev.start_datetime) : '').trim();
+    const end = (ev?.end_datetime ? String(ev.end_datetime) : '').trim();
+
+    const startDate = start ? start.slice(0, 10) : '';
+    const endDate = end ? end.slice(0, 10) : (startDate || '');
+
+    const participantNames = (ev?.participant_names ? String(ev.participant_names) : '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+    // request-derived fields (may be empty for internal events created by staff)
+    const requestTypeName = (ev?.request_type_name ? String(ev.request_type_name) : '').trim();
+    const requestSubTypeName = (ev?.request_sub_type_name ? String(ev.request_sub_type_name) : '').trim();
+    const eventStatusName = (ev?.event_status_name ? String(ev.event_status_name) : '').trim();
+
+    // Fallback for internal events (no request linkage)
+    // NOTE: We map them to "งานอื่นๆ" so they can still be filtered using existing UI options.
+    const isInternal = !ev?.request_id;
+    const mainTypeForFilter = requestTypeName || (isInternal ? 'งานอื่นๆ' : '');
+    const subTypeForFilter = requestSubTypeName || (isInternal ? '-' : '');
+    const statusForFilter = eventStatusName || '';
+
+    return {
+        id: String(ev?.event_id ?? ''),
+        'ชื่อ': ev?.title ?? '',
+        'รายละเอียด': ev?.detail ?? '',
+        'ตำแหน่งที่ตั้ง': ev?.location ?? '',
+        'จังหวัด': ev?.province_name_th ?? '',
+        'ประเภทงานหลัก': mainTypeForFilter,
+        'ประเภทย่อย': subTypeForFilter,
+        'สถานะ': statusForFilter,
+        'ลิงค์เข้าประชุม': ev?.meeting_link ?? '',
+        'หมายเหตุ': ev?.note ?? '',
+        'คนเข้าร่วม': participantNames,
+        'วันที่เริ่มต้น': startDate,
+        'วันที่สิ้นสุด': endDate,
+        __raw: ev,
+        __isInternal: isInternal,
+    };
+}
+
+async function fetchEventsForRange(fromDate, toDate) {
+    const apiFetch = window.apiFetch;
+    if (typeof apiFetch !== 'function') {
+        throw new Error('missing apiFetch');
+    }
+    const res = await apiFetch(`/events?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}`, { method: 'GET' });
+    const rows = Array.isArray(res?.data) ? res.data : [];
+    return rows.map(mapApiEventToTask);
+}
+
+async function refreshEventsForCurrentView() {
+    if (!calendar) return;
+
+    const view = calendar.view;
+    const fromDate = toIsoDate(view.activeStart);
+    // FullCalendar activeEnd is exclusive
+    const toDate = toIsoDate(addDays(view.activeEnd, -1));
+
+    const tasks = await fetchEventsForRange(fromDate, toDate);
+    allTasks = tasks;
+    filteredTasks = tasks.slice();
+
+    // refresh sidebar today
+    const today = new Date();
+    renderTodayTasks(allTasks, document.getElementById('today-task-list'), today);
+
+    // refresh calendar
+    calendar.removeAllEvents();
+    calendar.addEventSource(mapTasksToEvents(filteredTasks));
+
+    // keep search/filter state if initialized
+    if (typeof window.__scheduleApplySearchAndFilter === 'function') {
+        window.__scheduleApplySearchAndFilter();
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const mainEl = document.querySelector('.schedule-main');
@@ -9,6 +114,18 @@ document.addEventListener('DOMContentLoaded', () => {
     initSidebarTasks();
     setupAddTaskModal();
 });
+
+function setBodyModalOpen(isOpen) {
+    document.body.classList.toggle('modal-open', Boolean(isOpen));
+}
+
+function syncBodyModalOpenState() {
+    const anyOpen = Boolean(
+        document.getElementById('task-add-overlay')?.classList.contains('open') ||
+        document.getElementById('task-modal-overlay')?.classList.contains('open')
+    );
+    setBodyModalOpen(anyOpen);
+}
 
 function initSidebarTasks() {
     const todayLabelEl = document.getElementById('sidebar-today-label');
@@ -23,22 +140,12 @@ function initSidebarTasks() {
     // ✅ pending approvals: ดึงจาก DB (request ที่ status_code=pending)
     loadPendingRequests(pendingListEl);
 
-    fetch('/ict8/assets/js/data-ex/tasks_with_time.json')
-        .then(res => res.json())
-        .then(tasks => {
-            allTasks = tasks;
-            filteredTasks = tasks.slice();
-
-            renderTodayTasks(tasks, todayListEl, today);
-            initCalendar(filteredTasks);
-            initSearchAndFilter();
-        })
-
-        .catch(err => {
-            console.error('โหลด tasks_with_time.json ไม่ได้:', err);
-            todayListEl.innerHTML = '<p style="font-size:13px;color:#999;">ไม่สามารถโหลดข้อมูลงานได้</p>';
-            // pendingListEl จะถูกโหลดจาก DB แยกต่างหากแล้ว (loadPendingRequests)
-        });
+    // init empty calendar first, then datesSet hook will load events
+    allTasks = [];
+    filteredTasks = [];
+    renderTodayTasks([], todayListEl, today);
+    initCalendar([]);
+    initSearchAndFilter();
 }
 
 function renderTodayTasks(tasks, containerEl, todayDate) {
@@ -56,41 +163,25 @@ function renderTodayTasks(tasks, containerEl, todayDate) {
         return;
     }
 
-    // เรียงตามเวลาเริ่มต้น
+    // เรียงตามวันที่เริ่มต้น
     todaysTasks.sort((a, b) => {
-        const aStart = a['เวลาเริ่มต้น'] || a['เวลาเข้ารับคำร้อง'] || '';
-        const bStart = b['เวลาเริ่มต้น'] || b['เวลาเข้ารับคำร้อง'] || '';
+        const aStart = a['วันที่เริ่มต้น'] || '';
+        const bStart = b['วันที่เริ่มต้น'] || '';
         return aStart.localeCompare(bStart);
     });
 
     todaysTasks.forEach(task => {
-        const startTime = task['เวลาเริ่มต้น'] || task['เวลาเข้ารับคำร้อง'];
-        const endTime = task['เวลาสิ้นสุด'];
-
-        const timeText = startTime
-            ? (endTime ? `${startTime} - ${endTime}` : startTime)
-            : 'ไม่ระบุเวลา';
-
         const metaTextParts = [];
-        if (task.ประเภท) {
-            metaTextParts.push(
-                task.ประเภท +
-                (task['ประเภทย่อย'] && task['ประเภทย่อย'] !== '-' ? ` · ${task['ประเภทย่อย']}` : '')
-            );
-        }
-        if (task.จังหวัด) metaTextParts.push(`จังหวัด${task.จังหวัด}`);
-        if (task['ผู้ร้องขอ']) metaTextParts.push(`ผู้ร้องขอ: ${task['ผู้ร้องขอ']}`);
+        if (task['ตำแหน่งที่ตั้ง']) metaTextParts.push(task['ตำแหน่งที่ตั้ง']);
+        if (task['จังหวัด']) metaTextParts.push(`จังหวัด${task['จังหวัด']}`);
+        const parts = Array.isArray(task['คนเข้าร่วม']) ? task['คนเข้าร่วม'] : [];
+        if (parts.length) metaTextParts.push(`ผู้เข้าร่วม: ${parts.slice(0, 3).join(', ')}${parts.length > 3 ? '…' : ''}`);
 
         const item = document.createElement('div');
         item.className = 'sidebar-task';
 
-        const typeClass = getTaskTypeClass(task.ประเภท);
-        if (typeClass) {
-            item.classList.add(typeClass);
-        }
-
         item.innerHTML = `
-      <div class="sidebar-task-time">${timeText}</div>
+            <div class="sidebar-task-time">ทั้งวัน</div>
       <div class="sidebar-task-title">${task['ชื่อ'] || 'ไม่ระบุชื่องาน'}</div>
       <div class="sidebar-task-meta">${metaTextParts.join(' · ')}</div>
     `;
@@ -180,148 +271,45 @@ function renderPendingRequests(items, containerEl) {
             <div class="sidebar-task-title">${escapeHtml(subject)}</div>
             ${betweenText ? `<div class="sidebar-task-between">${betweenText}</div>` : ''}
             <div class="sidebar-task-meta">${escapeHtml(metaTextParts.join(' · '))}</div>
-        `;
-
-        containerEl.appendChild(a);
-    });
 }
 
-function buildBetweenTextFromDateTimes(start, end) {
-    const startStr = normalizeDateTimeToIsoLike(start);
-    const endStr = normalizeDateTimeToIsoLike(end);
 
-    if (!startStr && !endStr) return '';
+                function applySearchOnly() {
+                    const q = searchInput.value.trim().toLowerCase();
 
-    const startDate = startStr ? startStr.slice(0, 10) : '';
-    const endDate = endStr ? endStr.slice(0, 10) : '';
+                    filteredTasks = allTasks.filter(task => {
+                        if (!q) return true;
 
-    const startThai = startDate ? formatThaiDateString(startDate) : '';
-    const endThai = endDate ? formatThaiDateString(endDate) : '';
+                        const fields = [
+                            task['ชื่อ'],
+                            task['รายละเอียด'],
+                            task['วันที่เริ่มต้น'],
+                            task['วันที่สิ้นสุด'],
+                            task['ตำแหน่งที่ตั้ง'],
+                            task['จังหวัด'],
+                            task['ลิงค์เข้าประชุม'],
+                            task['หมายเหตุ'],
+                            (task['คนเข้าร่วม'] || []).join(' ')
+                        ];
 
-    if (startThai && endThai) {
-        if (startDate === endDate) {
-            return `ในวันที่ ${startThai}`;
-        }
-        return `ในวันที่ ${startThai} - ${endThai}`;
-    }
-    if (startThai) return `เริ่ม ${startThai}`;
-    if (endThai) return `สิ้นสุด ${endThai}`;
-    return '';
-}
+                        return fields.some(v => String(v || '').toLowerCase().includes(q));
+                    });
 
-function normalizeDateTimeToIsoLike(dtStr) {
-    if (!dtStr) return '';
-    const s = String(dtStr).trim();
-    if (s === '') return '';
-    // รองรับ "YYYY-MM-DD HH:MM:SS" -> "YYYY-MM-DDTHH:MM:SS"
-    return s.includes('T') ? s : s.replace(' ', 'T');
-}
+                    if (calendar) {
+                        calendar.removeAllEvents();
+                        calendar.addEventSource(mapTasksToEvents(filteredTasks));
+                    }
+                }
 
-function formatThaiDateTimeString(dtStr) {
-    const isoLike = normalizeDateTimeToIsoLike(dtStr);
-    if (!isoLike) return '';
+                searchInput.addEventListener('input', applySearchOnly);
+                searchClear?.addEventListener('click', () => {
+                    searchInput.value = '';
+                    applySearchOnly();
+                });
 
-    const d = new Date(isoLike);
-    if (!isNaN(d.getTime())) {
-        const date = d.toLocaleDateString('th-TH', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-        const time = d.toLocaleTimeString('th-TH', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        return `${date} ${time} น.`;
-    }
-
-    // fallback: แยก date/time แบบง่าย
-    const [datePart, timePart] = String(dtStr).split(' ');
-    const dateText = datePart ? formatThaiDateString(datePart) : String(dtStr);
-    const timeText = timePart ? timePart.slice(0, 5) : '';
-    return timeText ? `${dateText} ${timeText}` : dateText;
-}
-
-function escapeHtml(s) {
-    return String(s ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
-}
-
-function formatThaiDate(date) {
-    const thMonths = [
-        'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
-        'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
-    ];
-    const d = date.getDate();
-    const m = thMonths[date.getMonth()];
-    const y = date.getFullYear() + 543;
-    return `${d} ${m} ${y}`;
-}
-
-function formatThaiDateString(dateStr) {
-    if (!dateStr) return ''; // กัน null/undefined
-
-    const months = [
-        'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
-        'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
-    ];
-
-    // แปลง "2025-11-24" → Date object
-    const d = new Date(dateStr + "T00:00:00");
-
-    if (isNaN(d)) return dateStr; // กรณีวันที่ผิดรูปแบบ
-
-    const day = d.getDate();
-    const month = months[d.getMonth()];
-    const year = d.getFullYear() + 543;
-
-    return `${day} ${month} ${year}`;
-}
-
-function initCalendar(tasks) {
-    const calendarEl = document.getElementById('calendar');
-    if (!calendarEl || typeof FullCalendar === 'undefined') return;
-
-    // ถ้ามี calendar เดิมอยู่แล้วให้ destroy ก่อน
-    if (calendar) {
+                // expose to refreshEventsForCurrentView
+                window.__scheduleApplySearchAndFilter = applySearchOnly;
         calendar.destroy();
-    }
-
-    const events = mapTasksToEvents(tasks);
-
-    calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        locale: 'th',
-        height: 650,
-        expandRows: true,
-        handleWindowResize: true,
-        events,
-
-        // ไม่ให้ FullCalendar สร้าง header เอง
-        headerToolbar: false,
-
-        // อัปเดตชื่อเดือนทุกครั้งที่เปลี่ยนเดือน
-        datesSet(info) {
-            const titleEl = document.getElementById('calendar-month');
-            if (!titleEl) return;
-
-            const thMonths = [
-                'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-                'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
-            ];
-
-            // ใช้วันที่อ้างอิงของ view (ไม่ใช่วันเริ่ม grid)
-            const viewDate = info.view.currentStart || info.start;
-            const monthName = thMonths[viewDate.getMonth()];
-            const yearBE = viewDate.getFullYear() + 543;
-
-            titleEl.textContent = `${monthName} ${yearBE}`;
-        },
-
         eventClick(info) {
             const task = info.event.extendedProps;
             task.id = info.event.id;
@@ -329,11 +317,7 @@ function initCalendar(tasks) {
         },
 
         eventDidMount(info) {
-            const task_type = info.event.extendedProps['ประเภท'];
-            const cls = getTaskTypeClass(task_type);
-            if (cls) {
-                info.el.classList.add(cls);
-            }
+            // reserved for custom styling
         },
 
     });
@@ -397,12 +381,15 @@ function initSearchAndFilter() {
     if (!searchInput) return;
 
     filterToggle?.addEventListener('click', () => {
-        filterOverlay.classList.add('open');
+        if (!filterOverlay) return;
+        filterOverlay.classList.toggle('open');
+        syncBodyModalOpenState();
     });
 
     filterOverlay?.addEventListener('click', (e) => {
         if (e.target === filterOverlay) {
             filterOverlay.classList.remove('open');
+            syncBodyModalOpenState();
         }
     });
 
@@ -420,6 +407,7 @@ function initSearchAndFilter() {
     applyBtn?.addEventListener('click', () => {
         applySearchAndFilter();
         filterOverlay.classList.remove('open');
+        syncBodyModalOpenState();
     });
 
     resetBtn?.addEventListener('click', () => {
@@ -448,9 +436,9 @@ function initSearchAndFilter() {
                 const fields = [
                     task['ชื่อ'],
                     task['รายละเอียด'],
-                    task['ผู้ร้องขอ'],
                     task['วันที่เริ่มต้น'],
-                    task['วันที่ร้องขอ'],
+                    task['ตำแหน่งที่ตั้ง'],
+                    task['หมายเหตุ'],
                     (task['คนเข้าร่วม'] || []).join(' ')
                 ];
 
@@ -458,17 +446,29 @@ function initSearchAndFilter() {
                 if (!match) return false;
             }
 
-            // ----- ประเภท -----
-            if (typesSelected.length && !typesSelected.includes(task['ประเภท'])) return false;
-
-            // ----- ประเภทย่อย -----
-            if (subtypesSelected.length && !subtypesSelected.includes(task['ประเภทย่อย'])) return false;
-
             // ----- จังหวัด -----
             if (provincesSelected.length && !provincesSelected.includes(task['จังหวัด'])) return false;
 
-            // ----- สถานะ -----
-            if (statusSelected.length && !statusSelected.includes(task['สถานะ'])) return false;
+            // ----- ประเภทงานหลัก (request_type) -----
+            if (typesSelected.length) {
+                const t = String(task['ประเภทงานหลัก'] || '').trim();
+                if (!t) return false;
+                if (!typesSelected.includes(t)) return false;
+            }
+
+            // ----- ประเภทย่อย (request_sub_type) -----
+            if (subtypesSelected.length) {
+                const st = String(task['ประเภทย่อย'] || '').trim();
+                if (!st) return false;
+                if (!subtypesSelected.includes(st)) return false;
+            }
+
+            // ----- สถานะ (event_status; varies by request_type) -----
+            if (statusSelected.length) {
+                const s = String(task['สถานะ'] || '').trim();
+                if (!s) return false;
+                if (!statusSelected.includes(s)) return false;
+            }
 
             return true;
         });
@@ -478,6 +478,9 @@ function initSearchAndFilter() {
             calendar.addEventSource(mapTasksToEvents(filteredTasks));
         }
     }
+
+    // expose to refreshEventsForCurrentView
+    window.__scheduleApplySearchAndFilter = applySearchAndFilter;
 }
 
 function setupAllCheckboxGroup(allId, itemSelector) {
@@ -522,108 +525,16 @@ function getCheckedValues(selector, allId) {
 }
 
 function getTaskTypeClass(taskType) {
-    switch (taskType) {
-        case 'เชื่อมโยงเครือข่าย':
-            return 'event-type-network';
-        case 'ประสานข้อมูล':
-            return 'event-type-database';
-        case 'แนะแนวด้านเทคโนโลยี':
-            return 'event-type-guidance';
-        case 'ติดตามและประเมินผล':
-            return 'event-type-monitoring';
-        case 'สนับสนุนอุปกรณ์':
-            return 'event-type-support';
-        case 'ถวายความปลอดภัย':
-            return 'event-type-security';
-        case 'ธุรการ/พัสดุ':
-            return 'event-type-administration';
-        case 'ความปลอดภัยเครือข่าย':
-            return 'event-type-cybersecurity';
-        case 'วิดีทัศน์ทางไกล':
-            return 'event-type-videoconference';
-        case 'ดาวเทียมวิทยุ':
-            return 'event-type-satellite';
-        case 'CCTV':
-            return 'event-type-cctv';
-        case 'งานอื่นๆ':
-            return 'event-type-other';
-        default:
-            return '';
-    }
+    // legacy mapping reserved
+    return '';
 }
 
 function getStatusStepsForTask(task) {
-    const type = task['ประเภท'];
-    const status = task['สถานะ'] || '';
-
-    // วิดีทัศน์ทางไกล: ใช้ชุดสถานะพิเศษ
-    if (type === 'วิดีทัศน์ทางไกล') {
-        return [
-            { key: 'รอการตรวจสอบ', label: 'รอการตรวจสอบ' },
-            { key: 'อนุมัติ', label: 'อนุมัติโดยเจ้าหน้าที่' },
-            { key: 'ได้รับลิงก์การประชุม', label: 'ได้รับลิงก์การประชุม' },
-            { key: 'กำลังดำเนินการ', label: 'กำลังดำเนินการ' },
-            { key: 'เสร็จสิ้น', label: 'เสร็จสิ้น' },
-            { key: 'ยกเลิก', label: 'ยกเลิก' },
-        ];
-    }
-
-    // งานอื่น ๆ ทั่วไป
-    return [
-        { key: 'รอการตรวจสอบ', label: 'รอการตรวจสอบ' },
-        { key: 'กำลังดำเนินการ', label: 'กำลังดำเนินการ' },
-        { key: 'เสร็จสิ้น', label: 'เสร็จสิ้น' },
-        { key: 'ยกเลิก', label: 'ยกเลิก' },
-    ];
+    return [];
 }
 
 function renderStatusFlow(item) {
-    const type = item['ประเภท'];
-    const nowStatus = item['สถานะ'];
-
-    let steps = [];
-
-    // วิดีทัศน์ทางไกล
-    if (type === 'วิดีทัศน์ทางไกล') {
-        steps = [
-            'รอการตรวจสอบ',
-            'อนุมัติโดยเจ้าหน้าที่',
-            'ได้รับลิงก์การประชุม',
-            'กำลังดำเนินการ',
-            'เสร็จสิ้น',
-            'ยกเลิก'
-        ];
-    } else {
-        // งานทั่วไป
-        steps = [
-            'รอการตรวจสอบ',
-            'กำลังดำเนินการ',
-            'เสร็จสิ้น',
-            'ยกเลิก'
-        ];
-    }
-
-    let html = `<div class="status-flow">`;
-    const nowIndex = steps.indexOf(nowStatus);
-
-    steps.forEach((step, i) => {
-        if (nowIndex === -1) {
-            // ถ้าไม่รู้จักสถานะ → ให้เป็น pending หมด
-            html += `<div class="status-step">${step}</div>`;
-            return;
-        }
-
-        if (i < nowIndex) {
-            html += `<div class="status-step completed">${step}</div>`;
-        } else if (i === nowIndex) {
-            html += `<div class="status-step active">${step}</div>`;
-        } else {
-            html += `<div class="status-step">${step}</div>`;
-        }
-    });
-
-    html += `</div>`;
-    return html;
+    return '';
 }
 
 function openTaskModal(task) {
@@ -638,15 +549,10 @@ function openTaskModal(task) {
     document.getElementById('task-modal-desc').textContent =
         task['รายละเอียด'] || '-';
 
-    const typeText = task['ประเภท']
-        ? task['ประเภท'] + (task['ประเภทย่อย'] && task['ประเภทย่อย'] !== '-'
-            ? ` / ${task['ประเภทย่อย']}`
-            : '')
-        : '-';
-    document.getElementById('task-modal-type').textContent = typeText;
-
-    document.getElementById('task-modal-requester').textContent =
-        task['ผู้ร้องขอ'] || '-';
+    const locationEl = document.getElementById('task-modal-location');
+    if (locationEl) {
+        locationEl.textContent = task['ตำแหน่งที่ตั้ง'] || '-';
+    }
 
     const part = Array.isArray(task['คนเข้าร่วม'])
         ? task['คนเข้าร่วม'].join(', ')
@@ -655,11 +561,6 @@ function openTaskModal(task) {
 
     document.getElementById('task-modal-province').textContent =
         task['จังหวัด'] || '-';
-
-    const reqDate = task['วันที่ร้องขอ']
-        ? formatThaiDateString(task['วันที่ร้องขอ'])
-        : '-';
-    document.getElementById('task-modal-request-date').textContent = reqDate;
 
     const startDate = task['วันที่เริ่มต้น'];
     const endDate = task['วันที่สิ้นสุด'] || startDate;
@@ -677,24 +578,15 @@ function openTaskModal(task) {
 
     document.getElementById('task-modal-work-range').textContent = rangeText;
 
-    // เวลา
-    const tStart = task['เวลาเริ่มต้น'] || task['เวลาเข้ารับคำร้อง'];
-    const tEnd = task['เวลาสิ้นสุด'];
-
-    let timeRange = '-';
-    if (tStart && tEnd) {
-        timeRange = `${tStart} - ${tEnd}`;
-    } else if (tStart) {
-        timeRange = tStart;
+    const meetingLinkEl = document.getElementById('task-modal-meeting-link');
+    if (meetingLinkEl) {
+        const link = task['ลิงค์เข้าประชุม'] || '-';
+        meetingLinkEl.textContent = link;
     }
-    document.getElementById('task-modal-time-range').textContent = timeRange;
 
-    document.getElementById('task-modal-status').textContent =
-        task['สถานะ'] || '-';
-
-    const statusContainer = document.getElementById('task-status-steps');
-    if (statusContainer) {
-        statusContainer.innerHTML = renderStatusFlow(task);
+    const noteEl = document.getElementById('task-modal-note');
+    if (noteEl) {
+        noteEl.textContent = task['หมายเหตุ'] || '-';
     }
 
 
@@ -702,6 +594,7 @@ function openTaskModal(task) {
     overlay.dataset.taskId = task.id;
 
     overlay.classList.add('open');
+    syncBodyModalOpenState();
 }
 
 function closeTaskModal() {
@@ -709,6 +602,7 @@ function closeTaskModal() {
     if (!overlay) return;
     overlay.classList.remove('open');
     overlay.dataset.taskId = '';
+    syncBodyModalOpenState();
 }
 
 function setupAddTaskModal() {
@@ -719,22 +613,24 @@ function setupAddTaskModal() {
     if (!overlay || !openBtn) return;
 
     // เปิด popup
-    openBtn.addEventListener('click', () => {
-        // default: สร้างโดย = user ปัจจุบัน (ถ้ามีจาก auth.js)
-        const createdByInput = document.getElementById('add-created-by');
-        if (createdByInput) {
-            if (window.currentUserName) {
-                createdByInput.value = window.currentUserName;
-            }
+    openBtn.addEventListener('click', async () => {
+        try {
+            await ensureProvincesLoaded();
+            await ensureParticipantsLoaded();
+        } catch (e) {
+            console.error(e);
+            alert('ไม่สามารถโหลดข้อมูลจังหวัด/ผู้เข้าร่วมได้');
         }
-
+        resetAddTaskForm();
         overlay.classList.add('open');
+        syncBodyModalOpenState();
     });
 
     // ปิด popup
     closeBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             overlay.classList.remove('open');
+            syncBodyModalOpenState();
         });
     });
 
@@ -742,6 +638,7 @@ function setupAddTaskModal() {
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
             overlay.classList.remove('open');
+            syncBodyModalOpenState();
         }
     });
 
@@ -751,42 +648,64 @@ function setupAddTaskModal() {
     form.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        const fd = new FormData(form);
-        const data = Object.fromEntries(fd.entries());
-
-        // ผู้เข้าร่วม (checkbox หลายตัว)
-        const participantBoxes = document.querySelectorAll('.add-participant:checked');
-        data['คนเข้าร่วม'] = Array.from(participantBoxes).map(cb => cb.value);
-
-        // สถานะเริ่มต้นบังคับ = รอการตรวจสอบ
-        data['สถานะ'] = 'รอการตรวจสอบ';
-
-        // id ชั่วคราว (Prototype)
-        data.id = Date.now();
-
-        // แปลงไฟล์แนบเป็นชื่อไฟล์ (prototype)
-        const fileInput = document.getElementById('add-file');
-        if (fileInput && fileInput.files[0]) {
-            data['เอกสารแนบ'] = fileInput.files[0].name;
+        const apiFetch = window.apiFetch;
+        if (typeof apiFetch !== 'function') {
+            alert('ไม่สามารถบันทึกได้ (missing apiFetch)');
+            return;
         }
 
-        // เพิ่มเข้า allTasks / filteredTasks แล้ว refresh UI
-        allTasks.push(data);
-        filteredTasks = allTasks.slice();
+        const title = String(document.getElementById('add-title')?.value ?? '').trim();
+        const detail = String(document.getElementById('add-desc')?.value ?? '').trim();
+        const location = String(document.getElementById('add-location')?.value ?? '').trim();
+        const provinceIdRaw = String(document.getElementById('add-province')?.value ?? '').trim();
+        const meetingLink = String(document.getElementById('add-meeting-link')?.value ?? '').trim();
+        const note = String(document.getElementById('add-note')?.value ?? '').trim();
+        const startDate = String(document.getElementById('add-start-date')?.value ?? '').trim();
+        const endDate = String(document.getElementById('add-end-date')?.value ?? '').trim();
 
-        // รีเฟรช sidebar + calendar
-        const today = new Date();
-        renderTodayTasks(allTasks, document.getElementById('today-task-list'), today);
-        // ✅ รายการ "งานที่รอการอนุมัติ" ใช้ข้อมูลจาก DB (request pending) ไม่เกี่ยวกับงานภายใน
-        loadPendingRequests(document.getElementById('pending-task-list'));
-        initCalendar(filteredTasks);
+        if (!title) {
+            alert('กรุณากรอกชื่องาน');
+            return;
+        }
+        if (!provinceIdRaw) {
+            alert('กรุณาเลือกจังหวัด');
+            return;
+        }
+        if (!startDate || !endDate) {
+            alert('กรุณาเลือกวันที่เริ่มต้นและวันที่สิ้นสุด');
+            return;
+        }
 
-        // ปิด popup + ล้างฟอร์ม
-        form.reset();
-        participantBoxes.forEach(cb => (cb.checked = false));
-        overlay.classList.remove('open');
+        const participantBoxes = document.querySelectorAll('.add-participant:checked');
+        const participantUserIds = Array.from(participantBoxes)
+            .map(cb => parseInt(cb.value, 10))
+            .filter(n => Number.isFinite(n) && n > 0);
 
-        alert('บันทึกงานสำหรับบุคคลในหน่วยงาน (ตัวอย่าง prototype)');
+        const body = {
+            title,
+            detail,
+            location,
+            province_id: parseInt(provinceIdRaw, 10),
+            meeting_link: meetingLink,
+            note,
+            start_date: startDate,
+            end_date: endDate,
+            participant_user_ids: participantUserIds,
+        };
+
+        apiFetch('/events/internal', { method: 'POST', body })
+            .then(() => refreshEventsForCurrentView())
+            .then(() => {
+                form.reset();
+                participantBoxes.forEach(cb => (cb.checked = false));
+                overlay.classList.remove('open');
+                syncBodyModalOpenState();
+                alert('บันทึกงานเรียบร้อย');
+            })
+            .catch(err => {
+                console.error(err);
+                alert(err?.message || 'บันทึกงานไม่สำเร็จ');
+            });
     });
 }
 
@@ -798,13 +717,64 @@ function resetAddTaskForm() {
 
     // ตั้งค่า default วันที่เป็นวันนี้
     const todayStr = new Date().toISOString().slice(0, 10);
-    const req = document.getElementById('add-request-date');
     const start = document.getElementById('add-start-date');
     const end = document.getElementById('add-end-date');
-
-    if (req && !req.value) req.value = todayStr;
     if (start && !start.value) start.value = todayStr;
     if (end && !end.value) end.value = todayStr;
+}
+
+async function ensureProvincesLoaded() {
+    if (__provincesLoaded) return;
+    const apiFetch = window.apiFetch;
+    if (typeof apiFetch !== 'function') throw new Error('missing apiFetch');
+
+    const select = document.getElementById('add-province');
+    if (!select) return;
+
+    const res = await apiFetch('/provinces?limit=200', { method: 'GET', skipAuth: true });
+    const items = Array.isArray(res?.data?.items) ? res.data.items : (Array.isArray(res?.items) ? res.items : []);
+
+    // clear existing except placeholder
+    select.querySelectorAll('option:not([value=""])').forEach(o => o.remove());
+
+    items.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = String(p.province_id);
+        opt.textContent = String(p.nameTH ?? p.nameEN ?? p.province_id);
+        select.appendChild(opt);
+    });
+
+    __provincesLoaded = true;
+}
+
+async function ensureParticipantsLoaded() {
+    if (__participantsLoaded) return;
+    const apiFetch = window.apiFetch;
+    if (typeof apiFetch !== 'function') throw new Error('missing apiFetch');
+
+    const grid = document.getElementById('add-participant-grid');
+    if (!grid) return;
+
+    const res = await apiFetch('/users/participants', { method: 'GET' });
+    const items = Array.isArray(res?.data) ? res.data : [];
+
+    grid.innerHTML = '';
+    items.forEach(u => {
+        const name = (u?.line_user_name && String(u.line_user_name).trim() !== '')
+            ? String(u.line_user_name)
+            : `user#${u?.user_id}`;
+
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.className = 'add-participant';
+        input.value = String(u.user_id);
+        label.appendChild(input);
+        label.appendChild(document.createTextNode(' ' + name));
+        grid.appendChild(label);
+    });
+
+    __participantsLoaded = true;
 }
 
 
@@ -815,6 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCloseFooter = document.getElementById('task-modal-close-footer');
     const btnDelete = document.getElementById('task-modal-delete');
     const btnEdit = document.getElementById('task-modal-edit');
+    const addOverlay = document.getElementById('task-add-overlay');
 
     if (overlay) {
         overlay.addEventListener('click', (e) => {
@@ -835,10 +806,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnEdit?.addEventListener('click', () => {
         const taskId = overlay?.dataset.taskId;
-        const editUrl = `/schedule/edit.html?id=${encodeURIComponent(taskId)}`;
+        const editUrl = `/schedule/event-edit.html?id=${encodeURIComponent(taskId)}`;
         window.location.href = editUrl;
     });
+
+    // ESC to close any open overlay
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+
+        if (addOverlay?.classList.contains('open')) {
+            addOverlay.classList.remove('open');
+        }
+        if (overlay?.classList.contains('open')) {
+            closeTaskModal();
+        }
+
+        syncBodyModalOpenState();
+    });
 });
+
+*/
+
+// eslint-disable-next-line no-console
+console.warn('[ict8] assets/js/schedule.js is deprecated. Use schedule-calendar.js instead.');
 
 
 

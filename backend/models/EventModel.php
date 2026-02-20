@@ -7,6 +7,73 @@ final class EventModel
     public function __construct(private PDO $pdo) {}
 
     /**
+     * List events in a datetime range (inclusive).
+     * Includes province name and aggregated participant info.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listByRange(string $fromDatetime, string $toDatetime, int $limit = 2000): array
+    {
+        $fromDatetime = trim($fromDatetime);
+        $toDatetime = trim($toDatetime);
+        $limit = max(1, min(5000, (int)$limit));
+
+        // Intersection logic:
+        // start <= to AND COALESCE(end, start) >= from
+        $sql = "
+            SELECT
+                e.*,
+
+                -- province
+                p.nameTH AS province_name_th,
+                p.nameEN AS province_name_en,
+
+                -- request-derived fields (for filtering)
+                r.request_type AS request_type_id,
+                rt.type_name AS request_type_name,
+                r.request_sub_type AS request_sub_type_id,
+                rst.name AS request_sub_type_name,
+
+                -- event status (varies by request_type)
+                es.status_code AS event_status_code,
+                es.status_name AS event_status_name,
+
+                -- participants
+                GROUP_CONCAT(DISTINCT u.user_id ORDER BY u.user_id SEPARATOR ',') AS participant_user_ids,
+                GROUP_CONCAT(DISTINCT u.line_user_name ORDER BY u.user_id SEPARATOR ',') AS participant_names
+            FROM event e
+            LEFT JOIN province p
+                ON p.province_id = e.province_id
+            LEFT JOIN request r
+                ON r.request_id = e.request_id
+            LEFT JOIN request_type rt
+                ON rt.request_type_id = r.request_type
+            LEFT JOIN request_sub_type rst
+                ON rst.request_sub_type_id = r.request_sub_type
+            LEFT JOIN event_status es
+                ON es.event_status_id = e.event_status_id
+            LEFT JOIN event_participant ep
+                ON ep.event_id = e.event_id
+               AND (ep.is_active = 1 OR ep.is_active IS NULL)
+            LEFT JOIN `user` u
+                ON u.user_id = ep.user_id
+            WHERE e.start_datetime <= :to_dt
+              AND COALESCE(e.end_datetime, e.start_datetime) >= :from_dt
+            GROUP BY e.event_id
+            ORDER BY e.start_datetime ASC, e.event_id ASC
+            LIMIT {$limit}
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            ':from_dt' => $fromDatetime,
+            ':to_dt' => $toDatetime,
+        ]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
      * @return array<string,mixed>|null
      */
     public function findById(int $id): ?array

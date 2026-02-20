@@ -7,6 +7,9 @@
     <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png">
     <title>ปฏิทินงาน</title>
 
+    <link rel="stylesheet" href="/ict8/assets/css/device.css"/>
+    
+
     <!-- include head -->
     <script src="/ict8/assets/js/include.js" defer></script>
     <script src="/ict8/assets/js/auth.js" defer></script>
@@ -16,7 +19,7 @@
     <!-- FullCalendar -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js" defer></script>
     <!-- JS สำหรับหน้าปฏิทิน -->
-    <script src="/ict8/assets/js/schedule.js" defer></script>
+    <script src="/ict8/assets/js/schedule-calendar.js" defer></script>
 
 </head>
 
@@ -56,7 +59,7 @@
                     </div>
 
                     <!-- ขวา: ปุ่มควบคุมปฏิทิน และ ปุ่มเพิ่มงาน / ตัวกรอง / ค้นหา -->
-                    <div class="toolbar-right">
+                    <div class="toolbar-right-scheduler">
                         <!-- ควบคุมปฏิทิน-->
                         <div id="calendar-toolbar" class="calendar-toolbar">
                             <button type="button" id="calendar-prev" class="calendar-btn">&lt;</button>
@@ -74,109 +77,12 @@
                             <input type="text" id="schedule-search-input" placeholder="ค้นหา">
                             <button id="schedule-search-clear" class="schedule-search-clear">x</button>
                         </div>
-
-                        <!--ตัวกรอง-->
-                        <button id="schedule-filter-toggle" class="schedule-filter-icon">
-                            <i class="fa-solid fa-filter"></i>
-                        </button>
                     </div>
                 </div>
 
                 <!-- ตัวปฏิทินจริง -->
                 <div id="calendar"></div>
             </section>
-        </div>
-
-        <div class="schedule-filter-popup-overlay" id="schedule-filter-overlay">
-            <div class="schedule-filter-popup">
-                <h3 class="filter-title">ตัวกรองงานในปฏิทิน</h3>
-
-                <!-- ประเภท -->
-                <div class="filter-row filter-row-grid">
-
-                    <span>ประเภทงาน</span>
-                    <label><input type="checkbox" id="schedule-type-all" class="schedule-filter-type" checked>
-                        ทั้งหมด</label>
-                    <label><input type="checkbox" class="schedule-filter-type" value="เชื่อมโยงเครือข่าย">
-                        เชื่อมโยงเครือข่าย</label>
-                    <label><input type="checkbox" class="schedule-filter-type" value="ประสานข้อมูล">
-                        ประสานข้อมูล</label>
-                    <label><input type="checkbox" class="schedule-filter-type" value="แนะแนวด้านเทคโนโลยี">
-                        แนะแนวด้านเทคโนโลยี</label>
-                    <label><input type="checkbox" class="schedule-filter-type" value="ติดตามและประเมินผล">
-                        ติดตามและประเมินผล</label>
-                    <label><input type="checkbox" class="schedule-filter-type" value="สนับสนุนอุปกรณ์">
-                        สนับสนุนอุปกรณ์</label>
-                    <label><input type="checkbox" class="schedule-filter-type" value="ถวายความปลอดภัย">
-                        ถวายความปลอดภัย</label>
-                    <label><input type="checkbox" class="schedule-filter-type" value="ธุรการ/พัสดุ">
-                        ธุรการ/พัสดุ</label>
-                    <label><input type="checkbox" class="schedule-filter-type" value="ความปลอดภัยเครือข่าย">
-                        ความปลอดภัยเครือข่าย</label>
-                    <label><input type="checkbox" class="schedule-filter-type" value="วิดีทัศน์ทางไกล">
-                        วิดีทัศน์ทางไกล</label>
-                    <label><input type="checkbox" class="schedule-filter-type" value="ดาวเทียมวิทยุ">
-                        ดาวเทียมวิทยุ</label>
-                    <label><input type="checkbox" class="schedule-filter-type" value="CCTV"> CCTV</label>
-                    <label><input type="checkbox" class="schedule-filter-type" value="งานอื่นๆ">
-                        งานอื่นๆ</label>
-                </div>
-
-                <!-- ประเภทย่อย -->
-                <div class="filter-row filter-row-grid">
-                    <span>ประเภทย่อย</span>
-                    <label><input type="checkbox" id="schedule-subtype-all" class="schedule-filter-subtype" checked>
-                        ทั้งหมด</label>
-                    <label><input type="checkbox" class="schedule-filter-subtype" value="ติดตั้ง">
-                        ติดตั้ง</label>
-                    <label><input type="checkbox" class="schedule-filter-subtype" value="ตรวจซ่อม">
-                        ตรวจซ่อม</label>
-                    <label><input type="checkbox" class="schedule-filter-subtype" value="บำรุงรักษา">
-                        บำรุงรักษา</label>
-                    <label><input type="checkbox" class="schedule-filter-subtype" value="vcs"> vcs</label>
-                    <label><input type="checkbox" class="schedule-filter-subtype" value="webex"> webex</label>
-                    <label><input type="checkbox" class="schedule-filter-subtype" value="-"> -</label>
-                </div>
-
-                <!-- จังหวัด -->
-                <div class="filter-row filter-row-grid">
-                    <span>จังหวัดลูกข่าย</span>
-                    <label><input type="checkbox" id="schedule-province-all" class="schedule-filter-province" checked>
-                        ทั้งหมด</label>
-                    <label><input type="checkbox" class="schedule-filter-province" value="พิษณุโลก">
-                        พิษณุโลก</label>
-                    <label><input type="checkbox" class="schedule-filter-province" value="ตาก"> ตาก</label>
-                    <label><input type="checkbox" class="schedule-filter-province" value="สุโขทัย">
-                        สุโขทัย</label>
-                    <label><input type="checkbox" class="schedule-filter-province" value="อุตรดิตถ์">
-                        อุตรดิตถ์</label>
-                    <label><input type="checkbox" class="schedule-filter-province" value="แพร่"> แพร่</label>
-                    <label><input type="checkbox" class="schedule-filter-province" value="น่าน"> น่าน</label>
-                </div>
-
-                <!-- สถานะ -->
-                <div class="filter-row filter-row-grid">
-                    <span>สถานะ</span>
-                    <label><input type="checkbox" id="schedule-status-all" class="schedule-filter-status" checked>
-                        ทั้งหมด</label>
-                    <label><input type="checkbox" class="schedule-filter-status" value="รอการตรวจสอบ">
-                        รอการตรวจสอบ</label>
-                    <label><input type="checkbox" class="schedule-filter-status" value="กำลังดำเนินการ">
-                        กำลังดำเนินการ</label>
-                    <label><input type="checkbox" class="schedule-filter-status" value="เสร็จสิ้น">
-                        เสร็จสิ้น</label>
-                    <label><input type="checkbox" class="schedule-filter-status" value="ยกเลิก"> ยกเลิก</label>
-                    <label><input type="checkbox" class="schedule-filter-status" value="อนุมัติ">
-                        อนุมัติ</label>
-                    <label><input type="checkbox" class="schedule-filter-status" value="ได้รับลิงก์การประชุม">
-                        ได้รับลิงก์การประชุม</label>
-                </div>
-
-                <div class="filter-actions">
-                    <button type="button" class="schedule-filter-clear">ล้างตัวกรอง</button>
-                    <button type="button" class="schedule-filter-apply">ใช้ตัวกรอง</button>
-                </div>
-            </div>
         </div>
 
         <!-- POPUP เพิ่มงาน (ภายในหน่วยงาน) -->
@@ -188,141 +94,62 @@
                 </div>
 
                 <form id="task-add-form" class="task-add-body">
-                    <!-- ชื่องาน / รายละเอียด -->
+                    <!-- ชื่องาน -->
                     <div class="task-add-row">
                         <label for="add-title">ชื่องาน</label>
-                        <input type="text" id="add-title" name="ชื่อ" required>
+                        <input type="text" id="add-title" name="title" required>
                     </div>
 
+                    <!-- รายละเอียด -->
                     <div class="task-add-row">
                         <label for="add-desc">รายละเอียดงาน</label>
-                        <textarea id="add-desc" name="รายละเอียด" rows="3"></textarea>
+                        <textarea id="add-desc" name="detail" rows="3"></textarea>
                     </div>
 
-                    <!-- ประเภท / ประเภทย่อย -->
+                    <!-- ตำแหน่งที่ตั้ง + จังหวัด -->
                     <div class="task-add-row task-add-row-2col">
-                        <div>
-                            <label for="add-type">ประเภทงาน</label>
-                            <select id="add-type" name="ประเภท" required>
-                                <option value="">-- เลือกประเภท --</option>
-                                <option value="เชื่อมโยงเครือข่าย">เชื่อมโยงเครือข่าย</option>
-                                <option value="ประสานข้อมูล">ประสานข้อมูล</option>
-                                <option value="แนะแนวด้านเทคโนโลยี">แนะแนวด้านเทคโนโลยี</option>
-                                <option value="ติดตามและประเมินผล">ติดตามและประเมินผล</option>
-                                <option value="สนับสนุนอุปกรณ์">สนับสนุนอุปกรณ์</option>
-                                <option value="ถวายความปลอดภัย">ถวายความปลอดภัย</option>
-                                <option value="ธุรการ/พัสดุ">ธุรการ/พัสดุ</option>
-                                <option value="ความปลอดภัยเครือข่าย">ความปลอดภัยเครือข่าย</option>
-                                <option value="วิดีทัศน์ทางไกล">วิดีทัศน์ทางไกล</option>
-                                <option value="ดาวเทียมวิทยุ">ดาวเทียมวิทยุ</option>
-                                <option value="CCTV">CCTV</option>
-                                <option value="งานอื่นๆ">งานอื่นๆ</option>
+                        <div class="location">
+                            <label for="add-location">ตำแหน่งที่ตั้ง</label>
+                            <input type="text" id="add-location" name="location">
+                        </div>
+                        <div class="province">
+                            <label for="add-province">จังหวัด</label>
+                            <select id="add-province" name="province_id" required>
+                                <option value="">-- เลือกจังหวัด --</option>
                             </select>
                         </div>
-
-                        <div>
-                            <label for="add-subtype">ประเภทย่อย</label>
-                            <select id="add-subtype" name="ประเภทย่อย">
-                                <option value="-">-</option>
-                                <!-- สนับสนุนอุปกรณ์ -->
-                                <option value="ติดตั้ง">ติดตั้ง</option>
-                                <option value="ตรวจซ่อม">ตรวจซ่อม</option>
-                                <option value="บำรุงรักษา">บำรุงรักษา</option>
-                                <!-- วิดีทัศน์ทางไกล -->
-                                <option value="vcs">vcs</option>
-                                <option value="webex">webex</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- สร้างโดย (ตัวเอง) -->
-                    <div class="task-add-row">
-                        <label for="add-created-by">สร้างโดย</label>
-                        <input type="text" id="add-created-by" name="สร้างโดย" value="เจ้าหน้าที่ศูนย์เขต 8 (admin)"
-                            readonly>
                     </div>
 
                     <!-- ผู้เข้าร่วม -->
                     <div class="task-add-row">
-                        <label>ผู้เข้าร่วม (เลือกได้หลายคน)</label>
-                        <div class="participant-grid">
-                            <label><input type="checkbox" class="add-participant" value="นาย a"> นาย a</label>
-                            <label><input type="checkbox" class="add-participant" value="นาย b"> นาย b</label>
-                            <label><input type="checkbox" class="add-participant" value="นาย c"> นาย c</label>
-                            <label><input type="checkbox" class="add-participant" value="นาย d"> นาย d</label>
-                            <label><input type="checkbox" class="add-participant" value="ศูนย์เขต 8"> ศูนย์เขต 8</label>
-                            <label><input type="checkbox" class="add-participant" value="พิษณุโลก"> พิษณุโลก</label>
-                            <label><input type="checkbox" class="add-participant" value="ตาก"> ตาก</label>
-                            <label><input type="checkbox" class="add-participant" value="สุโขทัย"> สุโขทัย</label>
-                            <label><input type="checkbox" class="add-participant" value="อุตรดิตถ์"> อุตรดิตถ์</label>
-                            <label><input type="checkbox" class="add-participant" value="แพร่"> แพร่</label>
-                            <label><input type="checkbox" class="add-participant" value="น่าน"> น่าน</label>
+                        <label>ผู้เข้าร่วมงาน (เลือกได้หลายคน)</label>
+                        <div class="participant-grid" id="add-participant-grid">
+                            <!-- JS จะมาใส่รายการผู้เข้าร่วมตรงนี้ -->
                         </div>
                     </div>
 
-                    <!-- วันที่เริ่ม / สิ้นสุด + เวลา -->
+                    <!-- ลิงค์เข้าประชุม -->
+                    <div class="task-add-row">
+                        <label for="add-meeting-link">ลิงค์เข้าประชุม</label>
+                        <input type="url" id="add-meeting-link" name="meeting_link" placeholder="https://...">
+                    </div>
+
+                    <!-- หมายเหตุ -->
+                    <div class="task-add-row">
+                        <label for="add-note">หมายเหตุ</label>
+                        <textarea id="add-note" name="note" rows="2"></textarea>
+                    </div>
+
+                    <!-- วันที่เริ่มต้น / สิ้นสุด -->
                     <div class="task-add-row task-add-row-2col">
                         <div class="start-date">
-                            <label for="add-start-date">วันที่เริ่มทำงาน</label>
-                            <input type="date" id="add-start-date" name="วันที่เริ่มต้น">
+                            <label for="add-start-date">วันที่เริ่มต้น</label>
+                            <input type="date" id="add-start-date" name="start_date" required>
                         </div>
-                        <div class="start-time">
-                            <label for="add-start-time">เวลาเริ่มทำงาน</label>
-                            <input type="time" id="add-start-time" name="เวลาเริ่มต้น">
-                        </div>
-
-                    </div>
-
-                    <div class="task-add-row task-add-row-2col">
                         <div class="end-date">
-                            <label for="add-end-date">วันที่ทำงานเสร็จสิ้น</label>
-                            <input type="date" id="add-end-date" name="วันที่สิ้นสุด">
+                            <label for="add-end-date">วันที่สิ้นสุด</label>
+                            <input type="date" id="add-end-date" name="end_date" required>
                         </div>
-                        <div class="end-time">
-                            <label for="add-end-time">เวลาสิ้นสุดการทำงาน</label>
-                            <input type="time" id="add-end-time" name="เวลาสิ้นสุด">
-                        </div>
-                    </div>
-
-                    <!-- สถานที่ / จังหวัด -->
-                    <div class="task-add-row task-add-row-2col">
-                        <div class="location">
-                            <label for="add-location">สถานที่</label>
-                            <input type="text" id="add-location" name="สถานที่">
-                        </div>
-                        <div class="province">
-                            <label for="add-province">จังหวัด</label>
-                            <select id="add-province" name="จังหวัด">
-                                <option value="">-- เลือกจังหวัด --</option>
-                                <option value="พิษณุโลก">พิษณุโลก</option>
-                                <option value="ตาก">ตาก</option>
-                                <option value="สุโขทัย">สุโขทัย</option>
-                                <option value="อุตรดิตถ์">อุตรดิตถ์</option>
-                                <option value="แพร่">แพร่</option>
-                                <option value="น่าน">น่าน</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- ลิงก์แนบ / เอกสารแนบ -->
-                    <div class="task-add-row">
-                        <label for="add-link">ลิงก์ที่เกี่ยวข้อง</label>
-                        <input type="url" id="add-link" name="ลิงก์แนบ" placeholder="https://...">
-                    </div>
-
-                    <div class="task-add-row">
-                        <label for="add-file">เอกสารแนบ</label>
-                        <input type="file" id="add-file" name="เอกสารแนบ">
-                    </div>
-
-                    <!-- สถานะ (แสดงว่าเริ่มต้น = รอการตรวจสอบ) -->
-                    <div class="task-add-row">
-                        <label>สถานะเริ่มต้น</label>
-                        <input type="text" value="รอการตรวจสอบ" readonly>
-                        <input type="hidden" id="add-status" name="สถานะ" value="รอการตรวจสอบ">
-                        <p class="task-add-hint">
-                            * สถานะจะเปลี่ยนเป็น "กำลังดำเนินการ" เมื่อผู้เข้าร่วมทุกคนกดรับทราบ (กำหนด logic ภายหลัง)
-                        </p>
                     </div>
 
 
@@ -330,7 +157,7 @@
 
                 <div class="task-add-footer">
                     <button type="button" class="task-add-cancel task-add-close">ยกเลิก</button>
-                    <button type="submit" class="task-add-save">บันทึกงาน</button>
+                    <button type="submit" class="task-add-save" form="task-add-form">บันทึกงาน</button>
                 </div>
             </div>
         </div>
@@ -354,18 +181,8 @@
                 </div>
 
                 <div class="task-detail-row">
-                    <span class="task-detail-label">ประเภท / ประเภทย่อย : </span>
-                    <p class="task-detail-value" id="task-modal-type"></p>
-                </div>
-
-                <div class="task-detail-row">
-                    <span class="task-detail-label">ผู้ร้องขอ : </span>
-                    <p class="task-detail-value" id="task-modal-requester"></p>
-                </div>
-
-                <div class="task-detail-row">
-                    <span class="task-detail-label">คนเข้าร่วม : </span>
-                    <p class="task-detail-value" id="task-modal-participants"></p>
+                    <span class="task-detail-label">ตำแหน่งที่ตั้ง : </span>
+                    <p class="task-detail-value" id="task-modal-location"></p>
                 </div>
 
                 <div class="task-detail-row">
@@ -374,29 +191,23 @@
                 </div>
 
                 <div class="task-detail-row">
-                    <span class="task-detail-label">วันที่ร้องขอ : </span>
-                    <p class="task-detail-value" id="task-modal-request-date"></p>
+                    <span class="task-detail-label">ผู้เข้าร่วมงาน : </span>
+                    <p class="task-detail-value" id="task-modal-participants"></p>
                 </div>
 
                 <div class="task-detail-row">
-                    <span class="task-detail-label">ช่วงวันที่ปฏิบัติงาน : </span>
+                    <span class="task-detail-label">ช่วงวันที่ : </span>
                     <p class="task-detail-value" id="task-modal-work-range"></p>
                 </div>
 
                 <div class="task-detail-row">
-                    <span class="task-detail-label">เวลา : </span>
-                    <p class="task-detail-value" id="task-modal-time-range"></p>
+                    <span class="task-detail-label">ลิงค์เข้าประชุม : </span>
+                    <p class="task-detail-value" id="task-modal-meeting-link"></p>
                 </div>
 
                 <div class="task-detail-row">
-                    <span class="task-detail-label">สถานะปัจจุบัน : </span>
-                    <p class="task-detail-value" id="task-modal-status"></p>
-                </div>
-
-                <!-- สถานะแบบ process แนวตั้ง -->
-                <div class="task-status-block">
-                    <h4 class="task-status-title">สถานะงาน</h4>
-                    <div id="task-status-steps" class="status-steps"></div>
+                    <span class="task-detail-label">หมายเหตุ : </span>
+                    <p class="task-detail-value" id="task-modal-note"></p>
                 </div>
             </div>
 

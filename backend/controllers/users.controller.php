@@ -8,6 +8,18 @@ require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../models/UsersModel.php';
 require_once __DIR__ . '/../models/PersonModel.php';
 
+// auth middleware
+$authPath = __DIR__ . '/../middleware/auth.php';
+if (file_exists($authPath)) {
+    require_once $authPath;
+}
+
+// dev auth middleware (X-Dev-Api-Key)
+$devAuthPath = __DIR__ . '/../middleware/dev_auth.php';
+if (file_exists($devAuthPath)) {
+    require_once $devAuthPath;
+}
+
 class UsersController
 {
     private UsersModel $model;
@@ -15,6 +27,54 @@ class UsersController
     public function __construct(private PDO $pdo)
     {
         $this->model = new UsersModel($pdo);
+    }
+
+    /**
+     * GET /users/participants
+     * Returns list of users eligible as event participants (role_id 2,3).
+     */
+    public function participants(): void
+    {
+        try {
+            $this->requireStaffAccess();
+
+            $stmt = $this->pdo->query("SELECT user_id, line_user_id, line_user_name, user_role_id FROM `user` WHERE user_role_id IN (2,3) ORDER BY user_role_id DESC, line_user_name ASC, user_id ASC");
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            json_response(['error' => false, 'data' => $rows], 200);
+        } catch (Throwable $e) {
+            json_response([
+                'error' => true,
+                'message' => 'Failed to list participants',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function requireStaffAccess(): void
+    {
+        // 1) Token auth
+        $hasToken = false;
+        if (function_exists('get_bearer_token')) {
+            $hasToken = (get_bearer_token() !== null);
+        } else {
+            $auth = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+            $hasToken = stripos($auth, 'Bearer ') !== false;
+        }
+
+        if ($hasToken && function_exists('require_auth')) {
+            require_auth($this->pdo);
+            return;
+        }
+
+        // 2) dev key fallback
+        if (function_exists('require_dev_staff')) {
+            require_dev_staff();
+            return;
+        }
+
+        fail('UNAUTHORIZED', 401, 'Unauthorized');
+        exit;
     }
 
     /**

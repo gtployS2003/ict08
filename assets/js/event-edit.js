@@ -176,7 +176,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", async () => {
-    const eventId = getParam("event_id");
+    const eventId = getParam("event_id") || getParam("id");
     if (!eventId) {
       setInfo("ไม่พบ event_id ใน URL เช่น ?event_id=1", { isError: true });
       return;

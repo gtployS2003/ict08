@@ -171,6 +171,18 @@ final class NotificationService
         $skipped = 0;
         $errors = [];
 
+        if ($line === null) {
+            return [
+                'ok' => true,
+                'recipients' => count($clean),
+                'sent_line' => 0,
+                'skipped' => count($clean),
+                'errors' => [
+                    ['step' => 'token', 'error' => 'Missing LINE_CHANNEL_ACCESS_TOKEN'],
+                ],
+            ];
+        }
+
         foreach ($clean as $uid) {
             // Ensure default channel rows exist (idempotent)
             try {
@@ -193,22 +205,27 @@ final class NotificationService
 
             if (in_array('line', $enabledChannels, true)) {
                 $lineUserId = $this->getLineUserId($uid);
-                if ($line && $lineUserId !== '') {
-                    try {
-                        $resp = $line->pushMessage($lineUserId, [
-                            ['type' => 'text', 'text' => $message]
-                        ]);
-                        if (($resp['ok'] ?? false) === true) {
-                            $sentLine++;
-                        } else {
-                            $errors[] = ['user_id' => $uid, 'step' => 'linePush', 'resp' => $resp];
-                        }
-                    } catch (Throwable $e) {
-                        $errors[] = ['user_id' => $uid, 'step' => 'linePush', 'error' => $e->getMessage()];
-                    }
-                } else {
+                if ($lineUserId === '') {
+                    $errors[] = ['user_id' => $uid, 'step' => 'lineUserId', 'error' => 'Missing line_user_id'];
                     $skipped++;
+                    continue;
                 }
+
+                try {
+                    $resp = $line->pushMessage($lineUserId, [
+                        ['type' => 'text', 'text' => $message]
+                    ]);
+                    if (($resp['ok'] ?? false) === true) {
+                        $sentLine++;
+                    } else {
+                        $errors[] = ['user_id' => $uid, 'step' => 'linePush', 'resp' => $resp];
+                    }
+                } catch (Throwable $e) {
+                    $errors[] = ['user_id' => $uid, 'step' => 'linePush', 'error' => $e->getMessage()];
+                }
+            } else {
+                // LINE channel disabled for this user
+                $skipped++;
             }
         }
 

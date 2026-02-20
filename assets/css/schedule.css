@@ -85,6 +85,50 @@ main {
     color: #532274;
 }
 
+/* Mobile nav (Schedule) - match device nav popup style */
+@media (max-width: 900px) {
+    .nav-inner {
+        justify-content: flex-start;
+        height: auto;
+        padding: 25px 10px;
+    }
+
+    .nav-toggle {
+        display: block;
+    }
+
+    .nav-schedule {
+        display: none;
+        flex-direction: column;
+        gap: 0;
+        width: 100%;
+        padding: 8px 0;
+        margin-top: 34px;
+        background: #ffffff;
+        border-top: 1px solid #e0e0e0;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+        position: absolute;
+        right: 0;
+        top: 0;
+        z-index: 10;
+    }
+
+    /* main.js toggles .open on the <ul> */
+    .nav-schedule.open {
+        display: flex;
+    }
+
+    .nav-schedule li {
+        padding: 8px 16px;
+        text-align: left;
+    }
+
+    .nav-schedule a {
+        display: block;
+        width: 100%;
+    }
+}
+
 /* ==========================
    SCHEDULE LAYOUT
 =========================== */
@@ -103,6 +147,29 @@ main {
     grid-template-columns: 1fr 2.5fr;
     /* ปฏิทิน : sidebar */
     gap: 20px;
+}
+
+@media (max-width: 1100px) {
+    .schedule-layout {
+        grid-template-columns: 1fr 2fr;
+    }
+}
+
+@media (max-width: 900px) {
+    .schedule-layout {
+        grid-template-columns: 1fr;
+        padding: 0 12px;
+    }
+
+    /* calendar first, sidebar second */
+    .schedule-calendar {
+        order: 1;
+    }
+
+    .schedule-sidebar {
+        order: 2;
+        max-height: none;
+    }
 }
 
 /* ปฏิทิน (ฝั่งซ้าย) */
@@ -249,102 +316,6 @@ main {
     font-size: 16px;
 }
 
-.schedule-filter-icon {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    border: 2px solid #ffffff00;
-    background: #ffffff00;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 30px;
-}
-
-.schedule-filter-icon i {
-    color: #532274;
-}
-
-.schedule-filter-popup-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.35);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 99999;
-}
-
-.schedule-filter-popup-overlay.open {
-    display: flex;
-}
-
-.schedule-filter-popup {
-    background: #ffffff;
-    border-radius: 20px;
-    padding: 24px 28px;
-    max-width: 670px;
-    width: 100%;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
-    font-size: 14px;
-}
-
-.schedule-filter-clear,
-.schedule-filter-apply {
-    padding: 8px 16px;
-    border-radius: 999px;
-    border: 1px solid #532274;
-    cursor: pointer;
-    font-family: 'Inter', 'Noto Sans Thai', sans-serif;
-}
-
-.schedule-filter-clear {
-    background: #ffffff;
-    color: #532274;
-}
-
-.schedule-filter-apply {
-    background: #532274;
-    color: #ffffff;
-}
-
-.filter-row.filter-row-dates {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: 16px;
-    row-gap: 4px;
-    align-items: center;
-}
-
-.filter-row.filter-row-dates label {
-    font-weight: 500;
-}
-
-.filter-row.filter-row-dates input[type="date"] {
-    width: 100%;
-}
-
-.filter-row.filter-row-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    column-gap: 16px;
-    row-gap: 6px;
-}
-
-.filter-row.filter-row-grid>span {
-    grid-column: 1 / -1;
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-
-.filter-row.filter-row-grid label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 400;
-}
-
 #calendar {
     margin-top: 8px;
     min-height: 400px;
@@ -419,14 +390,75 @@ main {
 }
 
 /* ฝั่งขวา = ปุ่ม fullcalendar */
-.toolbar-right {
+.toolbar-right-scheduler {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
+@media (max-width: 900px) {
+    .toolbar-row {
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .calendar-month {
+        flex: 1 1 auto;
+        font-size: 22px;
+        padding-left: 0;
+        margin-right: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .toolbar-right-scheduler {
+        flex: 0 0 auto;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .calendar-btn {
+        padding: 10px 12px;
+        font-size: 16px;
+    }
+
+    .add-task {
+        padding: 10px 12px;
+    }
+
+    .schedule-search {
+        max-width: 220px;
+        padding: 8px 10px;
+    }
+}
+
+@media (max-width: 520px) {
+    .toolbar-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .toolbar-left {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .toolbar-right-scheduler {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .schedule-search {
+        max-width: none;
+        width: 100%;
+    }
+}
+
 /* ปุ่มของ FullCalendar */
-.toolbar-right .fc-button {
+.toolbar-right-scheduler .fc-button {
     border-radius: 12px !important;
     padding: 6px 14px !important;
     font-size: 14px;
@@ -476,22 +508,24 @@ main {
 
 .schedule-calendar .fc-daygrid-event {
     border-radius: 10px;
-    border: none;
+    border: 2px solid #ffffff;
     padding: 2px 6px;
-    background: #532274;
-    color: #ffffff;
+    background: #ebd9ff;
+    color: #111827;
     font-size: 13px;
     text-align: center;
 }
 
-.schedule-calendar .fc-daygrid-event .fc-event-title {
+.schedule-calendar .fc-daygrid-event .fc-event-title,
+.schedule-calendar .fc-daygrid-event .fc-event-main,
+.schedule-calendar .fc-daygrid-event .fc-event-time {
     font-weight: 500;
-    color: #000;
+    color: #111827;
 }
 
 .schedule-calendar .fc-daygrid-event:hover {
-    filter: brightness(1.05);
     transform: translateY(-1px);
+    background: #f2e9ff;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 }
 
@@ -658,6 +692,27 @@ main {
     font-size: 14px;
     color: #111827;
     width: 240px;
+}
+
+@media (max-width: 520px) {
+    .task-modal {
+        width: calc(100vw - 24px);
+        max-width: none;
+        border-radius: 16px;
+        padding: 16px 16px;
+    }
+
+    .task-detail-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-bottom: 10px;
+    }
+
+    .task-detail-label,
+    .task-detail-value {
+        width: auto;
+    }
 }
 
 /* ปุ่มด้านล่าง */
@@ -895,6 +950,39 @@ main {
     border: 1px solid #eee;
     background: #fafafa;
     font-size: 14px;
+}
+
+@media (max-width: 900px) {
+    .task-add-modal {
+        width: calc(100vw - 24px);
+        max-width: none;
+        max-height: calc(100vh - 40px);
+        border-radius: 16px;
+        padding: 16px 16px;
+    }
+
+    .task-add-body {
+        max-height: calc(100vh - 200px);
+    }
+
+    .task-add-row-2col {
+        grid-template-columns: 1fr;
+    }
+
+    .participant-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .participant-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Avoid background scroll when any overlay is open */
+body.modal-open {
+    overflow: hidden;
 }
 
 .start-date,
