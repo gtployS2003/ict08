@@ -154,6 +154,18 @@ function renderNotifications(listEl, emptyEl) {
                         ? `<a href="/schedule/events.html?eventId=${n.eventId}" class="btn-link">ดูรายละเอียดงาน</a>`
                         : ''
                     }
+                    ${
+                        // ✅ รองรับ notification จาก backend ที่มี request_id หรือ link_url
+                        (n.request_id || n.requestId || n['request_id'] || n.link_url)
+                        ? (() => {
+                            const rid = n.request_id || n.requestId || n['request_id'];
+                            const url = n.link_url || (rid ? `/ict8/check_request.html?request_id=${encodeURIComponent(rid)}` : '');
+                            return url
+                              ? `<a href="${url}" class="btn-link">ตรวจสอบคำขอ</a>`
+                              : '';
+                          })()
+                        : ''
+                    }
                 </div>
             </div>
         `;

@@ -30,6 +30,7 @@ require_once __DIR__ . '/../routes/request_types.routes.php';
 require_once __DIR__ . '/../routes/request_sub_types.routes.php';
 require_once __DIR__ . '/../routes/requests.routes.php';
 require_once __DIR__ . '/../routes/request_status.routes.php';
+require_once __DIR__ . '/../routes/urgency.routes.php';
 require_once __DIR__ . '/../routes/notifications.routes.php';
 require_once __DIR__ . '/../routes/notification_types.routes.php';
 require_once __DIR__ . '/../routes/notification_type_staff.routes.php';
@@ -83,6 +84,7 @@ try {
     if (request_sub_types_routes($method, $segments, $pdo)) exit;
     if (requests_routes($method, $segments, $pdo)) exit;
     if (request_status_routes($method, $segments, $pdo)) exit;
+    if (urgency_routes($method, $segments, $pdo)) exit;
     if (notifications_routes($method, $segments, $pdo)) exit;
     if (notification_types_routes($method, $segments, $pdo)) exit;
     if (notification_type_staff_routes($method, $segments, $pdo)) exit;

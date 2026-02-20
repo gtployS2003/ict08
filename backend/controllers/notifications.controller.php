@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../config/env.php';
+
+env_load(__DIR__ . '/../.env');
 
 require_once __DIR__ . '/../models/NotificationModel.php';
 require_once __DIR__ . '/../models/NotificationTypeStaffModel.php';
@@ -72,6 +75,23 @@ final class NotificationsController
             $nm = new NotificationModel($this->pdo);
             $items = $nm->listByTypeIds($typeIds, $limit, $offset);
             $total = $nm->countByTypeIds($typeIds);
+
+            // ✅ เพิ่ม link ไปหน้า check_request.html สำหรับ notification ที่ผูกกับ request_id
+            $basePathRaw = (string)env('BASE_PATH', '/ict8');
+            $basePathTrim = trim($basePathRaw);
+            $basePath = ($basePathTrim !== '' ? $basePathTrim : '/ict8');
+            if (!str_starts_with($basePath, '/')) {
+                $basePath = '/' . $basePath;
+            }
+            $basePath = rtrim($basePath, '/');
+
+            foreach ($items as &$it) {
+                $rid = (int)($it['request_id'] ?? 0);
+                if ($rid > 0) {
+                    $it['link_url'] = $basePath . "/check_request.html?request_id=" . $rid;
+                }
+            }
+            unset($it);
 
             json_response([
                 'error' => false,

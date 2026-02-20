@@ -204,6 +204,7 @@
     hide($("#btn-add-request-sub-type"));
     hide($("#btn-add-request-status"));
     hide($("#btn-add-head-of-request"));
+    hide($("#btn-add-urgency"));
     hide($("#btn-add-notification-type"));
     hide($("#btn-add-notification-type-staff"));
     hide($("#btn-add-channel"));
@@ -286,6 +287,13 @@
         show($("#section-head-of-request"));
         show($("#btn-add-head-of-request"));
         setTitle("ผู้รับผิดชอบตามประเภทย่อย");
+        break;
+
+      case "urgency":
+        show($("#section-urgency"));
+        show($("#btn-add-urgency"));
+        setTitle("ความเร่งด่วน");
+        loadUrgency();
         break;
 
       case "notification-type":
@@ -3569,6 +3577,186 @@
     }
   }
 
+  /* =========================
+    Urgency UI (ความเร่งด่วน) - CRUD urgency
+  ========================= */
+  const urgencyEls = {
+    section: $("#section-urgency"),
+    tbody: $("#urgency-tbody"),
+    search: $("#urgency-search"),
+    limit: $("#urgency-limit"),
+    refresh: $("#urgency-refresh"),
+    pagination: $("#urgency-pagination"),
+    total: $("#urgency-total"),
+
+    btnAdd: $("#btn-add-urgency"),
+
+    modal: $("#urgency-modal"),
+    form: $("#urgency-form"),
+    modalTitle: $("#urgency-modal-title"),
+    submitText: $("#urgency-submit-text"),
+
+    inputId: $("#urgency-id"),
+    inputCode: $("#urgency-code"),
+    inputTitle: $("#urgency-title"),
+    inputLevel: $("#urgency-level"),
+
+    formError: $("#urgency-form-error"),
+  };
+
+  const urgencyState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    total: 0,
+    totalPages: 1,
+    loading: false,
+  };
+
+  function setUrgencyError(msg) {
+    if (!urgencyEls.formError) return;
+    if (!msg) {
+      urgencyEls.formError.hidden = true;
+      urgencyEls.formError.textContent = "";
+      return;
+    }
+    urgencyEls.formError.hidden = false;
+    urgencyEls.formError.textContent = msg;
+  }
+
+  function openUrgencyModal({ mode = "create", row } = {}) {
+    setUrgencyError("");
+
+    if (mode === "edit" && row) {
+      if (urgencyEls.modalTitle) urgencyEls.modalTitle.textContent = "แก้ไขความเร่งด่วน";
+      if (urgencyEls.submitText) urgencyEls.submitText.textContent = "บันทึกการแก้ไข";
+      if (urgencyEls.inputId) urgencyEls.inputId.value = String(row.urgency_id ?? "");
+      if (urgencyEls.inputCode) urgencyEls.inputCode.value = String(row.urgency_code ?? "");
+      if (urgencyEls.inputTitle) urgencyEls.inputTitle.value = String(row.urgency_title ?? "");
+      if (urgencyEls.inputLevel) urgencyEls.inputLevel.value = String(row.urgency_level ?? 0);
+    } else {
+      if (urgencyEls.modalTitle) urgencyEls.modalTitle.textContent = "เพิ่มความเร่งด่วน";
+      if (urgencyEls.submitText) urgencyEls.submitText.textContent = "บันทึก";
+      if (urgencyEls.inputId) urgencyEls.inputId.value = "";
+      if (urgencyEls.inputCode) urgencyEls.inputCode.value = "";
+      if (urgencyEls.inputTitle) urgencyEls.inputTitle.value = "";
+      if (urgencyEls.inputLevel) urgencyEls.inputLevel.value = "0";
+    }
+
+    openModal("urgency-modal");
+    setTimeout(() => urgencyEls.inputCode?.focus(), 0);
+  }
+
+  function closeUrgencyModal() {
+    setUrgencyError("");
+    closeModal("urgency-modal");
+  }
+
+  function renderUrgencyRows(items = []) {
+    if (!urgencyEls.tbody) return;
+
+    if (!items.length) {
+      urgencyEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    urgencyEls.tbody.innerHTML = items
+      .map((row) => {
+        const id = row.urgency_id ?? "";
+        const code = row.urgency_code ?? "";
+        const title = row.urgency_title ?? "";
+        const level = row.urgency_level ?? 0;
+
+        return `
+        <tr data-id="${escapeHtml(String(id))}">
+          <td>${escapeHtml(String(id))}</td>
+          <td>${escapeHtml(String(level))}</td>
+          <td>${escapeHtml(String(code))}</td>
+          <td>${escapeHtml(String(title))}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" type="button"
+              data-action="edit"
+              data-id="${escapeHtml(String(id))}"
+              data-code="${escapeHtml(String(code))}"
+              data-title="${escapeHtml(String(title))}"
+              data-level="${escapeHtml(String(level))}">
+              แก้ไข
+            </button>
+            <button class="btn btn-danger btn-sm" type="button"
+              data-action="delete"
+              data-id="${escapeHtml(String(id))}">
+              ลบ
+            </button>
+          </td>
+        </tr>
+      `;
+      })
+      .join("");
+  }
+
+  function renderUrgencyPagination() {
+    if (!urgencyEls.pagination) return;
+    renderPager(urgencyEls.pagination, {
+      page: urgencyState.page,
+      totalPages: urgencyState.totalPages,
+    });
+  }
+
+  function renderUrgencyTotal() {
+    if (!urgencyEls.total) return;
+    urgencyEls.total.textContent = `ทั้งหมด ${urgencyState.total} รายการ`;
+  }
+
+  async function loadUrgency() {
+    if (urgencyState.loading) return;
+    urgencyState.loading = true;
+
+    try {
+      if (!urgencyEls.tbody) return;
+
+      urgencyEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">กำลังโหลด...</td></tr>`;
+
+      const api = window.UrgencyAPI || window.urgencyApi;
+      if (!api?.list) throw new Error("UrgencyAPI.list not found (check include urgency.api.js)");
+
+      const res = await api.list({
+        q: urgencyState.q,
+        page: urgencyState.page,
+        limit: urgencyState.limit,
+      });
+
+      const items =
+        Array.isArray(res?.data) ? res.data :
+        Array.isArray(res) ? res :
+        [];
+
+      const pg = res?.pagination ?? {};
+
+      urgencyState.total = Number(pg.total ?? res?.total ?? items.length ?? 0);
+      urgencyState.totalPages = calcTotalPages({
+        total: urgencyState.total,
+        limit: urgencyState.limit,
+        totalPages: pg.totalPages ?? pg.total_pages ?? res?.totalPages ?? res?.total_pages ?? 0,
+      });
+      urgencyState.page = clampInt(Number(pg.page ?? urgencyState.page), 1, urgencyState.totalPages);
+
+      renderUrgencyRows(items);
+      renderUrgencyPagination();
+      renderUrgencyTotal();
+    } catch (err) {
+      console.error(err);
+      if (urgencyEls.tbody) {
+        urgencyEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err?.message || String(err))}</td></tr>`;
+      }
+      urgencyState.total = 0;
+      urgencyState.totalPages = 1;
+      renderUrgencyPagination();
+      renderUrgencyTotal();
+    } finally {
+      urgencyState.loading = false;
+    }
+  }
+
   /* ========================= Notification Type UI - CRUD notification_type ========================= */
   const notificationTypeEls = {
     section: $("#section-notification-type"),
@@ -5938,6 +6126,14 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
       await loadHeadOfRequest();
     }
 
+    if (sectionKey === "urgency") {
+      urgencyState.page = 1;
+      urgencyState.q = (urgencyEls.search?.value || "").trim();
+      urgencyState.limit = Number(urgencyEls.limit?.value || 50);
+
+      await loadUrgency();
+    }
+
     if (sectionKey === "notification-type") {
       notificationTypeState.page = 1;
       notificationTypeState.q = (notificationTypeEls.search?.value || "").trim();
@@ -6034,6 +6230,10 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
   requestStatusEls.btnAdd?.addEventListener("click", async () => {
     await loadRequestStatusTypeRefs();
     openRequestStatusModal({ mode: "create" });
+  });
+
+  urgencyEls.btnAdd?.addEventListener("click", () => {
+    openUrgencyModal({ mode: "create" });
   });
 
   horEls.btnAdd?.addEventListener("click", async () => {
@@ -6146,6 +6346,13 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
     loadRequestStatuses();
   });
 
+  urgencyEls.search?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    urgencyState.page = 1;
+    urgencyState.q = (urgencyEls.search.value || "").trim();
+    loadUrgency();
+  });
+
   horEls.search?.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
     horState.page = 1;
@@ -6242,6 +6449,12 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
     loadRequestStatuses();
   });
 
+  urgencyEls.limit?.addEventListener("change", () => {
+    urgencyState.page = 1;
+    urgencyState.limit = Number(urgencyEls.limit.value || 50);
+    loadUrgency();
+  });
+
   horEls.limit?.addEventListener("change", () => {
     horState.page = 1;
     horState.limit = Number(horEls.limit.value || 50);
@@ -6307,6 +6520,10 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
 
   requestStatusEls.refresh?.addEventListener("click", () => {
     loadRequestStatuses();
+  });
+
+  urgencyEls.refresh?.addEventListener("click", () => {
+    loadUrgency();
   });
 
   horEls.refresh?.addEventListener("click", () => {
@@ -6455,6 +6672,104 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
 
     requestStatusState.page = next;
     loadRequestStatuses();
+  });
+
+  urgencyEls.pagination?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-page]");
+    if (!btn || btn.disabled) return;
+
+    const next = Number(btn.getAttribute("data-page"));
+    if (!next || next < 1 || next > urgencyState.totalPages) return;
+
+    urgencyState.page = next;
+    loadUrgency();
+  });
+
+  urgencyEls.tbody?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+
+    const action = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id");
+
+    if (action === "edit") {
+      openUrgencyModal({
+        mode: "edit",
+        row: {
+          urgency_id: id,
+          urgency_code: btn.getAttribute("data-code"),
+          urgency_title: btn.getAttribute("data-title"),
+          urgency_level: btn.getAttribute("data-level"),
+        },
+      });
+      return;
+    }
+
+    if (action === "delete") {
+      if (!id) return;
+      const ok = confirm("ยืนยันลบความเร่งด่วน?\n\n* การลบอาจกระทบคำขอที่อ้างอิง");
+      if (!ok) return;
+
+      try {
+        const api = window.UrgencyAPI || window.urgencyApi;
+        if (!api?.remove) throw new Error("UrgencyAPI.remove not found");
+        await api.remove(id);
+        loadUrgency();
+      } catch (err) {
+        alert(err?.message || String(err));
+      }
+    }
+  });
+
+  urgencyEls.form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const idRaw = String(urgencyEls.inputId?.value || "").trim();
+    const code = String(urgencyEls.inputCode?.value || "").trim();
+    const title = String(urgencyEls.inputTitle?.value || "").trim();
+    const level = toInt(urgencyEls.inputLevel?.value, 0);
+
+    if (!code) {
+      setUrgencyError("กรุณากรอกรหัสความเร่งด่วน");
+      urgencyEls.inputCode?.focus();
+      return;
+    }
+    if (!title) {
+      setUrgencyError("กรุณากรอกชื่อความเร่งด่วน");
+      urgencyEls.inputTitle?.focus();
+      return;
+    }
+
+    try {
+      setUrgencyError("");
+      const api = window.UrgencyAPI || window.urgencyApi;
+      if (!api) throw new Error("UrgencyAPI not found");
+
+      const payload = {
+        urgency_code: code,
+        urgency_title: title,
+        urgency_level: level,
+      };
+
+      if (idRaw) {
+        if (!api.update) throw new Error("UrgencyAPI.update not found");
+        await api.update(idRaw, payload);
+      } else {
+        if (!api.create) throw new Error("UrgencyAPI.create not found");
+        await api.create(payload);
+      }
+
+      closeUrgencyModal();
+      loadUrgency();
+    } catch (err) {
+      setUrgencyError(err?.message || String(err));
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && urgencyEls.modal && !urgencyEls.modal.hidden) {
+      closeUrgencyModal();
+    }
   });
 
   horEls.pagination?.addEventListener("click", (e) => {

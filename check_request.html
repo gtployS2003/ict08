@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
+    <title>ตรวจสอบคำขอ</title>
+
+    <link rel="stylesheet" href="/ict8/assets/css/request-form.css" />
+
+    <style>
+        .request-form-btn-danger {
+            background: #b91c1c;
+            color: #fff;
+        }
+
+        .request-form-btn-danger:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        .request-form-readonly {
+            background: #f9fafb;
+        }
+    </style>
+
+    <!-- include head -->
+    <script src="/ict8/assets/js/include.js" defer></script>
+    <script src="/ict8/assets/js/auth.js" defer></script>
+    <script src="/ict8/assets/js/main.js" defer></script>
+    <script src="/ict8/backend/public/config.js.php" defer></script>
+    <script src="/ict8/assets/js/api/http.js" defer></script>
+
+    <!-- page script -->
+    <script src="/ict8/assets/js/check-request.js" defer></script>
+</head>
+
+<body>
+    <div id="header-index"></div>
+    <div id="schedule-nav"></div>
+
+    <main class="request-form-page check-request-main">
+        <div class="request-form-container">
+            <div class="request-form-card">
+                <div class="request-form-card-header">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                        <div>
+                            <div class="request-form-card-title">ตรวจสอบคำขอ</div>
+                            <div class="request-form-card-subtitle" id="cr-subtitle">กำลังโหลด...</div>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <a class="request-form-btn request-form-btn-ghost" id="cr-back" href="/ict8/schedule/calendar.html">← กลับไปปฏิทิน</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="cr-error" class="request-form-info-box" style="display:none;border-style:solid;border-color:#fecaca;background:#fff1f2;"></div>
+
+                <form class="request-form-form" id="cr-form" style="display:none;">
+                    <div class="request-form-grid">
+                        <div class="request-form-field">
+                            <label class="request-form-label">รหัสคำขอ</label>
+                            <input class="request-form-input request-form-readonly" id="cr-request-id" type="text" readonly />
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">ประเภทคำขอ</label>
+                            <input class="request-form-input request-form-readonly" id="cr-request-type" type="text" readonly />
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">ประเภทคำขอย่อย</label>
+                            <input class="request-form-input request-form-readonly" id="cr-request-sub-type" type="text" readonly />
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">หัวข้อ</label>
+                            <input class="request-form-input" id="cr-subject" type="text" />
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">รหัสอุปกรณ์</label>
+                            <input class="request-form-input request-form-readonly" id="cr-device-id" type="text" readonly />
+                        </div>
+
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label">รายละเอียด</label>
+                            <textarea class="request-form-textarea" id="cr-detail"></textarea>
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">ผู้ร้องขอ</label>
+                            <input class="request-form-input request-form-readonly" id="cr-requester" type="text" readonly />
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">จังหวัด</label>
+                            <input class="request-form-input request-form-readonly" id="cr-province" type="text" readonly />
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">สถานที่</label>
+                            <input class="request-form-input request-form-readonly" id="cr-location" type="text" readonly />
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">มีไฟล์แนบ</label>
+                            <input class="request-form-input request-form-readonly" id="cr-has-attachment" type="text" readonly />
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">ผู้รับผิดชอบหลัก</label>
+                            <select class="request-form-select" id="cr-head-of-request"></select>
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">ระดับความเร่งด่วน</label>
+                            <select class="request-form-select" id="cr-urgency"></select>
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">วันที่เริ่มต้น</label>
+                            <input class="request-form-input" id="cr-start" type="datetime-local" />
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">วันที่สิ้นสุด</label>
+                            <input class="request-form-input" id="cr-end" type="datetime-local" />
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">สถานะปัจจุบัน</label>
+                            <select class="request-form-select" id="cr-status"></select>
+                        </div>
+
+                        <div class="request-form-field">
+                            <label class="request-form-label">วันที่ร้องขอ</label>
+                            <input class="request-form-input request-form-readonly" id="cr-request-at" type="text" readonly />
+                        </div>
+
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label">เอกสารแนบ</label>
+                            <div id="cr-attachments" class="request-form-hint" style="margin-top:0;">-</div>
+                        </div>
+
+                        <div class="request-form-field request-form-span-2">
+                            <label class="request-form-label">เพิ่มเอกสารแนบ</label>
+                            <label class="request-form-file" for="cr-new-attachments">
+                                คลิกเพื่อเลือกเอกสาร (เลือกได้หลายเอกสาร)
+                                <input id="cr-new-attachments" type="file" multiple style="display:none;" />
+                            </label>
+                            <ul id="cr-new-attachments-preview" class="request-form-file-list" style="display:none;"></ul>
+                            <div class="request-form-hint">เอกสารที่เลือกจะถูกอัปโหลดเมื่อกด “บันทึก”</div>
+                        </div>
+                    </div>
+
+                    <div class="request-form-divider"></div>
+
+                    <div class="request-form-actions">
+                        <button type="button" class="request-form-btn request-form-btn-primary" id="cr-save">บันทึก</button>
+                    </div>
+
+                    <div class="request-form-footer-note" id="cr-action-hint">*</div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <div id="footer-index"></div>
+</body>
+
+</html>

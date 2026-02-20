@@ -20,6 +20,9 @@ function initSidebarTasks() {
     const today = new Date();
     todayLabelEl.textContent = formatThaiDate(today);
 
+    // ✅ pending approvals: ดึงจาก DB (request ที่ status_code=pending)
+    loadPendingRequests(pendingListEl);
+
     fetch('/ict8/assets/js/data-ex/tasks_with_time.json')
         .then(res => res.json())
         .then(tasks => {
@@ -27,7 +30,6 @@ function initSidebarTasks() {
             filteredTasks = tasks.slice();
 
             renderTodayTasks(tasks, todayListEl, today);
-            renderPendingTasks(tasks, pendingListEl);
             initCalendar(filteredTasks);
             initSearchAndFilter();
         })
@@ -35,7 +37,7 @@ function initSidebarTasks() {
         .catch(err => {
             console.error('โหลด tasks_with_time.json ไม่ได้:', err);
             todayListEl.innerHTML = '<p style="font-size:13px;color:#999;">ไม่สามารถโหลดข้อมูลงานได้</p>';
-            pendingListEl.innerHTML = '<p style="font-size:13px;color:#999;">ไม่สามารถโหลดข้อมูลงานได้</p>';
+            // pendingListEl จะถูกโหลดจาก DB แยกต่างหากแล้ว (loadPendingRequests)
         });
 }
 
@@ -100,93 +102,153 @@ function renderTodayTasks(tasks, containerEl, todayDate) {
     });
 }
 
-function renderPendingTasks(tasks, containerEl) {
-    containerEl.innerHTML = '';
+function loadPendingRequests(containerEl) {
+    if (!containerEl) return;
 
-    const pendingTasks = tasks.filter(t => t['สถานะ'] === 'รอการตรวจสอบ');
+    containerEl.innerHTML = '<p style="font-size:13px;color:#999;">กำลังโหลดรายการรอการอนุมัติ...</p>';
 
-    const pendingCountEl = document.getElementById('pending-count');
-    if (pendingCountEl) {
-        pendingCountEl.textContent = pendingTasks.length;
+    const apiFetch = window.apiFetch;
+    if (typeof apiFetch !== 'function') {
+        containerEl.innerHTML = '<p style="font-size:13px;color:#999;">ไม่สามารถโหลดได้ (missing apiFetch)</p>';
+        return;
     }
 
-    if (pendingTasks.length === 0) {
+    const token = (
+        localStorage.getItem('auth_token') ||
+        sessionStorage.getItem('auth_token') ||
+        localStorage.getItem('token') ||
+        sessionStorage.getItem('token') ||
+        localStorage.getItem('access_token') ||
+        sessionStorage.getItem('access_token')
+    );
+
+    apiFetch('/requests/pending?limit=50', { method: 'GET', skipAuth: !token })
+        .then(res => {
+            const items = Array.isArray(res?.data) ? res.data : [];
+            renderPendingRequests(items, containerEl);
+        })
+        .catch(err => {
+            console.error('โหลด pending requests ไม่ได้:', err);
+            containerEl.innerHTML = '<p style="font-size:13px;color:#999;">ไม่สามารถโหลดรายการรอการอนุมัติได้</p>';
+            const pendingCountEl = document.getElementById('pending-count');
+            if (pendingCountEl) pendingCountEl.textContent = '0';
+        });
+}
+
+function renderPendingRequests(items, containerEl) {
+    containerEl.innerHTML = '';
+
+    const basePathRaw = (window.__APP_CONFIG__ && window.__APP_CONFIG__.BASE_PATH)
+        ? String(window.__APP_CONFIG__.BASE_PATH)
+        : '/ict8';
+    const basePathTrim = basePathRaw.trim();
+    const basePath = (basePathTrim ? (basePathTrim.startsWith('/') ? basePathTrim : `/${basePathTrim}`) : '')
+        .replace(/\/+$/, '');
+
+    const pendingCountEl = document.getElementById('pending-count');
+    if (pendingCountEl) pendingCountEl.textContent = String(items.length);
+
+    if (!items.length) {
         containerEl.innerHTML = '<p style="font-size:13px;color:#999;">ไม่มีงานที่รอการอนุมัติ</p>';
         return;
     }
 
-    // เรียงตาม วันที่ร้องขอ + เวลาเข้ารับคำร้อง
-    pendingTasks.sort((a, b) => {
-        const aDate = a['วันที่ร้องขอ'] || '';
-        const bDate = b['วันที่ร้องขอ'] || '';
-        if (aDate !== bDate) return aDate.localeCompare(bDate);
+    items.forEach(r => {
+        const requestId = r.request_id;
+        const subject = r.subject || 'ไม่ระบุหัวข้อคำขอ';
 
-        const aTime = a['เวลาเข้ารับคำร้อง'] || '';
-        const bTime = b['เวลาเข้ารับคำร้อง'] || '';
-        return aTime.localeCompare(bTime);
-    });
+        const reqAt = r.request_at || '';
+        const timeText = reqAt ? formatThaiDateTimeString(reqAt) : 'ไม่ระบุเวลา';
 
-    pendingTasks.forEach(task => {
-        const reqDate = task['วันที่ร้องขอ'] || '';
-        const reqTime = task['เวลาเข้ารับคำร้อง'] || '';
-
-        // ใช้ "วันที่ร้องขอ + เวลาเข้ารับคำร้อง" เป็นบรรทัดเวลา
-        let timeText = 'ไม่ระบุเวลา';
-        if (reqDate && reqTime) {
-            timeText = `${formatThaiDateString(reqDate)} ${reqTime}`;
-        } else if (reqDate) {
-            timeText = formatThaiDateString(reqDate);
-        } else if (reqTime) {
-            timeText = reqTime;
-        }
-
-        const startDate = task['วันที่เริ่มต้น'] || '';
-        const endDate = task['วันที่สิ้นสุด'] || '';
-
-        let betweenText = '';
-        const startThai = startDate ? formatThaiDateString(startDate) : '';
-        const endThai = endDate ? formatThaiDateString(endDate) : '';
-
-        // ===== เงื่อนไขใหม่: ถ้าวันเดียวกัน ให้แสดงแค่วันเดียว =====
-        if (startThai && endThai) {
-            if (startDate === endDate) {
-                // วันเดียวกัน
-                betweenText = `ในวันที่ ${startThai}`;
-            } else {
-                // ต่างวัน
-                betweenText = `ในวันที่ ${startThai} - ${endThai}`;
-            }
-        }
-        else if (startThai) {
-            betweenText = `เริ่ม ${startThai}`;
-        }
-        else if (endThai) {
-            betweenText = `สิ้นสุด ${endThai}`;
-        }
+        const start = r.start_date_time || '';
+        const end = r.end_date_time || '';
+        const betweenText = buildBetweenTextFromDateTimes(start, end);
 
         const metaTextParts = [];
-        if (task.ประเภท) metaTextParts.push(task.ประเภท);
-        if (task.จังหวัด) metaTextParts.push(`จังหวัด${task.จังหวัด}`);
-        if (task['ผู้ร้องขอ']) metaTextParts.push(`ผู้ร้องขอ: ${task['ผู้ร้องขอ']}`);
+        if (r.request_type_name) metaTextParts.push(r.request_type_name);
+        if (r.province_name_th) metaTextParts.push(`จังหวัด${r.province_name_th}`);
+        if (r.requester_name) metaTextParts.push(`ผู้ร้องขอ: ${r.requester_name}`);
 
-        const item = document.createElement('div');
-        item.className = 'sidebar-task pending';
-        const typeClass = getTaskTypeClass(task.ประเภท);
-        if (typeClass) {
-            item.classList.add(typeClass);
-            item.innerHTML = `
-      <div class="sidebar-task-time">${timeText}</div>
-      <div class="sidebar-task-title">${task['ชื่อ'] || 'ไม่ระบุชื่องาน'}</div>
-      ${betweenText ? `<div class="sidebar-task-between">${betweenText}</div>` : ''}
-      <div class="sidebar-task-meta">${metaTextParts.join(' · ')}</div>
-    `;
-            item.addEventListener('click', () => {
-                openTaskModal(task);
-            });
-            containerEl.appendChild(item);
-        }
+        const a = document.createElement('a');
+        a.className = 'sidebar-task pending';
+    a.href = `${basePath}/check_request.html?request_id=${encodeURIComponent(requestId)}`;
+        a.style.textDecoration = 'none';
+        a.style.color = 'inherit';
+
+        a.innerHTML = `
+            <div class="sidebar-task-time">${timeText}</div>
+            <div class="sidebar-task-title">${escapeHtml(subject)}</div>
+            ${betweenText ? `<div class="sidebar-task-between">${betweenText}</div>` : ''}
+            <div class="sidebar-task-meta">${escapeHtml(metaTextParts.join(' · '))}</div>
+        `;
+
+        containerEl.appendChild(a);
     });
+}
 
+function buildBetweenTextFromDateTimes(start, end) {
+    const startStr = normalizeDateTimeToIsoLike(start);
+    const endStr = normalizeDateTimeToIsoLike(end);
+
+    if (!startStr && !endStr) return '';
+
+    const startDate = startStr ? startStr.slice(0, 10) : '';
+    const endDate = endStr ? endStr.slice(0, 10) : '';
+
+    const startThai = startDate ? formatThaiDateString(startDate) : '';
+    const endThai = endDate ? formatThaiDateString(endDate) : '';
+
+    if (startThai && endThai) {
+        if (startDate === endDate) {
+            return `ในวันที่ ${startThai}`;
+        }
+        return `ในวันที่ ${startThai} - ${endThai}`;
+    }
+    if (startThai) return `เริ่ม ${startThai}`;
+    if (endThai) return `สิ้นสุด ${endThai}`;
+    return '';
+}
+
+function normalizeDateTimeToIsoLike(dtStr) {
+    if (!dtStr) return '';
+    const s = String(dtStr).trim();
+    if (s === '') return '';
+    // รองรับ "YYYY-MM-DD HH:MM:SS" -> "YYYY-MM-DDTHH:MM:SS"
+    return s.includes('T') ? s : s.replace(' ', 'T');
+}
+
+function formatThaiDateTimeString(dtStr) {
+    const isoLike = normalizeDateTimeToIsoLike(dtStr);
+    if (!isoLike) return '';
+
+    const d = new Date(isoLike);
+    if (!isNaN(d.getTime())) {
+        const date = d.toLocaleDateString('th-TH', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+        const time = d.toLocaleTimeString('th-TH', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        return `${date} ${time} น.`;
+    }
+
+    // fallback: แยก date/time แบบง่าย
+    const [datePart, timePart] = String(dtStr).split(' ');
+    const dateText = datePart ? formatThaiDateString(datePart) : String(dtStr);
+    const timeText = timePart ? timePart.slice(0, 5) : '';
+    return timeText ? `${dateText} ${timeText}` : dateText;
+}
+
+function escapeHtml(s) {
+    return String(s ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
 }
 
 function formatThaiDate(date) {
@@ -235,7 +297,6 @@ function initCalendar(tasks) {
         initialView: 'dayGridMonth',
         locale: 'th',
         height: 650,
-        with: '100%',
         expandRows: true,
         handleWindowResize: true,
         events,
@@ -716,7 +777,8 @@ function setupAddTaskModal() {
         // รีเฟรช sidebar + calendar
         const today = new Date();
         renderTodayTasks(allTasks, document.getElementById('today-task-list'), today);
-        renderPendingTasks(allTasks, document.getElementById('pending-task-list'));
+        // ✅ รายการ "งานที่รอการอนุมัติ" ใช้ข้อมูลจาก DB (request pending) ไม่เกี่ยวกับงานภายใน
+        loadPendingRequests(document.getElementById('pending-task-list'));
         initCalendar(filteredTasks);
 
         // ปิด popup + ล้างฟอร์ม

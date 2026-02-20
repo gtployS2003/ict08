@@ -13,6 +13,12 @@ if (file_exists($authPath)) {
     require_once $authPath;
 }
 
+// ✅ dev auth middleware (X-Dev-Api-Key) for development convenience
+$devAuthPath = __DIR__ . '/../middleware/dev_auth.php';
+if (file_exists($devAuthPath)) {
+    require_once $devAuthPath;
+}
+
 class RequestsController
 {
     // ✅ ปรับให้รองรับทั้ง conference + other
@@ -22,6 +28,608 @@ class RequestsController
 
     public function __construct(private PDO $pdo)
     {
+    }
+
+    /**
+     * GET /requests/pending?search=&page=&limit=
+     * คืนคำขอที่สถานะ current_status_id -> request_status.status_code = 'pending'
+     */
+    public function pending(): void
+    {
+        try {
+            $this->requireStaffAccess();
+
+            $q = trim((string)($_GET['search'] ?? $_GET['q'] ?? ''));
+            $page = max(1, (int)($_GET['page'] ?? 1));
+            $limit = max(1, min(200, (int)($_GET['limit'] ?? 50)));
+            $offset = ($page - 1) * $limit;
+
+            $params = [];
+            $where = "WHERE rs.status_code = 'pending'";
+
+            if ($q !== '') {
+                $where .= " AND (r.subject LIKE :q OR COALESCE(p.display_name, u.line_user_name, '') LIKE :q)";
+                $params[':q'] = '%' . $q . '%';
+            }
+
+            $sqlCount = "
+                SELECT COUNT(*) AS cnt
+                FROM request r
+                LEFT JOIN request_status rs ON rs.status_id = r.current_status_id
+                LEFT JOIN person p ON p.person_user_id = r.requester_id
+                LEFT JOIN `user` u ON u.user_id = r.requester_id
+                $where
+            ";
+            $stmtCount = $this->pdo->prepare($sqlCount);
+            foreach ($params as $k => $v) {
+                $stmtCount->bindValue($k, $v, PDO::PARAM_STR);
+            }
+            $stmtCount->execute();
+            $total = (int)($stmtCount->fetchColumn() ?: 0);
+
+            $sql = "
+                SELECT
+                    r.request_id,
+                    r.request_type,
+                    rt.type_name AS request_type_name,
+                    r.request_sub_type,
+                    rst.name AS request_sub_type_name,
+                    r.subject,
+                    r.detail,
+                    r.province_id,
+                    pv.nameTH AS province_name_th,
+                    r.location,
+
+                    r.requester_id,
+                    COALESCE(p.display_name, u.line_user_name, CONCAT('user#', r.requester_id)) AS requester_name,
+
+                    r.start_date_time,
+                    r.end_date_time,
+                    r.current_status_id,
+                    rs.status_code,
+                    rs.status_name,
+                    r.request_at
+                FROM request r
+                LEFT JOIN request_type rt ON rt.request_type_id = r.request_type
+                LEFT JOIN request_sub_type rst ON rst.request_sub_type_id = r.request_sub_type
+                LEFT JOIN province pv ON pv.province_id = r.province_id
+                LEFT JOIN person p ON p.person_user_id = r.requester_id
+                LEFT JOIN `user` u ON u.user_id = r.requester_id
+                LEFT JOIN request_status rs ON rs.status_id = r.current_status_id
+                $where
+                ORDER BY r.request_at DESC, r.request_id DESC
+                LIMIT :lim OFFSET :off
+            ";
+
+            $stmt = $this->pdo->prepare($sql);
+            foreach ($params as $k => $v) {
+                $stmt->bindValue($k, $v, PDO::PARAM_STR);
+            }
+            $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            json_response([
+                'error' => false,
+                'data' => $items,
+                'pagination' => [
+                    'page' => $page,
+                    'limit' => $limit,
+                    'total' => $total,
+                    'totalPages' => (int)ceil($total / max(1, $limit)),
+                ],
+            ]);
+        } catch (Throwable $e) {
+            json_response([
+                'error' => true,
+                'message' => 'Failed to get pending requests',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /requests/{id}
+     */
+    public function show(int $id): void
+    {
+        try {
+            $this->requireStaffAccess();
+
+            $id = max(1, (int)$id);
+
+            $sql = "
+                SELECT
+                    r.*,
+                    rt.type_name AS request_type_name,
+                    rst.name AS request_sub_type_name,
+                    pv.nameTH AS province_name_th,
+                    COALESCE(p.display_name, u.line_user_name, CONCAT('user#', r.requester_id)) AS requester_name,
+                    rs.status_code,
+                    rs.status_name
+                FROM request r
+                LEFT JOIN request_type rt ON rt.request_type_id = r.request_type
+                LEFT JOIN request_sub_type rst ON rst.request_sub_type_id = r.request_sub_type
+                LEFT JOIN province pv ON pv.province_id = r.province_id
+                LEFT JOIN person p ON p.person_user_id = r.requester_id
+                LEFT JOIN `user` u ON u.user_id = r.requester_id
+                LEFT JOIN request_status rs ON rs.status_id = r.current_status_id
+                WHERE r.request_id = :id
+                LIMIT 1
+            ";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([':id' => $id]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                json_response([
+                    'error' => true,
+                    'message' => 'Request not found',
+                ], 404);
+                return;
+            }
+
+            $attSql = "
+                SELECT
+                    request_attachment_id AS attachment_id,
+                    request_id,
+                    filepath,
+                    original_filename,
+                    stored_filename,
+                    file_size,
+                    uploaded_by,
+                    uploaded_at
+                FROM request_attachment
+                WHERE request_id = :id
+                ORDER BY request_attachment_id ASC
+            ";
+            $attStmt = $this->pdo->prepare($attSql);
+            $attStmt->execute([':id' => $id]);
+            $atts = $attStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            json_response([
+                'error' => false,
+                'data' => [
+                    'request' => $row,
+                    'attachments' => $atts,
+                ],
+            ]);
+        } catch (Throwable $e) {
+            json_response([
+                'error' => true,
+                'message' => 'Failed to get request',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /requests/{id}/approve
+     */
+    public function approve(int $id): void
+    {
+        $this->setStatusByCode($id, 'approved');
+    }
+
+    /**
+     * POST /requests/{id}/reject
+     */
+    public function reject(int $id): void
+    {
+        $this->setStatusByCode($id, 'rejected');
+    }
+
+    /**
+     * PUT /requests/{id}
+     * Allow staff to edit a subset of fields from the check_request page.
+     * Editable fields (as required):
+     * - subject
+     * - detail
+     * - head_of_request_id
+     * - urgency_id
+     * - start_date_time
+     * - end_date_time
+     * - current_status_id
+     */
+    public function update(int $id): void
+    {
+        try {
+            $me = $this->requireStaffAccess(true);
+
+            $id = max(1, (int)$id);
+            $body = read_json_body();
+
+            $model = new RequestModel($this->pdo);
+            $req = $model->findById($id);
+            if (!$req) {
+                json_response([
+                    'error' => true,
+                    'message' => 'Request not found',
+                ], 404);
+                return;
+            }
+
+            // request_type is immutable on this page
+            $requestTypeId = (int)($req['request_type'] ?? 0);
+            if ($requestTypeId <= 0) {
+                json_response([
+                    'error' => true,
+                    'message' => 'Invalid request_type',
+                ], 422);
+                return;
+            }
+
+            $subject = array_key_exists('subject', $body)
+                ? trim((string)($body['subject'] ?? ''))
+                : (string)($req['subject'] ?? '');
+
+            if ($subject === '') {
+                json_response([
+                    'error' => true,
+                    'message' => 'subject is required',
+                ], 422);
+                return;
+            }
+            if (mb_strlen($subject) > 255) {
+                json_response([
+                    'error' => true,
+                    'message' => 'subject max length is 255',
+                ], 422);
+                return;
+            }
+
+            $detail = array_key_exists('detail', $body)
+                ? (string)($body['detail'] ?? '')
+                : (string)($req['detail'] ?? '');
+
+            $start = array_key_exists('start_date_time', $body) ? trim((string)($body['start_date_time'] ?? '')) : (string)($req['start_date_time'] ?? '');
+            $end = array_key_exists('end_date_time', $body) ? trim((string)($body['end_date_time'] ?? '')) : (string)($req['end_date_time'] ?? '');
+
+            $startVal = ($start === '' ? null : $start);
+            $endVal = ($end === '' ? null : $end);
+
+            if ($startVal !== null && !$this->isDateTime($startVal)) {
+                json_response([
+                    'error' => true,
+                    'message' => 'start_date_time must be YYYY-MM-DD HH:MM:SS',
+                ], 422);
+                return;
+            }
+            if ($endVal !== null && !$this->isDateTime($endVal)) {
+                json_response([
+                    'error' => true,
+                    'message' => 'end_date_time must be YYYY-MM-DD HH:MM:SS',
+                ], 422);
+                return;
+            }
+            if ($startVal !== null && $endVal !== null) {
+                if (strtotime($endVal) <= strtotime($startVal)) {
+                    json_response([
+                        'error' => true,
+                        'message' => 'end_date_time must be later than start_date_time',
+                    ], 422);
+                    return;
+                }
+            }
+
+            // head_of_request_id (nullable)
+            // NOTE: request.head_of_request_id references head_of_request.id (NOT staff_id)
+            $headRaw = $body['head_of_request_id'] ?? null;
+            $headId = null;
+            if ($headRaw !== null && $headRaw !== '' && is_numeric($headRaw)) {
+                $headId = (int)$headRaw;
+                if ($headId <= 0) $headId = null;
+            }
+
+            $requestSubTypeId = $req['request_sub_type'] ?? null;
+            $subTypeInt = (is_numeric($requestSubTypeId) && (int)$requestSubTypeId > 0) ? (int)$requestSubTypeId : 0;
+            if ($headId !== null) {
+                if ($subTypeInt <= 0) {
+                    json_response([
+                        'error' => true,
+                        'message' => 'Cannot set head_of_request_id when request_sub_type is empty',
+                    ], 422);
+                    return;
+                }
+
+                $chkHead = $this->pdo->prepare('SELECT 1 FROM head_of_request WHERE id = :hid AND request_sub_type_id = :sid LIMIT 1');
+                $chkHead->execute([':hid' => $headId, ':sid' => $subTypeInt]);
+                if (!$chkHead->fetchColumn()) {
+                    json_response([
+                        'error' => true,
+                        'message' => 'Invalid head_of_request_id for this request_sub_type',
+                    ], 422);
+                    return;
+                }
+            }
+
+            // urgency_id (nullable)
+            $urgRaw = $body['urgency_id'] ?? null;
+            $urgencyId = null;
+            if ($urgRaw !== null && $urgRaw !== '' && is_numeric($urgRaw)) {
+                $urgencyId = (int)$urgRaw;
+                if ($urgencyId <= 0) $urgencyId = null;
+            }
+            if ($urgencyId !== null) {
+                $chkUrg = $this->pdo->prepare('SELECT 1 FROM urgency WHERE urgency_id = :id LIMIT 1');
+                $chkUrg->execute([':id' => $urgencyId]);
+                if (!$chkUrg->fetchColumn()) {
+                    json_response([
+                        'error' => true,
+                        'message' => 'Invalid urgency_id',
+                    ], 422);
+                    return;
+                }
+            }
+
+            // current_status_id (nullable but recommended)
+            $statusRaw = $body['current_status_id'] ?? null;
+            $statusId = null;
+            if ($statusRaw !== null && $statusRaw !== '' && is_numeric($statusRaw)) {
+                $statusId = (int)$statusRaw;
+                if ($statusId <= 0) $statusId = null;
+            }
+
+            if ($statusId !== null) {
+                $chkStatus = $this->pdo->prepare('SELECT 1 FROM request_status WHERE status_id = :sid AND request_type_id = :rt LIMIT 1');
+                $chkStatus->execute([':sid' => $statusId, ':rt' => $requestTypeId]);
+                if (!$chkStatus->fetchColumn()) {
+                    json_response([
+                        'error' => true,
+                        'message' => 'Invalid current_status_id for this request_type',
+                    ], 422);
+                    return;
+                }
+            } else {
+                // keep existing if still valid, else set default
+                $existingSid = (int)($req['current_status_id'] ?? 0);
+                if ($existingSid > 0) {
+                    $chkStatus = $this->pdo->prepare('SELECT 1 FROM request_status WHERE status_id = :sid AND request_type_id = :rt LIMIT 1');
+                    $chkStatus->execute([':sid' => $existingSid, ':rt' => $requestTypeId]);
+                    if ($chkStatus->fetchColumn()) {
+                        $statusId = $existingSid;
+                    }
+                }
+
+                if ($statusId === null) {
+                    $stmtDef = $this->pdo->prepare('SELECT status_id FROM request_status WHERE request_type_id = :rt ORDER BY sort_order ASC, status_id ASC LIMIT 1');
+                    $stmtDef->execute([':rt' => $requestTypeId]);
+                    $defSid = $stmtDef->fetchColumn();
+                    $statusId = (is_numeric($defSid) && (int)$defSid > 0) ? (int)$defSid : null;
+                }
+            }
+
+            // approve_by_id + approve_channel_id are stored when status becomes 'approved'
+            $existingStatusId = (int)($req['current_status_id'] ?? 0);
+            $oldCode = $existingStatusId > 0 ? $this->getStatusCodeById($existingStatusId) : null;
+            $newCode = ($statusId !== null && $statusId > 0) ? $this->getStatusCodeById((int)$statusId) : $oldCode;
+
+            $setApproveMeta = ($newCode === 'approved' && $oldCode !== 'approved');
+
+            $userId = (int)($me['user_id'] ?? 0);
+            if ($userId <= 0) {
+                $userId = (int)($this->getAuthUserId() ?? 0);
+            }
+
+            $approveById = null;
+            $webChannelId = null;
+            if ($setApproveMeta && $userId > 0) {
+                $approveById = $this->resolveApproveById($requestTypeId, $userId);
+                $webChannelId = $this->getChannelIdByName('web');
+            }
+
+            $sql = "
+                UPDATE request
+                SET
+                    subject = :subject,
+                    detail = :detail,
+                    head_of_request_id = :hid,
+                    urgency_id = :urg,
+                    start_date_time = :start_dt,
+                    end_date_time = :end_dt,
+                    current_status_id = :sid";
+
+            if ($setApproveMeta) {
+                $sql .= ",
+                    approve_by_id = :approve_by_id,
+                    approve_channel_id = :approve_channel_id,
+                    approve_at = NOW()";
+            }
+
+            $sql .= "
+                WHERE request_id = :rid
+                LIMIT 1
+            ";
+
+            $params = [
+                ':subject' => $subject,
+                ':detail' => $detail,
+                ':hid' => $headId,
+                ':urg' => $urgencyId,
+                ':start_dt' => $startVal,
+                ':end_dt' => $endVal,
+                ':sid' => $statusId,
+                ':rid' => $id,
+            ];
+
+            if ($setApproveMeta) {
+                $params[':approve_by_id'] = $approveById;
+                $params[':approve_channel_id'] = ($webChannelId !== null && $webChannelId > 0) ? $webChannelId : null;
+            }
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+
+            // return updated in the same shape as show()
+            $this->show($id);
+        } catch (Throwable $e) {
+            json_response([
+                'error' => true,
+                'message' => 'Failed to update request',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /requests/{id}/attachments
+     * multipart/form-data: attachments[]
+     */
+    public function addAttachments(int $id): void
+    {
+        try {
+            $me = $this->requireStaffAccess(true);
+
+            $id = max(1, (int)$id);
+            $model = new RequestModel($this->pdo);
+            $req = $model->findById($id);
+            if (!$req) {
+                json_response([
+                    'error' => true,
+                    'message' => 'Request not found',
+                ], 404);
+                return;
+            }
+
+            $uploadedBy = (int)($me['user_id'] ?? 0);
+            if ($uploadedBy <= 0) {
+                $uploadedBy = (int)($this->getAuthUserId() ?? 0);
+            }
+            if ($uploadedBy <= 0) {
+                $uploadedBy = 0;
+            }
+
+            $files = [];
+            if (!empty($_FILES)) {
+                if (isset($_FILES['attachments']) && isset($_FILES['attachments']['name']) && is_array($_FILES['attachments']['name'])) {
+                    foreach ($_FILES['attachments']['name'] as $idx => $name) {
+                        $files[] = [
+                            'name' => $name,
+                            'type' => $_FILES['attachments']['type'][$idx] ?? '',
+                            'tmp_name' => $_FILES['attachments']['tmp_name'][$idx] ?? '',
+                            'error' => $_FILES['attachments']['error'][$idx] ?? UPLOAD_ERR_NO_FILE,
+                            'size' => $_FILES['attachments']['size'][$idx] ?? 0,
+                        ];
+                    }
+                } elseif (isset($_FILES['attachment']) && is_array($_FILES['attachment'])) {
+                    $files[] = $_FILES['attachment'];
+                } elseif (isset($_FILES['file']) && is_array($_FILES['file'])) {
+                    $files[] = $_FILES['file'];
+                }
+            }
+
+            $hasAny = false;
+            foreach ($files as $f) {
+                if (($f['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+                    $hasAny = true;
+                    break;
+                }
+            }
+            if (!$hasAny) {
+                json_response([
+                    'error' => true,
+                    'message' => 'No attachments uploaded',
+                ], 422);
+                return;
+            }
+
+            $this->pdo->beginTransaction();
+
+            $insSql = "
+                INSERT INTO request_attachment
+                    (request_id, filepath, original_filename, stored_filename, file_size, uploaded_by, uploaded_at)
+                VALUES
+                    (:request_id, :filepath, :original_filename, :stored_filename, :file_size, :uploaded_by, NOW())
+            ";
+            $insStmt = $this->pdo->prepare($insSql);
+
+            foreach ($files as $file) {
+                if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                    continue;
+                }
+
+                $saved = $this->saveRequestAttachmentFile($id, $uploadedBy, $file);
+                if (!is_array($saved)) {
+                    continue;
+                }
+
+                $insStmt->execute([
+                    ':request_id' => $id,
+                    ':filepath' => $saved['filepath'],
+                    ':original_filename' => $saved['original_filename'],
+                    ':stored_filename' => $saved['stored_filename'],
+                    ':file_size' => $saved['file_size'],
+                    ':uploaded_by' => $uploadedBy,
+                ]);
+            }
+
+            // mark request as having attachments
+            $upd = $this->pdo->prepare('UPDATE request SET hasAttachment = 1 WHERE request_id = :id LIMIT 1');
+            $upd->execute([':id' => $id]);
+
+            $this->pdo->commit();
+
+            $this->show($id);
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            json_response([
+                'error' => true,
+                'message' => 'Failed to upload attachments',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * DELETE /requests/{id}
+     */
+    public function delete(int $id): void
+    {
+        try {
+            $this->requireStaffAccess();
+
+            $id = max(1, (int)$id);
+            $model = new RequestModel($this->pdo);
+            $req = $model->findById($id);
+            if (!$req) {
+                json_response([
+                    'error' => true,
+                    'message' => 'Request not found',
+                ], 404);
+                return;
+            }
+
+            $this->pdo->beginTransaction();
+
+            // delete dependent notifications
+            $delNotif = $this->pdo->prepare('DELETE FROM notification WHERE request_id = :id');
+            $delNotif->execute([':id' => $id]);
+
+            // delete attachments rows (files on disk are kept for now)
+            $delAtt = $this->pdo->prepare('DELETE FROM request_attachment WHERE request_id = :id');
+            $delAtt->execute([':id' => $id]);
+
+            $del = $this->pdo->prepare('DELETE FROM request WHERE request_id = :id LIMIT 1');
+            $del->execute([':id' => $id]);
+
+            $this->pdo->commit();
+
+            json_response([
+                'error' => false,
+                'message' => 'Deleted',
+            ]);
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            json_response([
+                'error' => true,
+                'message' => 'Failed to delete request',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -401,6 +1009,224 @@ class RequestsController
                 'detail' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /* ========================= internal: status update ========================= */
+
+    private function setStatusByCode(int $requestId, string $statusCode): void
+    {
+        try {
+            $me = $this->requireStaffAccess(true);
+
+            $requestId = max(1, (int)$requestId);
+            $statusCode = trim($statusCode);
+
+            // load request
+            $model = new RequestModel($this->pdo);
+            $req = $model->findById($requestId);
+            if (!$req) {
+                json_response([
+                    'error' => true,
+                    'message' => 'Request not found',
+                ], 404);
+                return;
+            }
+
+            $requestTypeId = (int)($req['request_type'] ?? 0);
+            if ($requestTypeId <= 0) {
+                json_response([
+                    'error' => true,
+                    'message' => 'Invalid request_type',
+                ], 422);
+                return;
+            }
+
+            $targetStatusId = $this->getStatusIdByCode($requestTypeId, $statusCode);
+            if ($targetStatusId === null) {
+                json_response([
+                    'error' => true,
+                    'message' => 'Target status not found for this request type',
+                    'detail' => "status_code={$statusCode}, request_type={$requestTypeId}",
+                ], 422);
+                return;
+            }
+
+            $approverId = (int)($me['user_id'] ?? 0);
+            if ($approverId <= 0) {
+                $approverId = (int)($this->getAuthUserId() ?? 0);
+            }
+
+            $statusCodeNorm = strtolower($statusCode);
+            $isApprovedTarget = ($statusCodeNorm === 'approved');
+
+            // Stamp approve meta when status becomes approved
+            if ($isApprovedTarget) {
+                $webChannelId = $this->getChannelIdByName('web');
+                $approveById = ($approverId > 0 && $requestTypeId > 0)
+                    ? $this->resolveApproveById($requestTypeId, $approverId)
+                    : null;
+                $sql = "
+                    UPDATE request
+                    SET
+                        current_status_id = :sid,
+                        approve_by_id = :uid,
+                        approve_channel_id = :cid,
+                        approve_at = NOW()
+                    WHERE request_id = :rid
+                    LIMIT 1
+                ";
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute([
+                    ':sid' => $targetStatusId,
+                    ':uid' => $approveById,
+                    ':cid' => ($webChannelId !== null && $webChannelId > 0) ? $webChannelId : null,
+                    ':rid' => $requestId,
+                ]);
+            } else {
+                $sql = "
+                    UPDATE request
+                    SET
+                        current_status_id = :sid
+                    WHERE request_id = :rid
+                    LIMIT 1
+                ";
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute([
+                    ':sid' => $targetStatusId,
+                    ':rid' => $requestId,
+                ]);
+            }
+
+            // return updated
+            $updated = $model->findById($requestId);
+            json_response([
+                'error' => false,
+                'message' => 'Updated',
+                'data' => $updated ?? ['request_id' => $requestId, 'current_status_id' => $targetStatusId],
+            ]);
+        } catch (Throwable $e) {
+            json_response([
+                'error' => true,
+                'message' => 'Failed to update request status',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function getStatusIdByCode(int $requestTypeId, string $statusCode): ?int
+    {
+        $statusCode = trim($statusCode);
+        if ($requestTypeId <= 0 || $statusCode === '') return null;
+
+        $sql = "
+            SELECT status_id
+            FROM request_status
+            WHERE request_type_id = :rt
+              AND status_code = :code
+            LIMIT 1
+        ";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            ':rt' => $requestTypeId,
+            ':code' => $statusCode,
+        ]);
+        $sid = $stmt->fetchColumn();
+        if (!is_numeric($sid) || (int)$sid <= 0) return null;
+        return (int)$sid;
+    }
+
+    private function getChannelIdByName(string $channelName): ?int
+    {
+        $name = strtolower(trim($channelName));
+        if ($name === '') return null;
+
+        $stmt = $this->pdo->prepare('SELECT channel_id FROM channel WHERE LOWER(channel) = :c LIMIT 1');
+        $stmt->execute([':c' => $name]);
+        $id = $stmt->fetchColumn();
+        return (is_numeric($id) && (int)$id > 0) ? (int)$id : null;
+    }
+
+    /**
+     * approve_by_id in request references notification_type_staff.id
+     * where (notification_type_id, user_id) matches and is_enabled = 1.
+     */
+    private function resolveApproveById(int $requestTypeId, int $userId): ?int
+    {
+        $requestTypeId = max(0, (int)$requestTypeId);
+        $userId = max(0, (int)$userId);
+        if ($requestTypeId <= 0 || $userId <= 0) return null;
+
+        $notifTypeId = $this->resolveNotificationTypeIdForRequestType($requestTypeId);
+        if ($notifTypeId === null) return null;
+
+        $stmt = $this->pdo->prepare('
+            SELECT id
+            FROM notification_type_staff
+            WHERE notification_type_id = :tid
+              AND user_id = :uid
+              AND is_enabled = 1
+            LIMIT 1
+        ');
+        $stmt->execute([':tid' => $notifTypeId, ':uid' => $userId]);
+        $id = $stmt->fetchColumn();
+        return (is_numeric($id) && (int)$id > 0) ? (int)$id : null;
+    }
+
+    private function resolveNotificationTypeIdForRequestType(int $requestTypeId): ?int
+    {
+        // Keep mapping consistent with NotificationService
+        return match ($requestTypeId) {
+            3 => NotificationService::NOTIF_TYPE_REQUEST_REPAIR,
+            4 => NotificationService::NOTIF_TYPE_REQUEST_OTHER,
+            2 => NotificationService::NOTIF_TYPE_REQUEST_CONFERENCE,
+            default => null,
+        };
+    }
+
+    private function getStatusCodeById(int $statusId): ?string
+    {
+        $statusId = max(0, (int)$statusId);
+        if ($statusId <= 0) return null;
+
+        $stmt = $this->pdo->prepare('SELECT status_code FROM request_status WHERE status_id = :id LIMIT 1');
+        $stmt->execute([':id' => $statusId]);
+        $code = strtolower(trim((string)($stmt->fetchColumn() ?? '')));
+        return $code !== '' ? $code : null;
+    }
+
+    /**
+     * ใช้กับฝั่งเจ้าหน้าที่/แอดมิน: รองรับทั้ง Bearer token และ dev API key (เฉพาะ APP_ENV=dev)
+     * @return array<string,mixed>|null user payload if using token
+     */
+    private function requireStaffAccess(bool $returnUser = false): ?array
+    {
+        // 1) ถ้ามี token ให้ใช้ auth ปกติ
+        $hasToken = false;
+        if (function_exists('get_bearer_token')) {
+            $hasToken = (get_bearer_token() !== null);
+        } else {
+            $auth = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+            $hasToken = stripos($auth, 'Bearer ') !== false;
+        }
+
+        if ($hasToken && function_exists('require_auth')) {
+            $u = require_auth($this->pdo);
+            return $returnUser ? $u : $u;
+        }
+
+        // 2) fallback: dev key (only in dev)
+        if (function_exists('require_dev_staff')) {
+            require_dev_staff();
+            return null;
+        }
+
+        // 3) fallback: require_auth if available
+        if (function_exists('require_auth')) {
+            $u = require_auth($this->pdo);
+            return $returnUser ? $u : $u;
+        }
+
+        return null;
     }
 
     /**

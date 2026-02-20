@@ -202,16 +202,37 @@ final class NotificationService
         $subject = trim($subject);
         $suffix = $subject !== '' ? (" — " . $subject) : '';
 
+        // สร้างลิงก์สำหรับตรวจสอบ/อนุมัติคำขอ
+        $link = $this->buildCheckRequestUrl($requestId);
+        $linkLine = $link !== '' ? ("\nตรวจสอบ/อนุมัติ: " . $link) : '';
+
         if ($requestTypeId === 3) {
-            return "มีคำขอแจ้งซ่อมอุปกรณ์ใหม่เข้ามา (#{$requestId}){$suffix}";
+            return "แจ้งเสีย (#{$requestId}){$suffix}{$linkLine}";
         }
         if ($requestTypeId === 4) {
-            return "มีคำขอใช้บริการอื่น ๆ ใหม่เข้ามา (#{$requestId}){$suffix}";
+            return "คำร้องอื่น ๆ (#{$requestId}){$suffix}{$linkLine}";
         }
         if ($requestTypeId === 2) {
-            return "มีคำขอใช้ห้องประชุมใหม่เข้ามา (#{$requestId}){$suffix}";
+            return "ขอใช้ห้องประชุม (#{$requestId}){$suffix}{$linkLine}";
         }
 
-        return "มีคำขอใหม่เข้ามา (#{$requestId}){$suffix}";
+        return "มีคำขอใหม่เข้ามา (#{$requestId}){$suffix}{$linkLine}";
+    }
+
+    private function buildCheckRequestUrl(int $requestId): string
+    {
+        $requestId = max(0, $requestId);
+        if ($requestId <= 0) return '';
+
+        // ถ้ามี API_BASE ใน env (เช่น ngrok) ให้ derive base url จาก host ของ request ณ runtime จะดีกว่า
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+        if ($host === '') return '';
+
+        $basePath = env('BASE_PATH', '/ict8') ?: '/ict8';
+        if ($basePath === '') $basePath = '/ict8';
+        if ($basePath[0] !== '/') $basePath = '/' . $basePath;
+
+        return $scheme . '://' . $host . rtrim($basePath, '/') . '/check_request.html?request_id=' . $requestId;
     }
 }

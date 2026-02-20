@@ -25,6 +25,12 @@ function head_of_request_routes(string $method, array $segments, PDO $pdo): bool
 		return true;
 	}
 
+	// GET /head-of-request/staff/{request_sub_type_id}
+	if ($method === 'GET' && ($segments[1] ?? '') === 'staff' && isset($segments[2]) && ctype_digit((string)$segments[2])) {
+		$controller->staffBySubType((int)$segments[2]);
+		return true;
+	}
+
 	// POST /head-of-request
 	if ($method === 'POST' && count($segments) === 1) {
 		$controller->save();

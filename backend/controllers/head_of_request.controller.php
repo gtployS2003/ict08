@@ -111,6 +111,56 @@ final class HeadOfRequestController
 	}
 
 	/**
+	 * GET /head-of-request/staff/{request_sub_type_id}
+	 * Return staff list (user_id, display_name) assigned to the given request_sub_type_id.
+	 */
+	public function staffBySubType(int $requestSubTypeId): void
+	{
+		try {
+			$requestSubTypeId = max(1, (int)$requestSubTypeId);
+			$model = new HeadOfRequestModel($this->pdo);
+			$rows = $model->listAssignmentsBySubTypeIds([$requestSubTypeId]);
+
+			$out = [];
+			$seen = [];
+			foreach ($rows as $a) {
+				$hid = (int)($a['id'] ?? 0); // head_of_request.id
+				$uid = (int)($a['user_id'] ?? 0); // staff user_id
+				if ($hid <= 0) continue;
+				if (isset($seen[$hid])) continue;
+				$seen[$hid] = true;
+
+				$display = (string)($a['display_name'] ?? '');
+				if ($display === '') $display = (string)($a['line_user_name'] ?? '');
+				if ($display === '') $display = 'user#' . $uid;
+
+				$out[] = [
+					'id' => $hid,
+					'staff_id' => $uid,
+					'display_name' => $display,
+					'line_user_name' => (string)($a['line_user_name'] ?? ''),
+					'user_role_id' => (int)($a['user_role_id'] ?? 0),
+				];
+			}
+
+			usort($out, function ($x, $y) {
+				return strcmp((string)($x['display_name'] ?? ''), (string)($y['display_name'] ?? ''));
+			});
+
+			json_response([
+				'error' => false,
+				'data' => $out,
+			]);
+		} catch (Throwable $e) {
+			json_response([
+				'error' => true,
+				'message' => 'Failed to list head of request staff',
+				'detail' => $e->getMessage(),
+			], 500);
+		}
+	}
+
+	/**
 	 * POST /head-of-request
 	 * body: { request_sub_type_id: number, staff_ids: number[] }
 	 * - replaces assignments for the given request_sub_type_id
