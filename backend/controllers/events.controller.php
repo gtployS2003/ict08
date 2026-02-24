@@ -236,6 +236,59 @@ final class EventsController
     }
 
     /**
+     * GET /events/{id}/logs
+     * Returns event_log rows for a specific event_id.
+     */
+    public function logs(int $id): void
+    {
+        try {
+            $this->requireStaffAccess();
+
+            $id = max(1, (int)$id);
+
+            // ensure event exists
+            $m = new EventModel($this->pdo);
+            $existing = $m->findById($id);
+            if (!$existing) {
+                json_response(['error' => true, 'message' => 'Event not found'], 404);
+                return;
+            }
+
+            $sql = '
+                SELECT
+                    el.event_log_id,
+                    el.event_id,
+                    el.title,
+                    el.detail,
+                    el.location,
+                    el.note,
+                    el.participant_user_ids,
+                    el.updated_by,
+                    u.user_role_id,
+                    COALESCE(p.display_name, u.line_user_name, CONCAT("user#", el.updated_by)) AS updated_by_name
+                FROM event_log el
+                LEFT JOIN `user` u
+                    ON u.user_id = el.updated_by
+                LEFT JOIN person p
+                    ON p.person_user_id = el.updated_by
+                WHERE el.event_id = :eid
+                ORDER BY el.event_log_id ASC
+            ';
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([':eid' => $id]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            json_response([
+                'error' => false,
+                'data' => $rows,
+            ]);
+        } catch (Throwable $e) {
+            json_response(['error' => true, 'message' => 'Failed to list event logs', 'detail' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * GET /events/table?page=&limit=&q=
      * List events for schedule/events.html table.
      */
@@ -410,7 +463,12 @@ final class EventsController
             $this->pdo->beginTransaction();
 
             $eventYearBE = $this->computeEventYearBE($startDt);
-            $roundNo = $this->getNextEventRoundNo($eventYearBE);
+            // round_no will be assigned when event is finished (start from 1)
+            $roundNo = 0;
+
+            $participantIdsNorm = $participantIds;
+            sort($participantIdsNorm);
+            $participantUserIdsStr = implode(',', $participantIdsNorm);
 
             $eventModel = new EventModel($this->pdo);
             $eventId = $eventModel->create([
@@ -426,6 +484,7 @@ final class EventsController
                 'event_status_id' => null,
                 'start_datetime' => $startDt,
                 'end_datetime' => $endDt,
+                'participant_user_ids' => $participantUserIdsStr,
                 'updated_by' => $updatedBy,
             ]);
 
@@ -617,7 +676,7 @@ final class EventsController
     public function update(int $id): void
     {
         try {
-            $this->requireStaffAccess();
+            $me = $this->requireStaffAccess(true);
 
             $id = max(1, (int)$id);
             $body = read_json_body();
@@ -693,6 +752,41 @@ final class EventsController
                 }
             }
 
+            // Conference meeting_link notification (type 10): detect when meeting_link is newly added.
+            $requestTypeId = null;
+            if ($reqId > 0) {
+                try {
+                    $q = $this->pdo->prepare('SELECT request_type FROM request WHERE request_id = :rid LIMIT 1');
+                    $q->execute([':rid' => $reqId]);
+                    $rt = $q->fetchColumn();
+                    $requestTypeId = ($rt !== false && $rt !== null && is_numeric($rt)) ? (int)$rt : null;
+                } catch (Throwable $e) {
+                    // best effort
+                }
+            }
+
+            $meetingLinkPayload = array_key_exists('meeting_link', $body);
+            $prevMeetingLink = trim((string)($existing['meeting_link'] ?? ''));
+            $newMeetingLink = $meetingLinkPayload ? trim((string)($body['meeting_link'] ?? '')) : '';
+            $isConferenceRequest = ($reqId > 0 && (int)($requestTypeId ?? 0) === 2);
+            $meetingLinkJustAdded = ($isConferenceRequest && $meetingLinkPayload && $prevMeetingLink === '' && $newMeetingLink !== '');
+
+            // If the only change is adding meeting_link, avoid sending duplicate "event_edit" notifications.
+            $shouldSendEventEditNotif = true;
+            if ($meetingLinkJustAdded) {
+                $otherKeys = ['title', 'detail', 'location', 'note', 'province_id', 'event_status_id', 'start_datetime', 'end_datetime', 'participant_user_ids', 'participants'];
+                $hasOther = false;
+                foreach ($otherKeys as $k) {
+                    if (array_key_exists($k, $body)) {
+                        $hasOther = true;
+                        break;
+                    }
+                }
+                if (!$hasOther) {
+                    $shouldSendEventEditNotif = false;
+                }
+            }
+
             $data = [
                 'title' => $title,
                 'detail' => array_key_exists('detail', $body) ? (string)($body['detail'] ?? '') : (string)($existing['detail'] ?? ''),
@@ -705,8 +799,29 @@ final class EventsController
                 'end_datetime' => $endVal,
             ];
 
+            // For event_log snapshot on update
+            $updatedBy = (int)($me['user_id'] ?? 0);
+            if ($updatedBy <= 0 && function_exists('get_auth_user')) {
+                $u = get_auth_user($this->pdo);
+                if (is_array($u) && isset($u['user_id']) && is_numeric($u['user_id'])) {
+                    $updatedBy = (int)$u['user_id'];
+                }
+            }
+            // fallback dev: Bearer 123
+            if ($updatedBy <= 0) {
+                $auth = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+                if (preg_match('/Bearer\s+(\d+)/i', $auth, $m)) {
+                    $updatedBy = (int)$m[1];
+                }
+            }
+            if ($updatedBy <= 0) $updatedBy = 0;
+            $data['updated_by'] = $updatedBy;
+
             // participants (optional): replace existing rows
             $participantIds = null;
+            $prevActiveParticipantIds = [];
+            $addedParticipantIds = [];
+            $removedParticipantIds = [];
             if (array_key_exists('participant_user_ids', $body) || array_key_exists('participants', $body)) {
                 $raw = $body['participant_user_ids'] ?? $body['participants'] ?? [];
                 if (!is_array($raw)) {
@@ -714,11 +829,86 @@ final class EventsController
                     return;
                 }
                 $participantIds = array_values(array_unique(array_filter(array_map('intval', $raw), fn($v) => $v > 0)));
+
+                // Snapshot current active participants for diff (added/removed)
+                $epPrev = new EventParticipantModel($this->pdo);
+                $prevRows = $epPrev->listByEventId($id);
+                $prevActiveParticipantIds = array_values(array_unique(array_map(
+                    'intval',
+                    array_filter(array_column($prevRows, 'user_id'), fn($v) => is_numeric($v))
+                )));
+
+                $addedParticipantIds = array_values(array_diff($participantIds, $prevActiveParticipantIds));
+                $removedParticipantIds = array_values(array_diff($prevActiveParticipantIds, $participantIds));
+
+                // Provide participant snapshot to EventModel for event_log
+                $p2 = $participantIds;
+                sort($p2);
+                $data['participant_user_ids'] = implode(',', $p2);
             }
 
             $this->pdo->beginTransaction();
 
-            $ok = $m->update($id, $data);
+            $eventChanged = $m->update($id, $data);
+
+            // If status transitions to "เสร็จสิ้น", then:
+            // - assign round_no (starting at 1) if not assigned yet
+            // - ensure event_report exists and mark submitted_by/submitted_at
+            $finalizeMeta = null;
+            $prevStatusId = isset($existing['event_status_id']) && is_numeric($existing['event_status_id']) ? (int)$existing['event_status_id'] : 0;
+            $prevIsFinished = $this->isFinishedStatusId($prevStatusId > 0 ? $prevStatusId : null);
+            $newIsFinished = $this->isFinishedStatusId($eventStatusId);
+            $existingRoundNo = isset($existing['round_no']) && is_numeric($existing['round_no']) ? (int)$existing['round_no'] : 0;
+            $existingEventYear = isset($existing['event_year']) && is_numeric($existing['event_year']) ? (int)$existing['event_year'] : 0;
+
+            // Assign/refresh round_no when status becomes finished.
+            // - If transitioning to finished: always (re)assign round_no even if it already exists.
+            //   (Supports legacy events that were assigned on create.)
+            // - If already finished but round_no is missing: assign.
+            $shouldAssignRoundNo = ($newIsFinished && !$prevIsFinished) || ($newIsFinished && $existingRoundNo <= 0);
+
+            if ($shouldAssignRoundNo) {
+                // compute event_year if missing
+                $eventYearBE = $existingEventYear;
+                if ($eventYearBE <= 0) {
+                    $eventYearBE = $this->computeEventYearBE($startVal ?? (string)($existing['start_datetime'] ?? ''));
+                }
+
+                // Always assign a new round number when finishing (or if missing while finished).
+                $roundNo = $this->getNextEventRoundNo($eventYearBE);
+
+                $stmtAssign = $this->pdo->prepare('
+                    UPDATE event
+                    SET
+                        round_no = :r,
+                        event_year = CASE WHEN event_year IS NULL OR event_year = 0 THEN :y ELSE event_year END,
+                        updated_at = NOW()
+                    WHERE event_id = :id
+                    LIMIT 1
+                ');
+                $stmtAssign->execute([
+                    ':r' => $roundNo,
+                    ':y' => $eventYearBE,
+                    ':id' => $id,
+                ]);
+
+                // ensure event_report exists
+                $rid = $this->ensureEventReport($id, $updatedBy);
+
+                $finalizeMeta = [
+                    'event_year' => $eventYearBE,
+                    'round_no' => $roundNo,
+                    'event_report_id' => $rid,
+                ];
+            }
+
+            // Pre-build notification messages (so they are consistent even if title changes)
+            $eventTitleForMsg = $title;
+            $eventUrl = $this->buildEventEditUrl($id);
+            $eventLinkLine = $eventUrl !== '' ? ("\nดูรายละเอียด: " . $eventUrl) : '';
+
+            $dispatchJobs = [];
+            $notificationIds = [];
 
             if ($participantIds !== null) {
                 // Validate user ids (internal: role 2,3 only; request-based: any existing user)
@@ -748,14 +938,268 @@ final class EventsController
                     }
                 }
 
+                // Sync participants by toggling is_active instead of deleting rows.
                 $epModel = new EventParticipantModel($this->pdo);
-                $epModel->deleteByEventId($id);
-                if (!empty($participantIds)) {
-                    $epModel->insertMany($id, $participantIds, 1, 1);
+                $epModel->syncByEventId($id, $participantIds, 1);
+
+                $participantsChanged = (!empty($addedParticipantIds) || !empty($removedParticipantIds));
+
+                // If only participants changed (event row unchanged), still write an event_log snapshot.
+                if ($participantsChanged && $eventChanged !== true) {
+                    $stmtCur = $this->pdo->prepare('SELECT title, detail, location, note FROM event WHERE event_id = :id LIMIT 1');
+                    $stmtCur->bindValue(':id', $id, PDO::PARAM_INT);
+                    $stmtCur->execute();
+                    $cur = $stmtCur->fetch(PDO::FETCH_ASSOC) ?: [];
+
+                    $titleLog = trim((string)($cur['title'] ?? ''));
+                    if (mb_strlen($titleLog) > 255) {
+                        $titleLog = mb_substr($titleLog, 0, 255);
+                    }
+
+                    $stmtLog = $this->pdo->prepare('
+                        INSERT INTO event_log (
+                            event_id,
+                            title,
+                            detail,
+                            location,
+                            note,
+                            participant_user_ids,
+                            updated_by
+                        ) VALUES (
+                            :event_id,
+                            :title,
+                            :detail,
+                            :location,
+                            :note,
+                            :participant_user_ids,
+                            :updated_by
+                        )
+                    ');
+                    $stmtLog->execute([
+                        ':event_id' => $id,
+                        ':title' => $titleLog,
+                        ':detail' => (string)($cur['detail'] ?? ''),
+                        ':location' => (string)($cur['location'] ?? ''),
+                        ':note' => (string)($cur['note'] ?? ''),
+                        ':participant_user_ids' => (string)($data['participant_user_ids'] ?? ''),
+                        ':updated_by' => $updatedBy,
+                    ]);
+                }
+
+                // Case (1): participants added -> notification_type_id=8, push LINE only to newly added userIds.
+                if (!empty($addedParticipantIds)) {
+                    // Ensure notification_type_id=8 exists (best effort)
+                    try {
+                        $chkNt = $this->pdo->prepare('SELECT 1 FROM notification_type WHERE notification_type_id = 8 LIMIT 1');
+                        $chkNt->execute();
+                        $hasNt8 = (bool)$chkNt->fetchColumn();
+                        if (!$hasNt8) {
+                            $insNt = $this->pdo->prepare('
+                                INSERT INTO notification_type (notification_type_id, notification_type, meaning)
+                                VALUES (8, :t, :m)
+                            ');
+                            $insNt->execute([
+                                ':t' => 'event_participation',
+                                ':m' => 'การมีส่วนร่วมในกิจกรรม',
+                            ]);
+                        }
+                    } catch (Throwable $e) {
+                        error_log('[EVENTS] ensure notification_type 8 failed: ' . $e->getMessage());
+                    }
+
+                    // DB notification message (general)
+                    $msg = "มีการเพิ่มผู้เข้าร่วมกิจกรรม: {$eventTitleForMsg}{$eventLinkLine}";
+                    try {
+                        $notifModel = new NotificationModel($this->pdo);
+                        $notificationIds[] = $notifModel->createEventNotification([
+                            'event_id' => $id,
+                            'notification_type_id' => 8,
+                            'message' => $msg,
+                        ]);
+                    } catch (Throwable $e) {
+                        error_log('[EVENTS] create type8 notification failed: ' . $e->getMessage());
+                    }
+
+                    // LINE dispatch message: role-based
+                    $addedStaffIds = [];
+                    $addedRole1Ids = [];
+                    try {
+                        $in = implode(',', array_fill(0, count($addedParticipantIds), '?'));
+                        $stmtRole = $this->pdo->prepare("SELECT user_id, user_role_id FROM `user` WHERE user_id IN ($in)");
+                        $stmtRole->execute($addedParticipantIds);
+                        $rows = $stmtRole->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                        foreach ($rows as $r) {
+                            $uid = (int)($r['user_id'] ?? 0);
+                            $rid = (int)($r['user_role_id'] ?? 1);
+                            if ($uid <= 0) continue;
+                            if (in_array($rid, [2, 3], true)) $addedStaffIds[] = $uid;
+                            else $addedRole1Ids[] = $uid;
+                        }
+                    } catch (Throwable $e) {
+                        // fallback: treat all as staff-like
+                        $addedStaffIds = $addedParticipantIds;
+                    }
+
+                    $addedStaffIds = array_values(array_unique(array_map('intval', $addedStaffIds)));
+                    $addedRole1Ids = array_values(array_unique(array_map('intval', $addedRole1Ids)));
+
+                    if (!empty($addedStaffIds)) {
+                        $msgStaff = "คุณถูกเพิ่มเป็นผู้เข้าร่วมงาน: {$eventTitleForMsg}";
+                        $msgStaff .= $eventUrl !== ''
+                            ? ("\nแก้ไขรายละเอียดงานได้ที่: {$eventUrl}")
+                            : $eventLinkLine;
+                        $dispatchJobs[] = ['user_ids' => $addedStaffIds, 'message' => $msgStaff];
+                    }
+
+                    if (!empty($addedRole1Ids)) {
+                        $msgUser = "คุณถูกเพิ่มให้เข้าร่วมกิจกรรม: {$eventTitleForMsg}{$eventLinkLine}";
+                        $dispatchJobs[] = ['user_ids' => $addedRole1Ids, 'message' => $msgUser];
+                    }
+                }
+            }
+
+            // Case (conference): meeting_link added -> notification_type_id=10, push LINE to participants.
+            if ($meetingLinkJustAdded) {
+                // Determine recipients: current active participant list
+                $recipients = [];
+                if ($participantIds !== null) {
+                    $recipients = $participantIds;
+                } else {
+                    $epNow = new EventParticipantModel($this->pdo);
+                    $nowRows = $epNow->listByEventId($id);
+                    $recipients = array_values(array_unique(array_map(
+                        'intval',
+                        array_filter(array_column($nowRows, 'user_id'), fn($v) => is_numeric($v))
+                    )));
+                }
+
+                // Exclude editor
+                $recipients = array_values(array_filter($recipients, fn($uid) => (int)$uid > 0 && (int)$uid !== (int)$updatedBy));
+
+                // Ensure notification_type_id=10 exists (best effort)
+                try {
+                    $chkNt = $this->pdo->prepare('SELECT 1 FROM notification_type WHERE notification_type_id = 10 LIMIT 1');
+                    $chkNt->execute();
+                    $hasNt10 = (bool)$chkNt->fetchColumn();
+                    if (!$hasNt10) {
+                        $insNt = $this->pdo->prepare('
+                            INSERT INTO notification_type (notification_type_id, notification_type, meaning)
+                            VALUES (10, :t, :m)
+                        ');
+                        $insNt->execute([
+                            ':t' => 'conference_meeting_link',
+                            ':m' => 'ได้รับลิงก์เข้าร่วมประชุม',
+                        ]);
+                    }
+                } catch (Throwable $e) {
+                    error_log('[EVENTS] ensure notification_type 10 failed: ' . $e->getMessage());
+                }
+
+                $msg = "ได้รับ link เข้าร่วมประชุม: {$eventTitleForMsg}\nลิงก์: {$newMeetingLink}{$eventLinkLine}";
+                try {
+                    $notifModel = new NotificationModel($this->pdo);
+                    $notificationIds[] = $notifModel->createEventNotification([
+                        'event_id' => $id,
+                        'notification_type_id' => 10,
+                        'message' => $msg,
+                    ]);
+                } catch (Throwable $e) {
+                    error_log('[EVENTS] create type10 notification failed: ' . $e->getMessage());
+                }
+
+                if (!empty($recipients)) {
+                    $dispatchJobs[] = ['user_ids' => $recipients, 'message' => $msg];
+                }
+            }
+
+            // Case (2): event detail edited -> notification_type_id=9, push LINE to active participants.
+            // Trigger only when event row actually changed.
+            if ($eventChanged === true && $shouldSendEventEditNotif) {
+                // Determine recipients: current active participant list
+                $recipients = [];
+                if ($participantIds !== null) {
+                    $recipients = $participantIds;
+                } else {
+                    // no participant payload: use current active participants from DB
+                    $epNow = new EventParticipantModel($this->pdo);
+                    $nowRows = $epNow->listByEventId($id);
+                    $recipients = array_values(array_unique(array_map(
+                        'intval',
+                        array_filter(array_column($nowRows, 'user_id'), fn($v) => is_numeric($v))
+                    )));
+                }
+
+                // Exclude editor (optional, but reduces noise)
+                $recipients = array_values(array_filter($recipients, fn($uid) => (int)$uid > 0 && (int)$uid !== (int)$updatedBy));
+
+                // Ensure notification_type_id=9 exists (best effort)
+                try {
+                    $chkNt = $this->pdo->prepare('SELECT 1 FROM notification_type WHERE notification_type_id = 9 LIMIT 1');
+                    $chkNt->execute();
+                    $hasNt9 = (bool)$chkNt->fetchColumn();
+                    if (!$hasNt9) {
+                        $insNt = $this->pdo->prepare('
+                            INSERT INTO notification_type (notification_type_id, notification_type, meaning)
+                            VALUES (9, :t, :m)
+                        ');
+                        $insNt->execute([
+                            ':t' => 'event_edit',
+                            ':m' => 'มีการแก้ไขรายละเอียดกิจกรรม',
+                        ]);
+                    }
+                } catch (Throwable $e) {
+                    error_log('[EVENTS] ensure notification_type 9 failed: ' . $e->getMessage());
+                }
+
+                $msg = "มีการแก้ไขรายละเอียดกิจกรรม: {$eventTitleForMsg}{$eventLinkLine}";
+                try {
+                    $notifModel = new NotificationModel($this->pdo);
+                    $notificationIds[] = $notifModel->createEventNotification([
+                        'event_id' => $id,
+                        'notification_type_id' => 9,
+                        'message' => $msg,
+                    ]);
+                } catch (Throwable $e) {
+                    error_log('[EVENTS] create type9 notification failed: ' . $e->getMessage());
+                }
+
+                if (!empty($recipients)) {
+                    $dispatchJobs[] = ['user_ids' => $recipients, 'message' => $msg];
                 }
             }
 
             $this->pdo->commit();
+
+            // Dispatch LINE notifications (best effort) after commit
+            $dispatchResults = [];
+            if (!empty($dispatchJobs)) {
+                try {
+                    $svc = new NotificationService($this->pdo);
+                    foreach ($dispatchJobs as $job) {
+                        $uids = $job['user_ids'] ?? [];
+                        $msg = (string)($job['message'] ?? '');
+                        if (!is_array($uids) || trim($msg) === '') continue;
+                        $resp = $svc->dispatchToUsers($uids, $msg);
+
+                        // Keep lightweight debug info for API response when APP_DEBUG=1
+                        $dispatchResults[] = [
+                            'recipients' => (int)($resp['recipients'] ?? 0),
+                            'sent_line' => (int)($resp['sent_line'] ?? 0),
+                            'skipped' => (int)($resp['skipped'] ?? 0),
+                            'errors' => $resp['errors'] ?? [],
+                        ];
+
+                        // Log errors for easier debugging (similar to RequestsController)
+                        if (($resp['ok'] ?? false) !== true) {
+                            error_log('[EVENTS] dispatchToUsers not ok: ' . json_encode($resp, JSON_UNESCAPED_UNICODE));
+                        } elseif (!empty($resp['errors'])) {
+                            error_log('[EVENTS] dispatchToUsers errors: ' . json_encode($resp, JSON_UNESCAPED_UNICODE));
+                        }
+                    }
+                } catch (Throwable $e) {
+                    error_log('[EVENTS] dispatchToUsers failed: ' . $e->getMessage());
+                }
+            }
 
             // return fresh row
             $fresh = $m->findById($id);
@@ -771,8 +1215,11 @@ final class EventsController
             }
             json_response([
                 'error' => false,
-                'message' => $ok ? 'Updated' : 'No changes',
+                'message' => ($eventChanged === true || !empty($addedParticipantIds) || !empty($removedParticipantIds)) ? 'Updated' : 'No changes',
                 'data' => $fresh ?? ['event_id' => $id],
+                // Helpful for debugging why LINE didn't send (only when APP_DEBUG=1)
+                'dispatch' => (env('APP_DEBUG') === '1' ? $dispatchResults : null),
+                'finalize' => (env('APP_DEBUG') === '1' ? $finalizeMeta : null),
             ]);
         } catch (Throwable $e) {
             if ($this->pdo->inTransaction()) {
@@ -945,12 +1392,38 @@ final class EventsController
             SELECT MAX(round_no) AS max_round
             FROM event
             WHERE event_year = :y
+              AND round_no > 0
             FOR UPDATE
         ');
         $stmt->execute([':y' => $eventYearBE]);
         $max = $stmt->fetchColumn();
         $maxNo = (is_numeric($max) ? (int)$max : 0);
         return max(0, $maxNo) + 1;
+    }
+
+    private function isFinishedStatusId(?int $eventStatusId): bool
+    {
+        $eventStatusId = $eventStatusId !== null ? (int)$eventStatusId : 0;
+        if ($eventStatusId <= 0) return false;
+
+        try {
+            $stmt = $this->pdo->prepare('SELECT status_code, status_name FROM event_status WHERE event_status_id = :id LIMIT 1');
+            $stmt->execute([':id' => $eventStatusId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            $code = strtoupper(trim((string)($row['status_code'] ?? '')));
+            $name = trim((string)($row['status_name'] ?? ''));
+
+            if ($name !== '' && mb_strpos($name, 'เสร็จสิ้น') !== false) return true;
+            if ($code !== '') {
+                if (str_contains($code, 'DONE') || str_contains($code, 'FINISH') || str_contains($code, 'FINISHED') || str_contains($code, 'COMPLETE')) {
+                    return true;
+                }
+            }
+        } catch (Throwable $e) {
+            // best effort
+        }
+
+        return false;
     }
 
     /**
@@ -961,11 +1434,35 @@ final class EventsController
         $eventId = max(1, (int)$eventId);
         $userId = max(0, (int)$userId);
 
-        $stmt = $this->pdo->prepare('SELECT event_report_id FROM event_report WHERE event_id = :eid LIMIT 1');
+        $stmt = $this->pdo->prepare('SELECT event_report_id, submitted_by_id, submitted_at FROM event_report WHERE event_id = :eid LIMIT 1');
         $stmt->execute([':eid' => $eventId]);
-        $rid = $stmt->fetchColumn();
-        if (is_numeric($rid) && (int)$rid > 0) {
-            return (int)$rid;
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($row && is_numeric($row['event_report_id'] ?? null) && (int)$row['event_report_id'] > 0) {
+            $rid = (int)$row['event_report_id'];
+
+            // If report already exists (e.g. created for internal picture uploads),
+            // but submission fields are missing, set them when finishing.
+            $submittedBy = isset($row['submitted_by_id']) && is_numeric($row['submitted_by_id']) ? (int)$row['submitted_by_id'] : 0;
+            $submittedAt = trim((string)($row['submitted_at'] ?? ''));
+
+            if ($userId > 0 && ($submittedBy <= 0 || $submittedAt === '')) {
+                try {
+                    $up = $this->pdo->prepare('
+                        UPDATE event_report
+                        SET
+                            submitted_by_id = CASE WHEN submitted_by_id IS NULL OR submitted_by_id = 0 THEN :sid ELSE submitted_by_id END,
+                            submitted_at = CASE WHEN submitted_at IS NULL THEN NOW() ELSE submitted_at END,
+                            updated_at = NOW()
+                        WHERE event_report_id = :rid
+                        LIMIT 1
+                    ');
+                    $up->execute([':sid' => $userId, ':rid' => $rid]);
+                } catch (Throwable $e) {
+                    // best effort
+                }
+            }
+
+            return $rid;
         }
 
         $ins = $this->pdo->prepare('

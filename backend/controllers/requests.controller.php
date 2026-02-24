@@ -1217,7 +1217,8 @@ class RequestsController
             // round_no should run per year, and event_year stored as Thai B.E. year (พ.ศ.)
             $startDt = $req['start_date_time'] ?? null;
             $eventYearBE = $this->computeEventYearBE(is_string($startDt) ? $startDt : null);
-            $roundNo = $this->getNextEventRoundNo($eventYearBE);
+            // round_no will be assigned when event is finished
+            $roundNo = 0;
 
             $eventId = $eventModel->create([
                 'request_id' => $requestId,
@@ -1377,6 +1378,7 @@ class RequestsController
             SELECT MAX(round_no) AS max_round
             FROM event
             WHERE event_year = :y
+              AND round_no > 0
             FOR UPDATE
         ');
         $stmt->execute([':y' => $eventYearBE]);

@@ -7,6 +7,83 @@ final class EventParticipantModel
     public function __construct(private PDO $pdo) {}
 
     /**
+     * Sync participants for an event.
+     * - Existing participants not in $userIds will be set is_active=0
+     * - Participants in $userIds will be ensured is_active=1 (and inserted if missing)
+     *
+     * NOTE: This intentionally does NOT delete rows so that unchecked participants remain
+     * in the table with is_active=0.
+     *
+     * @param array<int,int> $userIds
+     * @return array{activated:int,deactivated:int,inserted:int}
+     */
+    public function syncByEventId(int $eventId, array $userIds, int $isNotificationRecipient = 1): array
+    {
+        $eventId = max(1, (int)$eventId);
+        $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), fn($v) => $v > 0)));
+
+        if ($eventId <= 0) {
+            throw new InvalidArgumentException('event_id is required');
+        }
+
+        // Load existing user_ids (include inactive)
+        $stmt = $this->pdo->prepare('SELECT DISTINCT user_id FROM event_participant WHERE event_id = :eid');
+        $stmt->execute([':eid' => $eventId]);
+        $existing = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        $existingIds = array_values(array_unique(array_filter(array_map('intval', $existing), fn($v) => $v > 0)));
+
+        $want = $userIds;
+        $haveSet = array_fill_keys($existingIds, true);
+        $wantSet = array_fill_keys($want, true);
+
+        $toInsert = [];
+        foreach ($want as $uid) {
+            if (!isset($haveSet[$uid])) {
+                $toInsert[] = $uid;
+            }
+        }
+
+        $toDeactivate = [];
+        foreach ($existingIds as $uid) {
+            if (!isset($wantSet[$uid])) {
+                $toDeactivate[] = $uid;
+            }
+        }
+
+        $activated = 0;
+        $deactivated = 0;
+        $inserted = 0;
+
+        if (!empty($want)) {
+            $placeholders = implode(',', array_fill(0, count($want), '?'));
+            $sql = "UPDATE event_participant SET is_active = 1, is_notification_recipient = ? WHERE event_id = ? AND user_id IN ($placeholders)";
+            $params = array_merge([(int)$isNotificationRecipient, $eventId], $want);
+            $up = $this->pdo->prepare($sql);
+            $up->execute($params);
+            $activated = (int)$up->rowCount();
+        }
+
+        if (!empty($toDeactivate)) {
+            $placeholders = implode(',', array_fill(0, count($toDeactivate), '?'));
+            $sql = "UPDATE event_participant SET is_active = 0 WHERE event_id = ? AND user_id IN ($placeholders)";
+            $params = array_merge([$eventId], $toDeactivate);
+            $up = $this->pdo->prepare($sql);
+            $up->execute($params);
+            $deactivated = (int)$up->rowCount();
+        }
+
+        if (!empty($toInsert)) {
+            $inserted = $this->insertMany($eventId, $toInsert, $isNotificationRecipient, 1);
+        }
+
+        return [
+            'activated' => $activated,
+            'deactivated' => $deactivated,
+            'inserted' => $inserted,
+        ];
+    }
+
+    /**
      * @return array<int,array<string,mixed>>
      */
     public function listByEventId(int $eventId): array

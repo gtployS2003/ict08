@@ -90,6 +90,274 @@
       .replace(/'/g, "&#039;");
   }
 
+  function setLogSubtitle(msg) {
+    const el = document.getElementById("ee-log-subtitle");
+    if (!el) return;
+    el.textContent = msg || "";
+  }
+
+  function isLogOpen() {
+    return document.body.classList.contains("ee-log-open");
+  }
+
+  function setLogOpen(open) {
+    const willOpen = !!open;
+    document.body.classList.toggle("ee-log-open", willOpen);
+
+    const toggleBtn = document.getElementById("ee-log-toggle");
+    if (toggleBtn) toggleBtn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+
+    const overlay = document.getElementById("ee-log-overlay");
+    if (overlay) overlay.setAttribute("aria-hidden", willOpen ? "false" : "true");
+
+    const drawer = document.getElementById("ee-log-drawer");
+    if (drawer) drawer.setAttribute("aria-hidden", willOpen ? "false" : "true");
+  }
+
+  function wireLogDrawer() {
+    const toggleBtn = document.getElementById("ee-log-toggle");
+    const closeBtn = document.getElementById("ee-log-close");
+    const overlay = document.getElementById("ee-log-overlay");
+
+    toggleBtn?.addEventListener("click", () => {
+      setLogOpen(!isLogOpen());
+    });
+    closeBtn?.addEventListener("click", () => setLogOpen(false));
+    overlay?.addEventListener("click", () => setLogOpen(false));
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && isLogOpen()) {
+        setLogOpen(false);
+      }
+    });
+
+    // initial state
+    setLogOpen(false);
+  }
+
+  async function fetchEventLogs(eventId) {
+    const json = await window.apiFetch(`/events/${encodeURIComponent(eventId)}/logs`, { method: "GET" });
+    return normalizeRows(json);
+  }
+
+  async function refreshSidebarAttachments(eventId) {
+    const box = document.getElementById("ee-log-attachments");
+    const src = document.getElementById("ee-log-attachments-source");
+    if (box) box.textContent = "กำลังโหลด...";
+    if (src) src.textContent = "";
+
+    try {
+      const ctx = window.__eventEdit || {};
+      const e = ctx.event || {};
+      const isInternal = !!ctx.isInternal;
+
+      if (isInternal) {
+        if (src) src.textContent = "แหล่งข้อมูล: event_report_picture";
+        const rep = await fetchEventReport(eventId);
+        const pics = Array.isArray(rep?.pictures) ? rep.pictures : [];
+        renderAttachments({ containerId: "ee-log-attachments", atts: pics });
+        return;
+      }
+
+      const requestId = e.request_id ? Number(e.request_id) : 0;
+      if (requestId > 0) {
+        if (src) src.textContent = "แหล่งข้อมูล: request_attachment";
+        const r = await window.apiFetch(`/requests/${encodeURIComponent(requestId)}`, { method: "GET" });
+        const atts = Array.isArray(r?.data?.attachments) ? r.data.attachments : [];
+        // keep ctx in sync (best effort)
+        try {
+          const c2 = window.__eventEdit || {};
+          c2.requestAttachments = atts;
+          window.__eventEdit = c2;
+        } catch (_) {}
+        renderAttachments({ containerId: "ee-log-attachments", atts });
+        return;
+      }
+
+      if (src) src.textContent = "-";
+      if (box) box.textContent = "-";
+    } catch (err) {
+      console.warn("Cannot load sidebar attachments", err);
+      if (src) src.textContent = "โหลดไฟล์แนบไม่สำเร็จ";
+      if (box) box.textContent = "-";
+    }
+  }
+
+  function normText(v) {
+    return String(v ?? "").replace(/\r\n/g, "\n").trim();
+  }
+
+  function displayValue(v) {
+    const s = normText(v);
+    return s === "" ? "(ว่าง)" : s;
+  }
+
+  function buildChangeBlock({ label, before, after }) {
+    const wrap = document.createElement("div");
+    wrap.className = "ee-change";
+
+    const lab = document.createElement("div");
+    lab.className = "ee-change-label";
+    lab.textContent = label;
+    wrap.appendChild(lab);
+
+    if (before !== null) {
+      const b = document.createElement("div");
+      b.className = "ee-change-before";
+      b.textContent = `ก่อน: ${displayValue(before)}`;
+      wrap.appendChild(b);
+    }
+
+    const a = document.createElement("div");
+    a.className = "ee-change-after";
+    a.textContent = before === null
+      ? `ค่า: ${displayValue(after)}`
+      : `หลัง: ${displayValue(after)}`;
+    wrap.appendChild(a);
+
+    return wrap;
+  }
+
+  function renderEventLogs({ containerId, logs }) {
+    const el = document.getElementById(containerId);
+    if (!el) return 0;
+
+    const rows = Array.isArray(logs) ? logs : [];
+    if (!rows.length) {
+      el.className = "ee-empty";
+      el.textContent = "ยังไม่มีประวัติการแก้ไข";
+      return 0;
+    }
+
+    el.className = "";
+    el.innerHTML = "";
+
+    const fields = [
+      { key: "title", label: "ชื่องาน" },
+      { key: "detail", label: "รายละเอียด" },
+      { key: "location", label: "สถานที่" },
+      { key: "note", label: "หมายเหตุ" },
+    ];
+
+    const ctx = window.__eventEdit || {};
+    const userMap = ctx.userMap instanceof Map ? ctx.userMap : new Map();
+
+    let renderedCount = 0;
+
+    rows.forEach((r, idx) => {
+      const bubble = document.createElement("div");
+      bubble.className = "ee-bubble";
+
+      const top = document.createElement("div");
+      top.className = "ee-bubble-top";
+
+      const name = document.createElement("div");
+      name.className = "ee-bubble-name";
+      name.textContent = String(r.updated_by_name || r.updated_by || "-");
+      top.appendChild(name);
+
+      const sub = document.createElement("div");
+      sub.className = "ee-bubble-sub";
+      const logId = r.event_log_id ?? r.id ?? "";
+      sub.textContent = logId ? `log#${logId}` : "";
+      top.appendChild(sub);
+
+      bubble.appendChild(top);
+
+      const content = document.createElement("div");
+      content.className = "ee-bubble-content";
+
+      if (idx === 0) {
+        // first snapshot
+        fields.forEach((f) => {
+          content.appendChild(buildChangeBlock({
+            label: f.label,
+            before: null,
+            after: r[f.key] ?? "",
+          }));
+        });
+
+        // participant snapshot
+        const curIds = parseParticipantUserIds(r.participant_user_ids);
+        content.appendChild(buildChangeBlock({
+          label: "ผู้เข้าร่วม",
+          before: null,
+          after: formatParticipantNames(curIds, userMap),
+        }));
+      } else {
+        const prev = rows[idx - 1] || {};
+        const changes = [];
+        fields.forEach((f) => {
+          const a = normText(r[f.key]);
+          const b = normText(prev[f.key]);
+          if (a !== b) {
+            changes.push({ label: f.label, before: prev[f.key] ?? "", after: r[f.key] ?? "" });
+          }
+        });
+
+        // participants diff
+        const prevIds = parseParticipantUserIds(prev.participant_user_ids);
+        const curIds = parseParticipantUserIds(r.participant_user_ids);
+        if (participantKey(prevIds) !== participantKey(curIds)) {
+          changes.push({
+            label: "ผู้เข้าร่วม",
+            before: formatParticipantNames(prevIds, userMap),
+            after: formatParticipantNames(curIds, userMap),
+          });
+        }
+
+        // If no changes, skip rendering this log row to keep the sidebar tidy.
+        if (!changes.length) return;
+
+        changes.forEach((c) => content.appendChild(buildChangeBlock(c)));
+      }
+
+      bubble.appendChild(content);
+      el.appendChild(bubble);
+      renderedCount++;
+    });
+
+    if (renderedCount <= 0) {
+      el.className = "ee-empty";
+      el.textContent = "ยังไม่มีประวัติการแก้ไข";
+      return 0;
+    }
+
+    // scroll to latest
+    try {
+      el.parentElement?.scrollTo({ top: el.parentElement.scrollHeight, behavior: "smooth" });
+    } catch (_) {}
+
+    return renderedCount;
+  }
+
+  async function refreshEventLogs(eventId) {
+    const listEl = document.getElementById("ee-log-list");
+    if (listEl) {
+      listEl.className = "ee-empty";
+      listEl.textContent = "กำลังโหลด...";
+    }
+    setLogSubtitle(eventId ? `event_id=${eventId}` : "");
+
+    try {
+      const logs = await fetchEventLogs(eventId);
+      const shown = renderEventLogs({ containerId: "ee-log-list", logs });
+      setLogSubtitle(`event_id=${eventId} • ${Number(shown || 0)} รายการ`);
+    } catch (err) {
+      console.warn("Cannot load event logs", err);
+      if (listEl) {
+        listEl.className = "ee-empty";
+        listEl.textContent = "โหลดประวัติไม่สำเร็จ";
+      }
+      setLogSubtitle(eventId ? `event_id=${eventId}` : "");
+    }
+
+    // attachments in sidebar (best effort)
+    try {
+      await refreshSidebarAttachments(eventId);
+    } catch (_) {}
+  }
+
   async function loadProvinces(selectedId) {
     const sel = document.getElementById("ee-province");
     if (!sel) return;
@@ -212,6 +480,45 @@
     const full = `${fn} ${l2}`.trim();
     if (full) return full;
     return `user#${u.user_id}`;
+  }
+
+  function buildUserMap(users) {
+    const rows = Array.isArray(users) ? users : [];
+    const m = new Map();
+    rows.forEach((u) => {
+      const id = Number(u?.user_id || 0);
+      if (!Number.isFinite(id) || id <= 0) return;
+      m.set(id, getDisplayName(u));
+    });
+    return m;
+  }
+
+  function parseParticipantUserIds(v) {
+    if (Array.isArray(v)) {
+      return v
+        .map((x) => Number(x))
+        .filter((x) => Number.isFinite(x) && x > 0);
+    }
+    const s = String(v ?? "").trim();
+    if (!s) return [];
+    return s
+      .split(",")
+      .map((x) => Number(String(x).trim()))
+      .filter((x) => Number.isFinite(x) && x > 0);
+  }
+
+  function participantKey(ids) {
+    const arr = Array.isArray(ids) ? ids.slice() : [];
+    arr.sort((a, b) => Number(a) - Number(b));
+    return arr.join(",");
+  }
+
+  function formatParticipantNames(ids, userMap) {
+    const m = userMap instanceof Map ? userMap : new Map();
+    const clean = Array.isArray(ids) ? ids.slice() : [];
+    clean.sort((a, b) => Number(a) - Number(b));
+    const names = clean.map((id) => m.get(Number(id)) || `user#${id}`);
+    return names.join(", ");
   }
 
   function renderParticipants({ containerId, users, selectedUserIds }) {
@@ -611,11 +918,26 @@
         currentStatusName,
       });
 
+      // "รับงาน" button: show when currently waiting and there is an "รับงานแล้ว" status
+      const acceptBtn = document.getElementById("ee-accept-btn");
+      // Requirement: after accepting, jump straight to "กำลังดำเนินการ".
+      const acceptStatusId = resolveAcceptInProgressStatusId(statusRows);
+      const isWaiting = currentStatusName.includes("รอรับงาน") || currentStageIndex === 0;
+      if (acceptBtn) {
+        if (acceptStatusId && isWaiting) {
+          acceptBtn.style.display = "inline-flex";
+          acceptBtn.dataset.acceptStatusId = String(acceptStatusId);
+        } else {
+          acceptBtn.style.display = "none";
+          acceptBtn.dataset.acceptStatusId = "";
+        }
+      }
+
       const hint = document.getElementById("ee-stepper-hint");
       if (hint) {
         hint.textContent = isRepair
           ? "* งานซ่อมสามารถเลือกสถานะย่อยได้จาก dropdown"
-          : "* กด “เสร็จสิ้น” เพื่อปิดงาน";
+          : (isWaiting && acceptStatusId ? "* กด “รับงาน” เพื่อเปลี่ยนสถานะเป็นกำลังดำเนินการ" : "* กด “เสร็จสิ้น” เพื่อปิดงาน");
       }
     }
 
@@ -672,7 +994,16 @@
       eventStatuses: statusRows,
       milestoneStatuses: milestones,
       requestAttachments,
+      userMap: buildUserMap(users),
     };
+
+    // sidebar attachments (best effort)
+    try {
+      refreshSidebarAttachments(eventId);
+    } catch (_) {}
+
+    // logs (best effort)
+    refreshEventLogs(eventId);
   }
 
   async function uploadRequestAttachmentsIfAny(requestId) {
@@ -700,9 +1031,60 @@
     return res;
   }
 
+  function setForcedEventStatusId(statusId) {
+    const id = Number(statusId || 0);
+    if (!Number.isFinite(id) || id <= 0) return null;
+
+    const ctx = window.__eventEdit || {};
+    ctx.forcedEventStatusId = id;
+    window.__eventEdit = ctx;
+
+    const hidden = document.getElementById("ee-event-status-id");
+    if (hidden) hidden.value = String(id);
+
+    return id;
+  }
+
+  function findStatusIdByName(statusRows, nameIncludes) {
+    const needle = String(nameIncludes || "").trim();
+    if (!needle) return null;
+    const rows = Array.isArray(statusRows) ? statusRows : [];
+    const found = rows.find((s) => String(s.status_name || "").includes(needle));
+    const id = found ? Number(found.event_status_id || 0) : 0;
+    return id > 0 ? id : null;
+  }
+
+  function findStatusIdByCodeIncludes(statusRows, codeIncludes) {
+    const needle = String(codeIncludes || "").trim();
+    if (!needle) return null;
+    const rows = Array.isArray(statusRows) ? statusRows : [];
+    const found = rows.find((s) => String(s.status_code || "").includes(needle));
+    const id = found ? Number(found.event_status_id || 0) : 0;
+    return id > 0 ? id : null;
+  }
+
+  function resolveAcceptInProgressStatusId(statusRows) {
+    // Prefer *_IN_PROGRESS by status_code when present (e.g. OTHER_IN_PROGRESS)
+    return (
+      findStatusIdByCodeIncludes(statusRows, "IN_PROGRESS") ||
+      // Fallback by name fragments (covers 'กำลังดำเนินการ' and 'กำลังดำเนินงาน')
+      findStatusIdByName(statusRows, "กำลังดำเนิน") ||
+      findStatusIdByName(statusRows, "ดำเนิน") ||
+      // Last resort
+      findStatusIdByName(statusRows, "รับงานแล้ว") ||
+      findStatusIdByName(statusRows, "รับงาน") ||
+      null
+    );
+  }
+
   function getEventStatusIdForSave() {
     const ctx = window.__eventEdit || {};
     const requestTypeId = Number(ctx.requestTypeId || 0);
+
+    // If UI forces a specific status (e.g. รับงาน / เสร็จสิ้น), prefer it.
+    if (ctx.forcedEventStatusId && Number(ctx.forcedEventStatusId) > 0) {
+      return Number(ctx.forcedEventStatusId);
+    }
 
     // repair: use dropdown if selected
     if (requestTypeId === REQUEST_TYPE_REPAIR) {
@@ -723,9 +1105,7 @@
     const done = milestones.find((m) => String(m.status_name || "").includes("เสร็จสิ้น")) || milestones[3] || null;
     const doneId = done ? Number(done.event_status_id || 0) : 0;
     if (!doneId) return null;
-    const hidden = document.getElementById("ee-event-status-id");
-    if (hidden) hidden.value = String(doneId);
-    return doneId;
+    return setForcedEventStatusId(doneId);
   }
 
   function bindHandlers(eventId) {
@@ -777,6 +1157,26 @@
 
         await window.apiFetch(`/events/${encodeURIComponent(eventId)}`, { method: "PUT", body: payload });
 
+        // clear one-shot forced status + optional post-save actions
+        let shouldReload = false;
+        try {
+          const c2 = window.__eventEdit || {};
+          if (c2.forcedEventStatusId) {
+            c2.forcedEventStatusId = null;
+          }
+          if (c2.postSaveReload) {
+            shouldReload = true;
+            c2.postSaveReload = null;
+          }
+          window.__eventEdit = c2;
+        } catch (_) {}
+
+        if (shouldReload) {
+          // Fast path: accepting job should refresh UI (status, buttons, timeline, etc.)
+          window.location.reload();
+          return;
+        }
+
         // internal pictures
         if (isInternal) {
           const input = document.getElementById("ee-new-event-pictures");
@@ -795,6 +1195,11 @@
             const pics = Array.isArray(rep?.pictures) ? rep.pictures : [];
             renderAttachments({ containerId: "ee-event-pictures", atts: pics });
           } catch (_) {}
+
+          // refresh drawer attachments (best effort)
+          try {
+            await refreshSidebarAttachments(eventId);
+          } catch (_) {}
         }
 
         if (reqId > 0) {
@@ -803,7 +1208,17 @@
           if (res?.data?.attachments) {
             renderAttachments({ containerId: "ee-attachments", atts: res.data.attachments });
           }
+
+          // refresh drawer attachments (best effort)
+          try {
+            await refreshSidebarAttachments(eventId);
+          } catch (_) {}
         }
+
+        // refresh logs (best effort)
+        try {
+          await refreshEventLogs(eventId);
+        } catch (_) {}
 
         setInfo("บันทึกสำเร็จ", { isError: false });
       } catch (err) {
@@ -821,6 +1236,13 @@
 
       const ctx = window.__eventEdit || {};
       const isInternal = !!ctx.isInternal;
+
+      // one-shot: after finishing job, reload to reflect new state immediately
+      try {
+        const c0 = window.__eventEdit || {};
+        c0.postSaveReload = true;
+        window.__eventEdit = c0;
+      } catch (_) {}
 
       if (isInternal) {
         // Internal: set end_datetime to now, then save
@@ -847,6 +1269,34 @@
       if (submitBtn) {
         submitBtn.click();
       }
+    });
+
+    const acceptBtn = document.getElementById("ee-accept-btn");
+    acceptBtn?.addEventListener("click", async () => {
+      setInfo("", { isError: false });
+
+      const ctx = window.__eventEdit || {};
+      const statusRows = Array.isArray(ctx.eventStatuses) ? ctx.eventStatuses : [];
+      const sid =
+        Number(acceptBtn.dataset.acceptStatusId || 0) ||
+        resolveAcceptInProgressStatusId(statusRows) ||
+        0;
+      if (!sid) {
+        setInfo("ไม่พบสถานะสำหรับการรับงาน (กำลังดำเนินการ/รับงานแล้ว) ใน event_status ของ request_type นี้", { isError: true });
+        return;
+      }
+
+      // one-shot: after accepting job, reload to reflect new state immediately
+      try {
+        const c0 = window.__eventEdit || {};
+        c0.postSaveReload = true;
+        window.__eventEdit = c0;
+      } catch (_) {}
+
+      setForcedEventStatusId(sid);
+
+      const submitBtn = document.getElementById("ee-save-btn");
+      if (submitBtn) submitBtn.click();
     });
 
     const delBtn = document.getElementById("ee-delete-btn");
@@ -877,6 +1327,7 @@
 
     try {
       setInfo("กำลังโหลด...", { isError: false });
+      wireLogDrawer();
       bindHandlers(eventId);
       wireNewAttachmentsPreview();
       wireNewEventPicturesPreview();

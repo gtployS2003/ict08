@@ -37,6 +37,12 @@ function events_routes(string $method, array $segments, PDO $pdo): bool
         return true;
     }
 
+    // GET /events/{id}/logs
+    if ($method === 'GET' && count($segments) === 3 && is_numeric($segments[1]) && $segments[2] === 'logs') {
+        $ctl->logs((int)$segments[1]);
+        return true;
+    }
+
     // GET /events/by-request/{requestId}
     if ($method === 'GET' && count($segments) === 3 && $segments[1] === 'by-request' && is_numeric($segments[2])) {
         $ctl->showByRequest((int)$segments[2]);

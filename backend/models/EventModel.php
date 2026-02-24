@@ -6,6 +6,32 @@ final class EventModel
 {
     public function __construct(private PDO $pdo) {}
 
+    private function normalizeParticipantUserIds(mixed $v): string
+    {
+        if ($v === null) return '';
+
+        if (is_array($v)) {
+            $ids = array_values(array_unique(array_filter(array_map('intval', $v), fn($x) => $x > 0)));
+            sort($ids);
+            return implode(',', $ids);
+        }
+
+        $s = trim((string)$v);
+        if ($s === '') return '';
+
+        // normalize: keep only numeric ids and sort
+        $parts = preg_split('/\s*,\s*/', $s) ?: [];
+        $ids = [];
+        foreach ($parts as $p) {
+            if ($p === '' || !is_numeric($p)) continue;
+            $i = (int)$p;
+            if ($i > 0) $ids[] = $i;
+        }
+        $ids = array_values(array_unique($ids));
+        sort($ids);
+        return implode(',', $ids);
+    }
+
     /**
      * List events for schedule/events.html table.
      * Includes request info, requester display name, participant display names, province name and event status.
@@ -296,7 +322,8 @@ final class EventModel
 
     /**
      * Create event row.
-     * Required keys: round_no, event_year
+     * NOTE: round_no will be assigned when event is finished (can be 0 at create).
+     * Required keys: event_year
      * @param array<string,mixed> $data
      */
     public function create(array $data): int
@@ -304,9 +331,7 @@ final class EventModel
         $roundNo = isset($data['round_no']) ? (int)$data['round_no'] : 0;
         $eventYear = isset($data['event_year']) ? (int)$data['event_year'] : 0;
 
-        if ($roundNo <= 0) {
-            throw new InvalidArgumentException('round_no is required');
-        }
+        if ($roundNo < 0) $roundNo = 0;
         if ($eventYear <= 0) {
             throw new InvalidArgumentException('event_year is required');
         }
@@ -373,6 +398,7 @@ final class EventModel
         $detailLog = (string)($data['detail'] ?? '');
         $locationLog = (string)($data['location'] ?? '');
         $noteLog = (string)($data['note'] ?? '');
+        $participantUserIdsLog = $this->normalizeParticipantUserIds($data['participant_user_ids'] ?? null);
 
         $stmtLog = $this->pdo->prepare('
             INSERT INTO event_log (
@@ -381,6 +407,7 @@ final class EventModel
                 detail,
                 location,
                 note,
+                participant_user_ids,
                 updated_by
             ) VALUES (
                 :event_id,
@@ -388,6 +415,7 @@ final class EventModel
                 :detail,
                 :location,
                 :note,
+                :participant_user_ids,
                 :updated_by
             )
         ');
@@ -397,6 +425,7 @@ final class EventModel
             ':detail' => $detailLog,
             ':location' => $locationLog,
             ':note' => $noteLog,
+            ':participant_user_ids' => $participantUserIdsLog,
             ':updated_by' => $updatedBy,
         ]);
 
@@ -441,7 +470,70 @@ final class EventModel
             ':id' => $id,
         ]);
 
-        return $stmt->rowCount() > 0;
+        $changed = $stmt->rowCount() > 0;
+        if ($changed) {
+            // Write snapshot log (store final values from DB so the timeline matches what was actually saved)
+            $updatedBy = isset($data['updated_by']) ? (int)$data['updated_by'] : 0;
+            if ($updatedBy < 0) $updatedBy = 0;
+
+            $stmtCur = $this->pdo->prepare('SELECT title, detail, location, note FROM event WHERE event_id = :id LIMIT 1');
+            $stmtCur->bindValue(':id', $id, PDO::PARAM_INT);
+            $stmtCur->execute();
+            $cur = $stmtCur->fetch(PDO::FETCH_ASSOC) ?: [];
+
+            $titleLog = trim((string)($cur['title'] ?? ''));
+            if (mb_strlen($titleLog) > 255) {
+                $titleLog = mb_substr($titleLog, 0, 255);
+            }
+            $detailLog = (string)($cur['detail'] ?? '');
+            $locationLog = (string)($cur['location'] ?? '');
+            $noteLog = (string)($cur['note'] ?? '');
+
+            // Prefer explicit snapshot passed from controller, else compute from active participants.
+            if (array_key_exists('participant_user_ids', $data)) {
+                $participantUserIdsLog = $this->normalizeParticipantUserIds($data['participant_user_ids']);
+            } else {
+                $stmtP = $this->pdo->prepare('
+                    SELECT COALESCE(GROUP_CONCAT(user_id ORDER BY user_id SEPARATOR ","), "") AS ids
+                    FROM event_participant
+                    WHERE event_id = :eid
+                      AND (is_active = 1 OR is_active IS NULL)
+                ');
+                $stmtP->execute([':eid' => $id]);
+                $participantUserIdsLog = $this->normalizeParticipantUserIds((string)($stmtP->fetchColumn() ?? ''));
+            }
+
+            $stmtLog = $this->pdo->prepare('
+                INSERT INTO event_log (
+                    event_id,
+                    title,
+                    detail,
+                    location,
+                    note,
+                    participant_user_ids,
+                    updated_by
+                ) VALUES (
+                    :event_id,
+                    :title,
+                    :detail,
+                    :location,
+                    :note,
+                    :participant_user_ids,
+                    :updated_by
+                )
+            ');
+            $stmtLog->execute([
+                ':event_id' => $id,
+                ':title' => $titleLog,
+                ':detail' => $detailLog,
+                ':location' => $locationLog,
+                ':note' => $noteLog,
+                ':participant_user_ids' => $participantUserIdsLog,
+                ':updated_by' => $updatedBy,
+            ]);
+        }
+
+        return $changed;
     }
 
     public function delete(int $id): bool
