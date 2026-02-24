@@ -19,30 +19,27 @@
     <link rel="stylesheet" href="/ict8/assets/css/schedule.css" />
     <link rel="stylesheet" href="/ict8/assets/css/device.css" />
     <link rel="stylesheet" href="/ict8/assets/css/gcms.css" />
+    <link rel="stylesheet" href="/ict8/assets/css/poster.css" />
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Export helpers (client-side) -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- Config + API -->
     <script src="/ict8/backend/public/config.js.php"></script>
     <script defer src="/ict8/assets/js/api/http.js"></script>
 
-    <!-- Shared (no GCMS nav/header on this page) -->
-    <script defer src="/ict8/assets/js/main.js"></script>
+    <!-- Shared -->
     <script defer src="/ict8/assets/js/include.js"></script>
-
-    <style>
-        /* gcms.css sets main padding-top for its header/nav; override for this standalone page */
-        main {
-            padding-top: 24px;
-        }
-    </style>
-
-    <!-- Page -->
+    <script defer src="/ict8/assets/js/main.js"></script>
+    <script defer src="/ict8/assets/js/auth.js"></script>
     <script defer src="/ict8/assets/js/report-event-poster.js"></script>
+
 </head>
 
-<body>
+<body class="poster-page">
     <header class="header">
         <div class="header-left">
             <a href="/ict8/report-event/report-event.html"><img class="logo" src="/ict8/assets/image/logo_หน่วย8.png"
@@ -56,27 +53,187 @@
                 </div>
             </div>
         </div>
-    </header>x
+    </header>
 
     <main class="main">
-        <div style="max-width: 1100px; margin: 0 auto; padding: 16px;">
-            <section class="dashboard-content" style="min-height:auto;">
+        <div class="pe-page">
+            <section class="dashboard-content pe-section">
                 <div class="setting-head">
-                    <h1 class="setting-title" style="font-size: 20px;">ทำโปสเตอร์ประชาสัมพันธ์</h1>
+                    <h1 class="setting-title" style="font-size: 20px;">โปสเตอร์ประชาสัมพันธ์ : <span
+                            id="pe-page-title">หัวข้อ</span></h1>
                     <a class="btn btn-ghost" href="/ict8/report-event/report-event.html">
                         <i class="fa-solid fa-arrow-left"></i> กลับ
                     </a>
                 </div>
 
-                <div class="muted" id="poster-meta" style="margin-bottom:12px;"></div>
+                <div class="muted pe-meta" id="poster-meta"></div>
 
-                <div class="empty-state">
-                    <p style="margin:0;">
-                        หน้านี้เตรียมไว้สำหรับทำโปสเตอร์ประชาสัมพันธ์ (กำลังพัฒนา)
-                    </p>
-                    <p class="muted" style="margin:8px 0 0 0;">
-                        ตอนนี้ระบบจะพาคุณมาที่หน้านี้ได้จากตารางรายการประชาสัมพันธ์ เพื่อไม่ให้เจอหน้า 404
-                    </p>
+                <div class="pe-grid">
+                    <!-- Left: Editor controls -->
+                    <div class="pe-card">
+                        <div class="request-form-grid poster-form-grid">
+                            <div class="request-form-field request-form-span-2">
+                                <label class="request-form-label" for="pe-template-type">Template / พื้นหลัง</label>
+                                <select id="pe-template-type" class="request-form-select"></select>
+                            </div>
+
+                            <div class="request-form-field request-form-span-2">
+                                <label class="request-form-label" for="pe-title">หัวข้อ</label>
+                                <input id="pe-title" class="request-form-input" type="text"
+                                    placeholder="หัวข้อโปสเตอร์" />
+                            </div>
+
+                            <div class="request-form-field request-form-span-2">
+                                <label class="request-form-label" for="pe-content">รายละเอียด</label>
+                                <textarea id="pe-content" class="request-form-textarea" rows="5"
+                                    placeholder="รายละเอียดกิจกรรม"></textarea>
+                            </div>
+
+                            <div class="request-form-field">
+                                <label class="request-form-label" for="pe-date">วันที่</label>
+                                <input id="pe-date" class="request-form-input" type="text"
+                                    placeholder="เช่น 20 ม.ค. 2568" />
+                            </div>
+                            <div class="request-form-field">
+                                <label class="request-form-label" for="pe-issue">ฉบับที่</label>
+                                <input id="pe-issue" class="request-form-input" type="text"
+                                    placeholder="เช่น 01/2568" />
+                            </div>
+
+                            <div class="request-form-field request-form-span-2">
+                                <label class="request-form-label" for="pe-image-search">รูปภาพ
+                                    (คลิกเพื่อเลือก/ยกเลิก)</label>
+                                <input id="pe-image-search" class="request-form-input" type="text"
+                                    placeholder="ค้นหารูป..." />
+                                <div class="request-form-hint">เลือกหลายรูปได้ (สูงสุด 6 รูป) — รูปแรกจะเป็น “ปก”</div>
+                            </div>
+
+                            <div class="request-form-field request-form-span-2">
+                                <div id="pe-images" class="pe-images"></div>
+                            </div>
+                        </div>
+
+                        <div class="pe-editor-tools" style="margin-top:16px;">
+
+                            <div class="request-form-grid">
+                                <div class="request-form-field request-form-span-2">
+                                    <label class="request-form-label" for="pe-edit-target">แก้ไของค์ประกอบ</label>
+                                    <select id="pe-edit-target" class="request-form-select">
+                                        <option value="title">หัวข้อ</option>
+                                        <option value="content">รายละเอียด</option>
+                                        <option value="date">วันที่</option>
+                                        <option value="issue">ฉบับที่</option>
+                                        <option value="cover">รูปปก</option>
+                                        <option value="img2">รูปที่ 2</option>
+                                        <option value="img3">รูปที่ 3</option>
+                                        <option value="img4">รูปที่ 4</option>
+                                        <option value="img5">รูปที่ 5</option>
+                                        <option value="img6">รูปที่ 6</option>
+                                    </select>
+                                </div>
+
+                                <div class="request-form-field">
+                                    <label class="request-form-label" for="pe-edit-x">X</label>
+                                    <input id="pe-edit-x" class="request-form-input" type="number" step="1" min="0" />
+                                </div>
+                                <div class="request-form-field">
+                                    <label class="request-form-label" for="pe-edit-y">Y</label>
+                                    <input id="pe-edit-y" class="request-form-input" type="number" step="1" min="0" />
+                                </div>
+
+                                <div class="request-form-field" id="pe-edit-w-wrap">
+                                    <label class="request-form-label" for="pe-edit-w">กว้าง</label>
+                                    <input id="pe-edit-w" class="request-form-input" type="number" step="1" min="10" />
+                                </div>
+                                <div class="request-form-field" id="pe-edit-h-wrap">
+                                    <label class="request-form-label" for="pe-edit-h">สูง</label>
+                                    <input id="pe-edit-h" class="request-form-input" type="number" step="1" min="10" />
+                                </div>
+
+                                <div class="request-form-field" id="pe-edit-fontsize-wrap">
+                                    <label class="request-form-label" for="pe-edit-fontsize">ขนาดตัวอักษร</label>
+                                    <input id="pe-edit-fontsize" class="request-form-input" type="number" step="1" min="8" max="200" />
+                                </div>
+                                <div class="request-form-field" id="pe-edit-color-wrap">
+                                    <label class="request-form-label" for="pe-edit-color">สีตัวอักษร</label>
+                                    <input id="pe-edit-color" class="request-form-input" type="color" />
+                                </div>
+
+                                <div class="request-form-field" id="pe-edit-fontfamily-wrap">
+                                    <label class="request-form-label" for="pe-edit-fontfamily">ฟอนต์</label>
+                                    <select id="pe-edit-fontfamily" class="request-form-select">
+                                        <option value="'Noto Sans Thai', sans-serif">Noto Sans Thai</option>
+                                        <option value="'Inter', sans-serif">Inter</option>
+                                    </select>
+                                </div>
+                                <div class="request-form-field" id="pe-edit-align-wrap">
+                                    <label class="request-form-label" for="pe-edit-align">จัดชิด</label>
+                                    <select id="pe-edit-align" class="request-form-select">
+                                        <option value="left">ซ้าย</option>
+                                        <option value="center">กลาง</option>
+                                        <option value="right">ขวา</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="request-form-actions" style="margin-top:10px; justify-content:flex-start;">
+                                <button id="pe-edit-reset" class="request-form-btn request-form-btn-ghost" type="button">รีเซ็ตองค์ประกอบ</button>
+                            </div>
+                        </div>
+
+                        <div class="request-form-actions poster-actions">
+                            <button id="pe-btn-reset" class="request-form-btn request-form-btn-ghost" type="button">
+                                <i class="fa-solid fa-rotate-left" style="margin-right:8px"></i> รีเซ็ต
+                            </button>
+                            <button id="pe-btn-export-jpg" class="request-form-btn request-form-btn-ghost" type="button">
+                                <i class="fa-solid fa-image" style="margin-right:8px"></i> Export JPG
+                            </button>
+                            <button id="pe-btn-save" class="request-form-btn request-form-btn-primary" type="button">
+                                <i class="fa-solid fa-floppy-disk" style="margin-right:8px"></i> บันทึก
+                            </button>
+                        </div>
+
+                        <div id="pe-status" class="muted pe-status"></div>
+                    </div>
+
+                    <!-- Right: Preview -->
+                    <div class="pe-preview-wrap">
+                        <div class="pe-preview-frame">
+                            <div class="muted pe-preview-header">
+                                <div style="color:white">ตัวอย่างโปสเตอร์</div>
+                                <div id="pe-preview-size"></div>
+                            </div>
+                            <div class="pe-preview-stage" id="pe-preview-wrap">
+                                <div id="pe-preview-scale">
+                                    <div id="pe-preview" aria-label="poster-preview">
+                                        <img id="pe-bg" alt="background" />
+                                        <img id="pe-cover" alt="cover" style="display:none" />
+                                        <img id="pe-img-2" class="pe-slot-img" alt="slot-2" style="display:none" />
+                                        <img id="pe-img-3" class="pe-slot-img" alt="slot-3" style="display:none" />
+                                        <img id="pe-img-4" class="pe-slot-img" alt="slot-4" style="display:none" />
+                                        <img id="pe-img-5" class="pe-slot-img" alt="slot-5" style="display:none" />
+                                        <img id="pe-img-6" class="pe-slot-img" alt="slot-6" style="display:none" />
+                                        <div id="pe-txt-title" class="pe-text"></div>
+                                        <div id="pe-txt-content" class="pe-text"></div>
+                                        <div id="pe-txt-date" class="pe-text"></div>
+                                        <div id="pe-txt-issue" class="pe-text"></div>
+
+                                        <!-- selection box / handles (managed by JS) -->
+                                        <div id="pe-selection" class="pe-selection" hidden aria-hidden="true">
+                                            <div class="pe-handle" data-handle="nw"></div>
+                                            <div class="pe-handle" data-handle="n"></div>
+                                            <div class="pe-handle" data-handle="ne"></div>
+                                            <div class="pe-handle" data-handle="e"></div>
+                                            <div class="pe-handle" data-handle="se"></div>
+                                            <div class="pe-handle" data-handle="s"></div>
+                                            <div class="pe-handle" data-handle="sw"></div>
+                                            <div class="pe-handle" data-handle="w"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>

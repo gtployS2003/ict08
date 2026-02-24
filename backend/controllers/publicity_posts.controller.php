@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../models/PublicityPostModel.php';
+require_once __DIR__ . '/../models/EventMediaModel.php';
 
 // auth middleware
 $authPath = __DIR__ . '/../middleware/auth.php';
@@ -109,6 +110,14 @@ final class PublicityPostsController
                     return;
                 }
                 throw $re;
+            }
+
+            // Ensure event_media is populated for this event (used by poster editor)
+            try {
+                $mm = new EventMediaModel($this->pdo);
+                $mm->ensureIndexForEvent($eventId);
+            } catch (Throwable $e) {
+                // Don't fail creation if media indexing fails; caller can retry via /events/{id}/media
             }
 
             json_response(['error' => false, 'data' => $row], 201);

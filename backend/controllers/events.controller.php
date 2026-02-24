@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../models/EventModel.php';
 require_once __DIR__ . '/../models/EventParticipantModel.php';
+require_once __DIR__ . '/../models/EventMediaModel.php';
 require_once __DIR__ . '/../config/env.php';
 require_once __DIR__ . '/../models/NotificationModel.php';
 require_once __DIR__ . '/../services/NotificationService.php';
@@ -232,6 +233,36 @@ final class EventsController
             json_response(['error' => false, 'message' => 'Deleted']);
         } catch (Throwable $e) {
             json_response(['error' => true, 'message' => 'Failed to delete picture', 'detail' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * GET /events/{id}/media
+     * Returns merged media for the event (event_media index).
+     */
+    public function media(int $id): void
+    {
+        try {
+            $this->requireStaffAccess();
+
+            $id = max(1, (int)$id);
+
+            // ensure event exists
+            $m = new EventModel($this->pdo);
+            $existing = $m->findById($id);
+            if (!$existing) {
+                json_response(['error' => true, 'message' => 'Event not found'], 404);
+                return;
+            }
+
+            $mm = new EventMediaModel($this->pdo);
+            // Backfill index if missing
+            $mm->ensureIndexForEvent($id);
+            $rows = $mm->listByEventId($id);
+
+            json_response(['error' => false, 'data' => $rows]);
+        } catch (Throwable $e) {
+            json_response(['error' => true, 'message' => 'Failed to get event media', 'detail' => $e->getMessage()], 500);
         }
     }
 

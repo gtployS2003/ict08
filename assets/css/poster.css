@@ -1,0 +1,413 @@
+/* assets/css/poster.css */
+
+/*
+  Poster editor page styles.
+  Keep selectors scoped to .poster-page to avoid bleeding into other pages.
+*/
+
+/* The global header is fixed; give enough top offset so content never sits under it */
+body.poster-page {
+  padding-top: var(--poster-header-h, 160px); /* dynamic: JS sets --poster-header-h based on real header height */
+}
+
+/* Prevent grid item overlap: style.css does not set global box-sizing for all elements */
+.poster-page,
+.poster-page * {
+  box-sizing: border-box;
+}
+
+/*
+  Request-form look & feel (scoped to poster page)
+  We duplicate the visual rules (inputs/labels/buttons/grid) here so we DON'T
+  have to import request-form.css (which contains unscoped global body rules).
+*/
+.poster-page {
+  --rf-purple: #532274;
+  --rf-border: #e5e7eb;
+  --rf-text: #111827;
+  --rf-muted: #6b7280;
+  --rf-bg: #ffffff;
+}
+
+.poster-page .request-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.poster-page .request-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.poster-page .request-form-span-2 {
+  grid-column: span 1;
+}
+
+.poster-page .request-form-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--rf-text);
+}
+
+.poster-page .request-form-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--rf-muted);
+}
+
+.poster-page .request-form-input,
+.poster-page .request-form-select,
+.poster-page .request-form-textarea {
+  width: 100%;
+  border: 1px solid var(--rf-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: var(--rf-bg);
+  color: var(--rf-text);
+  outline: none;
+  transition: box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.poster-page .request-form-textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.poster-page .request-form-input:focus,
+.poster-page .request-form-select:focus,
+.poster-page .request-form-textarea:focus {
+  border-color: rgba(83, 34, 116, 0.55);
+  box-shadow: 0 0 0 4px rgba(83, 34, 116, 0.15);
+}
+
+.poster-page .request-form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.poster-page .request-form-btn {
+  border: 1px solid var(--rf-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fff;
+  color: var(--rf-text);
+  transition: transform 80ms ease, box-shadow 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+.poster-page .request-form-btn:hover {
+  box-shadow: 0 10px 22px rgba(17, 24, 39, 0.10);
+}
+
+.poster-page .request-form-btn:active {
+  transform: translateY(1px);
+}
+
+.poster-page .request-form-btn-primary {
+  background: var(--rf-purple);
+  border-color: var(--rf-purple);
+  color: #fff;
+}
+
+.poster-page .request-form-btn-ghost {
+  background: #fff;
+}
+
+.poster-page main.main {
+  padding: 16px 16px 60px; /* keep compact; body padding-top handles header clearance */
+}
+
+.poster-page .pe-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.poster-page .pe-section {
+  min-height: auto;
+}
+
+.poster-page .pe-meta {
+  margin-bottom: 12px;
+}
+
+.poster-page .pe-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.poster-page .pe-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 14px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
+}
+
+.poster-page .poster-actions {
+  margin-top: 16px;
+}
+
+.poster-page .pe-help {
+  margin-bottom: 10px;
+}
+
+.poster-page .pe-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 10px 0 6px;
+  color: #111827;
+}
+
+.poster-page .pe-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.poster-page .pe-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.poster-page .pe-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.poster-page .pe-status {
+  margin-top: 10px;
+}
+
+.poster-page .pe-preview-wrap {
+  position: sticky;
+  top: var(--poster-header-h, 160px);
+}
+
+.poster-page .pe-preview-frame {
+  background: #111827;
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.poster-page .pe-preview-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 10px 0;
+}
+
+.poster-page .pe-preview-stage {
+  width: 100%;
+  height: clamp(320px, 62vh, 720px);
+  background: #0b1020;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* scaling wrapper used by JS */
+.poster-page #pe-preview-scale {
+  display: block;
+  will-change: transform;
+}
+
+/* poster canvas */
+.poster-page #pe-preview {
+  position: relative;
+  width: 1080px;
+  height: 1350px;
+  transform-origin: top left;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.poster-page #pe-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.poster-page #pe-cover {
+  position: absolute;
+  left: 70px;
+  top: 360px;
+  width: 940px;
+  height: 520px;
+  object-fit: cover;
+  border-radius: 18px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+}
+
+.poster-page .pe-slot-img {
+  position: absolute;
+  object-fit: cover;
+  border-radius: 14px;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.18);
+}
+
+.poster-page .pe-text {
+  position: absolute;
+  color: #111827;
+  text-shadow: 0 2px 12px rgba(255, 255, 255, 0.55);
+  word-break: break-word;
+}
+
+.poster-page .pe-editable {
+  cursor: move;
+}
+
+.poster-page .pe-selected {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+/* Text specifics (JS sets position/size; keep typography defaults here) */
+.poster-page #pe-txt-title {
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.poster-page #pe-txt-content {
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+
+.poster-page #pe-txt-date,
+.poster-page #pe-txt-issue {
+  font-weight: 600;
+}
+
+.poster-page #pe-txt-issue {
+  opacity: 0.95;
+}
+
+/* Selection box overlay */
+.poster-page .pe-selection {
+  position: absolute;
+  border: 2px solid rgba(124, 58, 237, 0.95);
+  border-radius: 10px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.poster-page .pe-handle {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: #ffffff;
+  border: 2px solid rgba(124, 58, 237, 0.95);
+  position: absolute;
+  pointer-events: auto;
+}
+
+.poster-page .pe-handle[data-handle="nw"] { left: -7px; top: -7px; cursor: nwse-resize; }
+.poster-page .pe-handle[data-handle="n"]  { left: 50%; top: -7px; transform: translateX(-50%); cursor: ns-resize; }
+.poster-page .pe-handle[data-handle="ne"] { right: -7px; top: -7px; cursor: nesw-resize; }
+.poster-page .pe-handle[data-handle="e"]  { right: -7px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+.poster-page .pe-handle[data-handle="se"] { right: -7px; bottom: -7px; cursor: nwse-resize; }
+.poster-page .pe-handle[data-handle="s"]  { left: 50%; bottom: -7px; transform: translateX(-50%); cursor: ns-resize; }
+.poster-page .pe-handle[data-handle="sw"] { left: -7px; bottom: -7px; cursor: nesw-resize; }
+.poster-page .pe-handle[data-handle="w"]  { left: -7px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+
+@media (max-width: 1100px) {
+  .poster-page .pe-grid {
+    grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  /* Make the header more compact on tablets/phones */
+  .poster-page .header {
+    padding: 14px 16px;
+  }
+
+  .poster-page .header-left {
+    gap: 12px;
+  }
+
+  .poster-page .logo {
+    width: 72px;
+    height: 72px;
+  }
+
+  .poster-page .title-main {
+    font-size: clamp(16px, 3.6vw, 22px);
+    line-height: 1.15;
+  }
+
+  .poster-page .title-sub {
+    font-size: clamp(12px, 3.0vw, 16px);
+    line-height: 1.2;
+  }
+
+  .poster-page .login-btn {
+    padding: 10px 14px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .poster-page .pe-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .poster-page .pe-preview-wrap {
+    position: static;
+  }
+
+  .poster-page .pe-preview-stage {
+    height: clamp(300px, 56vh, 560px);
+  }
+}
+
+@media (max-width: 520px) {
+  /* Buttons stack and become easy to tap */
+  .poster-page .request-form-actions {
+    justify-content: stretch;
+  }
+
+  .poster-page .request-form-actions .request-form-btn {
+    width: 100%;
+  }
+
+  .poster-page .pe-page {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .poster-page .pe-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 768px) {
+  .poster-page .request-form-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .poster-page .request-form-span-2 {
+    grid-column: span 2;
+  }
+}

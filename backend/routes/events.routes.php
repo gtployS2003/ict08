@@ -49,6 +49,12 @@ function events_routes(string $method, array $segments, PDO $pdo): bool
         return true;
     }
 
+    // GET /events/{id}/media
+    if ($method === 'GET' && count($segments) === 3 && is_numeric($segments[1]) && $segments[2] === 'media') {
+        $ctl->media((int)$segments[1]);
+        return true;
+    }
+
     // /events/{id}
     if (count($segments) === 2 && is_numeric($segments[1])) {
         $id = (int)$segments[1];
