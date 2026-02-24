@@ -26,6 +26,20 @@ function publicity_posts_routes(string $method, array $segments, PDO $pdo): bool
         return true;
     }
 
+    // /publicity-posts/{eventId}/media
+    if (count($segments) === 3 && is_numeric($segments[1]) && $segments[2] === 'media') {
+        $eventId = (int)$segments[1];
+        if ($method === 'GET') {
+            $ctl->media($eventId);
+            return true;
+        }
+        if ($method === 'PUT' || $method === 'PATCH') {
+            $ctl->updateMedia($eventId);
+            return true;
+        }
+        return false;
+    }
+
     // /publicity-posts
     if (count($segments) === 1) {
         if ($method === 'GET') {

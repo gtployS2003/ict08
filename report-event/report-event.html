@@ -36,6 +36,76 @@
         main {
             padding-top: 24px;
         }
+
+        /* status badges (poster / website) */
+        .row-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .pe-badges {
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .pe-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+            color: #6b7280;
+            font-size: 12px;
+            line-height: 1;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .pe-badge i {
+            font-size: 12px;
+        }
+
+        .pe-badge--ok {
+            border-color: #bbf7d0;
+            background: #f0fdf4;
+            color: #166534;
+        }
+
+        .pe-badge--warn {
+            border-color: #fde68a;
+            background: #fffbeb;
+            color: #92400e;
+        }
+
+        .pe-badge--todo {
+            border-color: #e5e7eb;
+            background: #f9fafb;
+            color: #6b7280;
+        }
+
+        .pe-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            background: #ffffff;
+            color: #374151;
+            text-decoration: none;
+        }
+
+        .pe-link:hover {
+            background: #f9fafb;
+            color: #111827;
+        }
     </style>
 
     <!-- Page -->

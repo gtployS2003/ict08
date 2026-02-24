@@ -54,6 +54,31 @@
     return s || "-";
   }
 
+  function isTruthy(v) {
+    if (v === true) return true;
+    if (v === false) return false;
+    const n = Number(v);
+    if (Number.isFinite(n)) return n === 1;
+    const s = String(v ?? "").trim().toLowerCase();
+    return s === "true" || s === "yes" || s === "y";
+  }
+
+  function compareMysqlDateTime(a, b) {
+    // MySQL DATETIME usually comes as "YYYY-MM-DD HH:MM:SS".
+    // Lexicographic compare works for this format.
+    const as = String(a ?? "").trim();
+    const bs = String(b ?? "").trim();
+    if (!as || !bs) return 0;
+    if (as === bs) return 0;
+    return as > bs ? 1 : -1;
+  }
+
+  function renderBadge({ variant, icon, text, title }) {
+    const v = variant ? ` pe-badge--${variant}` : "";
+    const t = title ? ` title="${escapeHtml(title)}"` : "";
+    return `<span class="pe-badge${v}"${t}><i class="${escapeHtml(icon)}"></i><span>${escapeHtml(text)}</span></span>`;
+  }
+
   async function api(path, { method = "GET", body } = {}) {
     if (typeof window.apiFetch === "function") {
       return window.apiFetch(path, { method, body });
@@ -130,8 +155,52 @@
         const title = fmt(row?.title);
         const isBanner = Number(row?.is_banner ?? 0) === 1;
 
+        // Poster status
+        const hasPosterExport = isTruthy(row?.has_poster_export);
+        const hasPosterDraft = Number(row?.event_template_id ?? 0) > 0;
+        const posterExportPath = String(row?.poster_export_filepath ?? "").trim();
+        const posterViewUrl = posterExportPath ? `/ict8/backend/public${posterExportPath}` : "";
+
+        // Website status: update_at is only touched when title/content is edited (not banner toggle)
+        const webEdited = compareMysqlDateTime(row?.update_at, row?.create_at) === 1;
+
         const posterUrl = `/ict8/report-event/poster.html?event_id=${encodeURIComponent(eventId ?? "")}`;
         const webUrl = `/ict8/report-event/web-post.html?event_id=${encodeURIComponent(eventId ?? "")}`;
+
+        const posterBadge = hasPosterExport
+          ? renderBadge({
+              variant: "ok",
+              icon: "fa-solid fa-circle-check",
+              text: "ส่งออกแล้ว",
+              title: "มีไฟล์โปสเตอร์ (JPG) แล้ว",
+            })
+          : hasPosterDraft
+          ? renderBadge({
+              variant: "warn",
+              icon: "fa-solid fa-pen-ruler",
+              text: "มีแบบร่าง",
+              title: "มีแบบร่างโปสเตอร์แล้ว แต่ยังไม่ได้ส่งออกไฟล์",
+            })
+          : renderBadge({
+              variant: "todo",
+              icon: "fa-regular fa-circle",
+              text: "ยังไม่ทำ",
+              title: "ยังไม่ได้ทำ/บันทึกโปสเตอร์",
+            });
+
+        const webBadge = webEdited
+          ? renderBadge({
+              variant: "ok",
+              icon: "fa-solid fa-circle-check",
+              text: "แก้ไขแล้ว",
+              title: "บันทึกโพสต์เว็บไซต์แล้ว",
+            })
+          : renderBadge({
+              variant: "todo",
+              icon: "fa-regular fa-circle",
+              text: "ยังไม่แก้ไข",
+              title: "ยังไม่เคยบันทึกการแก้ไขโพสต์เว็บไซต์",
+            });
 
         return `
           <tr>
@@ -142,6 +211,10 @@
                 <a class="btn btn-sm btn-ghost" href="${posterUrl}">
                   <i class="fa-regular fa-image"></i> ทำโปสเตอร์
                 </a>
+                <div class="pe-badges">
+                  ${posterBadge}
+                  ${posterViewUrl ? `<a class="pe-link" href="${escapeHtml(posterViewUrl)}" target="_blank" rel="noopener" title="เปิดไฟล์โปสเตอร์ล่าสุด"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ""}
+                </div>
               </div>
             </td>
             <td>
@@ -149,6 +222,7 @@
                 <a class="btn btn-sm btn-ghost" href="${webUrl}">
                   <i class="fa-regular fa-pen-to-square"></i> แก้ไขโพสต์
                 </a>
+                <div class="pe-badges">${webBadge}</div>
               </div>
             </td>
             <td>
@@ -159,7 +233,7 @@
                   data-event-id="${escapeHtml(String(eventId ?? ""))}"
                   ${isBanner ? "checked" : ""}
                 />
-                <span class="muted">แสดงบนหน้าหลัก</span>
+                <span class="muted">banner</span>
               </label>
             </td>
           </tr>

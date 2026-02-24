@@ -31,6 +31,10 @@ final class PublicityPostModel
             $params[':q'] = '%' . $q . '%';
         }
 
+        // Join poster editor state:
+        // - event_template (draft/layout exists)
+        // - event_template_export (actual exported JPG exists)
+        // NOTE: export table is upserted, but we still defensively pick latest row per event_template_id.
         $sql = "
             SELECT
                 pp.publicity_post_id,
@@ -40,8 +44,29 @@ final class PublicityPostModel
                 pp.is_banner,
                 pp.create_by,
                 pp.create_at,
-                pp.update_at
+                pp.update_at,
+                et.event_template_id,
+                ete.filepath AS poster_export_filepath,
+                ete.exported_at AS poster_exported_at,
+                CASE
+                    WHEN ete.filepath IS NULL OR ete.filepath = '' THEN 0
+                    ELSE 1
+                END AS has_poster_export
             FROM publicity_post pp
+            LEFT JOIN event_template et
+                ON et.publicity_post_id = pp.publicity_post_id
+            LEFT JOIN (
+                SELECT e1.*
+                FROM event_template_export e1
+                INNER JOIN (
+                    SELECT event_template_id, MAX(event_template_export_id) AS max_id
+                    FROM event_template_export
+                    GROUP BY event_template_id
+                ) m
+                    ON m.event_template_id = e1.event_template_id
+                   AND m.max_id = e1.event_template_export_id
+            ) ete
+                ON ete.event_template_id = et.event_template_id
             {$where}
             ORDER BY pp.update_at DESC, pp.publicity_post_id DESC
             LIMIT :limit OFFSET :offset
@@ -135,6 +160,7 @@ final class PublicityPostModel
         $allowed = ['title', 'content', 'is_banner'];
         $set = [];
         $params = [':eid' => $eventId];
+        $touchUpdateAt = false;
 
         foreach ($allowed as $k) {
             if (!array_key_exists($k, $fields)) continue;
@@ -148,12 +174,14 @@ final class PublicityPostModel
             if ($k === 'title') {
                 $set[] = 'title = :title';
                 $params[':title'] = mb_substr((string)$fields['title'], 0, 255);
+                $touchUpdateAt = true;
                 continue;
             }
 
             if ($k === 'content') {
                 $set[] = 'content = :content';
                 $params[':content'] = (string)$fields['content'];
+                $touchUpdateAt = true;
                 continue;
             }
         }
@@ -164,7 +192,11 @@ final class PublicityPostModel
             return $row;
         }
 
-        $set[] = 'update_at = NOW()';
+        // update_at is used as "web content last edited" timestamp.
+        // Do not update it for banner checkbox toggles.
+        if ($touchUpdateAt) {
+            $set[] = 'update_at = NOW()';
+        }
 
         $sql = 'UPDATE publicity_post SET ' . implode(', ', $set) . ' WHERE event_id = :eid';
         $stmt = $this->pdo->prepare($sql);

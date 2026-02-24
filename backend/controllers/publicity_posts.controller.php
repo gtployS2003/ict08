@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../models/PublicityPostModel.php';
 require_once __DIR__ . '/../models/EventMediaModel.php';
+require_once __DIR__ . '/../models/PublicityPostMediaModel.php';
 
 // auth middleware
 $authPath = __DIR__ . '/../middleware/auth.php';
@@ -288,6 +289,145 @@ final class PublicityPostsController
             json_response(['error' => false, 'data' => $rows]);
         } catch (Throwable $e) {
             json_response(['error' => true, 'message' => 'Failed to list eligible events', 'detail' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * GET /publicity-posts/{eventId}/media
+     * Returns:
+     * - available: all images from event_media for this event
+     * - selected: mappings from publicity_post_media for this post
+     */
+    public function media(int $eventId): void
+    {
+        try {
+            $this->requireStaffAccess();
+
+            $eventId = max(1, (int)$eventId);
+            $pm = new PublicityPostModel($this->pdo);
+            $post = $pm->findByEventId($eventId);
+            if (!$post) {
+                json_response(['error' => true, 'message' => 'Publicity post not found'], 404);
+                return;
+            }
+
+            $postId = (int)($post['publicity_post_id'] ?? 0);
+            if ($postId <= 0) {
+                json_response(['error' => true, 'message' => 'Invalid publicity_post_id'], 500);
+                return;
+            }
+
+            $mm = new EventMediaModel($this->pdo);
+            $mm->ensureIndexForEvent($eventId);
+            $available = $mm->listByEventId($eventId);
+
+            $selM = new PublicityPostMediaModel($this->pdo);
+            $selected = $selM->listByPostId($postId);
+
+            json_response([
+                'error' => false,
+                'data' => [
+                    'post_id' => $postId,
+                    'event_id' => $eventId,
+                    'available' => $available,
+                    'selected' => $selected,
+                ],
+            ]);
+        } catch (Throwable $e) {
+            json_response(['error' => true, 'message' => 'Failed to get publicity post media', 'detail' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * PUT /publicity-posts/{eventId}/media
+     * body: { items: [{ event_media_id, sort_order?, is_cover? }] }
+     * Replaces all rows in publicity_post_media for that post.
+     */
+    public function updateMedia(int $eventId): void
+    {
+        try {
+            $this->requireStaffAccess();
+
+            $eventId = max(1, (int)$eventId);
+            $pm = new PublicityPostModel($this->pdo);
+            $post = $pm->findByEventId($eventId);
+            if (!$post) {
+                json_response(['error' => true, 'message' => 'Publicity post not found'], 404);
+                return;
+            }
+
+            $postId = (int)($post['publicity_post_id'] ?? 0);
+            if ($postId <= 0) {
+                json_response(['error' => true, 'message' => 'Invalid publicity_post_id'], 500);
+                return;
+            }
+
+            $body = read_json_body();
+            $items = $body['items'] ?? [];
+            if (!is_array($items)) $items = [];
+
+            // Validate that selected media belongs to this event.
+            $mm = new EventMediaModel($this->pdo);
+            $mm->ensureIndexForEvent($eventId);
+            $available = $mm->listByEventId($eventId);
+            $allowedIds = [];
+            foreach ($available as $r) {
+                $mid = (int)($r['event_media_id'] ?? 0);
+                if ($mid > 0) $allowedIds[$mid] = true;
+            }
+
+            $normalized = [];
+            $seen = [];
+            $coverId = 0;
+
+            foreach ($items as $idx => $it) {
+                if (!is_array($it)) continue;
+                $mid = (int)($it['event_media_id'] ?? 0);
+                if ($mid <= 0) continue;
+                if (!isset($allowedIds[$mid])) continue;
+                if (isset($seen[$mid])) continue;
+                $seen[$mid] = true;
+
+                $isCover = (int)($it['is_cover'] ?? 0) ? 1 : 0;
+                if ($isCover && $coverId === 0) {
+                    $coverId = $mid;
+                }
+
+                $normalized[] = [
+                    'event_media_id' => $mid,
+                    'sort_order' => (int)($it['sort_order'] ?? ($idx + 1)),
+                    'is_cover' => $isCover,
+                ];
+            }
+
+            // Reassign sort order sequentially and enforce a single cover.
+            $out = [];
+            foreach ($normalized as $i => $it) {
+                $mid = (int)$it['event_media_id'];
+                $out[] = [
+                    'event_media_id' => $mid,
+                    'sort_order' => $i + 1,
+                    'is_cover' => ($coverId > 0 && $mid === $coverId) ? 1 : 0,
+                ];
+            }
+            if ($coverId === 0 && !empty($out)) {
+                $out[0]['is_cover'] = 1;
+            }
+
+            $selM = new PublicityPostMediaModel($this->pdo);
+            $selM->replaceForPostId($postId, $out);
+            $selected = $selM->listByPostId($postId);
+
+            json_response([
+                'error' => false,
+                'data' => [
+                    'post_id' => $postId,
+                    'event_id' => $eventId,
+                    'selected' => $selected,
+                ],
+            ]);
+        } catch (Throwable $e) {
+            json_response(['error' => true, 'message' => 'Failed to update publicity post media', 'detail' => $e->getMessage()], 500);
         }
     }
 

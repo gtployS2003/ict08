@@ -36,6 +36,121 @@
         main {
             padding-top: 24px;
         }
+
+        /* media picker */
+        .wep-section {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0, 0, 0, .08);
+        }
+
+        .wep-section h2 {
+            font-size: 16px;
+            margin: 0 0 8px;
+        }
+
+        .wep-media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px;
+        }
+
+        .wep-media-card {
+            border: 1px solid rgba(0, 0, 0, .10);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+            cursor: pointer;
+            transition: transform .08s ease, box-shadow .08s ease;
+        }
+
+        .wep-media-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, .08);
+        }
+
+        .wep-media-thumb {
+            width: 100%;
+            height: 110px;
+            object-fit: cover;
+            display: block;
+            background: #f3f4f6;
+        }
+
+        .wep-media-meta {
+            padding: 8px 10px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .wep-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid rgba(0, 0, 0, .12);
+            color: #374151;
+            background: #f9fafb;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .wep-chip--selected {
+            border-color: #bbf7d0;
+            background: #f0fdf4;
+            color: #166534;
+        }
+
+        .wep-selected-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .wep-selected-item {
+            display: grid;
+            grid-template-columns: 84px 1fr auto;
+            gap: 10px;
+            align-items: center;
+            border: 1px solid rgba(0, 0, 0, .10);
+            border-radius: 12px;
+            padding: 8px;
+            background: #fff;
+        }
+
+        .wep-selected-item img {
+            width: 84px;
+            height: 56px;
+            object-fit: cover;
+            border-radius: 10px;
+            background: #f3f4f6;
+        }
+
+        .wep-mini-btn {
+            border: 1px solid rgba(0, 0, 0, .12);
+            background: #fff;
+            border-radius: 10px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .wep-mini-btn:hover {
+            background: #f9fafb;
+        }
+
+        .wep-actions-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+        }
     </style>
 
     <!-- Page -->
@@ -80,6 +195,32 @@
                         <label for="wep-content">รายละเอียดสำหรับโพสต์</label>
                         <textarea id="wep-content" rows="10"
                             style="width:100%; padding:10px; border-radius:12px; border:1px solid rgba(0,0,0,.12);"></textarea>
+                    </div>
+
+                    <div class="wep-section">
+                        <div class="wep-actions-row">
+                            <h2 style="margin:0;">รูปภาพประกอบ</h2>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <div class="muted" id="wep-media-meta"></div>
+                                <button type="button" class="btn btn-ghost" id="wep-media-reload">
+                                    <i class="fa-solid fa-rotate"></i> โหลดรูป
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="muted" style="margin:6px 0 10px;">
+                            กดที่รูปเพื่อเลือก/ยกเลิก • เลือกได้หลายรูป • ตั้ง “หน้าปก” ได้ 1 รูป
+                        </div>
+
+                        <div id="wep-media-grid" class="wep-media-grid"></div>
+
+                        <div style="margin-top:12px; display:flex; gap:10px; justify-content:flex-end;">
+                            <button type="button" class="btn btn-ghost" id="wep-media-clear">
+                                <i class="fa-solid fa-eraser"></i> ล้างการเลือก
+                            </button>
+                        </div>
+
+                        <div class="wep-selected-list" id="wep-selected-list"></div>
                     </div>
 
                     <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:8px;">
