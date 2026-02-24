@@ -44,6 +44,7 @@ require_once __DIR__ . '/../routes/contact_info.routes.php';
 require_once __DIR__ . '/../routes/devices.routes.php';
 require_once __DIR__ . '/../routes/head_of_request.routes.php';
 require_once __DIR__ . '/../routes/template_types.routes.php';
+require_once __DIR__ . '/../routes/publicity_posts.routes.php';
 
 
 
@@ -101,6 +102,7 @@ try {
     if (devices_routes($method, $segments, $pdo)) exit;
     if (head_of_request_routes($method, $segments, $pdo)) exit;
     if (template_types_routes($method, $segments, $pdo)) exit;
+    if (publicity_posts_routes($method, $segments, $pdo)) exit;
 
     fail("Route not found", 404, ["path" => $path, "method" => $method]);
 

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
+    <title>ประชาสัมพันธ์กิจกรรม</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/ict8/assets/css/style.css" />
+    <link rel="stylesheet" href="/ict8/assets/css/schedule.css" />
+    <link rel="stylesheet" href="/ict8/assets/css/device.css" />
+    <link rel="stylesheet" href="/ict8/assets/css/gcms.css" />
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Config + API -->
+    <script src="/ict8/backend/public/config.js.php"></script>
+    <script defer src="/ict8/assets/js/api/http.js"></script>
+
+    <!-- Shared (no GCMS nav/header on this page) -->
+    <script defer src="/ict8/assets/js/main.js"></script>
+    <script defer src="/ict8/assets/js/include.js"></script>
+
+    <style>
+        /* gcms.css sets main padding-top for its header/nav; override for this standalone page */
+        main {
+            padding-top: 24px;
+        }
+    </style>
+
+    <!-- Page -->
+    <script defer src="/ict8/assets/js/report-event.js"></script>
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-left">
+            <a href="/ict8/report-event/report-event.html"><img class="logo" src="/ict8/assets/image/logo_หน่วย8.png"
+                    alt="โลโก้ศูนย์"></a>
+            <div>
+                <div class="title-main">
+                    ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)
+                </div>
+                <div class="title-sub">
+                    Information And Communication Technology Center 8 (Phitsanulok)
+                </div>
+            </div>
+        </div>
+    </header>
+    <main class="main">
+        <div style="max-width: 1400px; margin: 0 auto; padding: 16px;">
+            <section class="dashboard-content" style="min-height: auto;">
+                <div class="setting-head">
+                    <h1 class="setting-title" style="font-size: 20px;">ประชาสัมพันธ์กิจกรรม</h1>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button id="pe-refresh" class="btn btn-ghost" type="button">
+                            <i class="fa-solid fa-rotate"></i> รีเฟรช
+                        </button>
+                        <button id="pe-open-create" class="btn btn-primary" type="button">
+                            <i class="fa-solid fa-plus"></i> เพิ่มการประชาสัมพันธ์
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-toolbar">
+                    <div class="search-box" style="max-width: 520px;">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input id="pe-search" type="text" placeholder="ค้นหา: รหัสกิจกรรม / ชื่อกิจกรรม"
+                            autocomplete="off" />
+                    </div>
+                    <div class="muted" id="pe-count" style="margin-left:auto;"></div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 140px;">รหัสกิจกรรม</th>
+                                <th>ชื่อกิจกรรม</th>
+                                <th style="width: 210px;">โปสเตอร์ประชาสัมพันธ์</th>
+                                <th style="width: 230px;">ประชาสัมพันธ์ผ่านเว็บไซต์</th>
+                                <th style="width: 160px;">เพิ่มในหน้าหลัก</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pe-table-body">
+                            <tr>
+                                <td colspan="5" style="text-align:center; color:#6b7280;">กำลังโหลดข้อมูล...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- Create modal (reuse schedule overlay styles) -->
+        <div class="task-add-overlay" id="pe-create-overlay" aria-hidden="true">
+            <div class="task-add-modal" role="dialog" aria-modal="true" aria-labelledby="pe-create-title">
+                <div class="task-add-header">
+                    <h3 class="task-add-title" id="pe-create-title">เพิ่มการประชาสัมพันธ์</h3>
+                    <button type="button" class="task-add-close" data-pe-close="1" aria-label="Close">×</button>
+                </div>
+
+                <form id="pe-create-form" class="task-add-body">
+                    <p class="task-add-hint" style="margin-top:0;">
+                        เลือกได้เฉพาะกิจกรรมที่ <b>สิ้นสุด</b> แล้ว (สถานะเสร็จสิ้น)
+                    </p>
+
+                    <div class="task-add-row task-add-row-2col">
+                        <div>
+                            <label for="pe-filter-province">จังหวัด</label>
+                            <select id="pe-filter-province">
+                                <option value="">-- ทุกจังหวัด --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="pe-filter-request-type">ประเภทคำขอ</label>
+                            <select id="pe-filter-request-type">
+                                <option value="">-- ทุกประเภทคำขอ --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="task-add-row task-add-row-2col">
+                        <div>
+                            <label for="pe-filter-request-sub-type">ประเภทย่อย</label>
+                            <select id="pe-filter-request-sub-type">
+                                <option value="">-- ทุกประเภทย่อย --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="pe-filter-q">ค้นหา</label>
+                            <input id="pe-filter-q" type="text" placeholder="ค้นหา: รหัส / ชื่อ / จังหวัด"
+                                autocomplete="off" style="width:100%;" />
+                        </div>
+                    </div>
+
+                    <div class="task-add-row">
+                        <label for="pe-event-select">เลือกกิจกรรมที่ต้องการสร้าง</label>
+                        <select id="pe-event-select" size="10" required>
+                            <option value="">กำลังโหลดรายการกิจกรรม...</option>
+                        </select>
+                        <p class="task-add-hint" id="pe-event-preview"></p>
+                    </div>
+                </form>
+
+                <div class="task-add-footer">
+                    <button type="button" class="task-add-cancel" data-pe-close="1">ยกเลิก</button>
+                    <button type="submit" class="task-add-save" form="pe-create-form"
+                        id="pe-create-submit">สร้าง</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+
+</html>

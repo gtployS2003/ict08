@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
+    <title>ทำโปสเตอร์ประชาสัมพันธ์</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/ict8/assets/css/style.css" />
+    <link rel="stylesheet" href="/ict8/assets/css/schedule.css" />
+    <link rel="stylesheet" href="/ict8/assets/css/device.css" />
+    <link rel="stylesheet" href="/ict8/assets/css/gcms.css" />
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Config + API -->
+    <script src="/ict8/backend/public/config.js.php"></script>
+    <script defer src="/ict8/assets/js/api/http.js"></script>
+
+    <!-- Shared (no GCMS nav/header on this page) -->
+    <script defer src="/ict8/assets/js/main.js"></script>
+    <script defer src="/ict8/assets/js/include.js"></script>
+
+    <style>
+        /* gcms.css sets main padding-top for its header/nav; override for this standalone page */
+        main {
+            padding-top: 24px;
+        }
+    </style>
+
+    <!-- Page -->
+    <script defer src="/ict8/assets/js/report-event-poster.js"></script>
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-left">
+            <a href="/ict8/report-event/report-event.html"><img class="logo" src="/ict8/assets/image/logo_หน่วย8.png"
+                    alt="โลโก้ศูนย์"></a>
+            <div>
+                <div class="title-main">
+                    ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)
+                </div>
+                <div class="title-sub">
+                    Information And Communication Technology Center 8 (Phitsanulok)
+                </div>
+            </div>
+        </div>
+    </header>x
+
+    <main class="main">
+        <div style="max-width: 1100px; margin: 0 auto; padding: 16px;">
+            <section class="dashboard-content" style="min-height:auto;">
+                <div class="setting-head">
+                    <h1 class="setting-title" style="font-size: 20px;">ทำโปสเตอร์ประชาสัมพันธ์</h1>
+                    <a class="btn btn-ghost" href="/ict8/report-event/report-event.html">
+                        <i class="fa-solid fa-arrow-left"></i> กลับ
+                    </a>
+                </div>
+
+                <div class="muted" id="poster-meta" style="margin-bottom:12px;"></div>
+
+                <div class="empty-state">
+                    <p style="margin:0;">
+                        หน้านี้เตรียมไว้สำหรับทำโปสเตอร์ประชาสัมพันธ์ (กำลังพัฒนา)
+                    </p>
+                    <p class="muted" style="margin:8px 0 0 0;">
+                        ตอนนี้ระบบจะพาคุณมาที่หน้านี้ได้จากตารางรายการประชาสัมพันธ์ เพื่อไม่ให้เจอหน้า 404
+                    </p>
+                </div>
+            </section>
+        </div>
+    </main>
+</body>
+
+</html>
