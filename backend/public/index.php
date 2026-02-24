@@ -43,6 +43,7 @@ require_once __DIR__ . '/../routes/main_type_of_device.routes.php';
 require_once __DIR__ . '/../routes/contact_info.routes.php';
 require_once __DIR__ . '/../routes/devices.routes.php';
 require_once __DIR__ . '/../routes/head_of_request.routes.php';
+require_once __DIR__ . '/../routes/template_types.routes.php';
 
 
 
@@ -99,6 +100,7 @@ try {
     if (contact_info_routes($method, $segments, $pdo)) exit;
     if (devices_routes($method, $segments, $pdo)) exit;
     if (head_of_request_routes($method, $segments, $pdo)) exit;
+    if (template_types_routes($method, $segments, $pdo)) exit;
 
     fail("Route not found", 404, ["path" => $path, "method" => $method]);
 

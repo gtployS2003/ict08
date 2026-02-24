@@ -193,6 +193,7 @@
     $$(".setting-section").forEach((sec) => hide(sec));
 
     // ซ่อน action buttons
+    hide($("#btn-add-template-type"));
     hide($("#btn-add-province"));
     hide($("#btn-add-org-type"));
     hide($("#btn-add-organization"));
@@ -345,6 +346,14 @@
         // ensure handlers (open modal, close, submit) are bound
         initMainTypeOfDeviceSection();
         mainTypeOfDeviceLoad();
+        break;
+
+      case "template-types":
+        setTitle("เทมเพลตโพสต์");
+        show($("#section-template-types"));
+        show($("#btn-add-template-type"));
+        initTemplateTypesSection();
+        loadTemplateTypes();
         break;
 
       default:
@@ -669,6 +678,453 @@
     // ✅ optional: expose loader for section switcher
     window.mainTypeOfDeviceLoad = mainTypeOfDeviceLoad;
     window.initMainTypeOfDeviceSection = initMainTypeOfDeviceSection;
+  }
+
+
+  /* =========================
+    TEMPLATE TYPES (POST TEMPLATES)
+    - Section: #section-template-types
+    - Toolbar: #template-type-search, #template-type-limit, #template-type-refresh
+    - Table: #template-type-tbody, #template-type-pagination, #template-type-total
+    - Action: #btn-add-template-type
+    - Modal: #template-type-modal, #template-type-form
+   ========================= */
+
+  const ttEls = {
+    section: $("#section-template-types"),
+    tbody: $("#template-type-tbody"),
+    search: $("#template-type-search"),
+    limit: $("#template-type-limit"),
+    refresh: $("#template-type-refresh"),
+    pagination: $("#template-type-pagination"),
+    total: $("#template-type-total"),
+
+    btnAdd: $("#btn-add-template-type"),
+
+    modalId: "template-type-modal",
+    modal: $("#template-type-modal"),
+    form: $("#template-type-form"),
+    modalTitle: $("#template-type-modal-title"),
+    submitText: $("#template-type-submit-text"),
+    formError: $("#template-type-form-error"),
+
+    inputId: $("#template-type-id"),
+    inputName: $("#template-type-name"),
+    inputDetail: $("#template-type-detail"),
+
+    fileBg: $("#template-type-bg-file"),
+    bgPreview: $("#template-type-bg-preview"),
+    bgFilename: $("#template-type-bg-filename"),
+    bgDims: $("#template-type-bg-dims"),
+    canvasLabel: $("#template-type-canvas-label"),
+
+    // hidden upload meta
+    inputBgFilepath: $("#template-type-bg-filepath"),
+    inputBgOriginal: $("#template-type-bg-original"),
+    inputBgStored: $("#template-type-bg-stored"),
+    inputBgSize: $("#template-type-bg-size"),
+    inputBgUploadedBy: $("#template-type-bg-uploaded-by"),
+    inputBgUploadedAt: $("#template-type-bg-uploaded-at"),
+    inputCanvasW: $("#template-type-canvas-width"),
+    inputCanvasH: $("#template-type-canvas-height"),
+  };
+
+  const ttState = {
+    q: "",
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 1,
+    loading: false,
+    inited: false,
+  };
+
+  function ttEscapeHtml(s) {
+    return String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function ttSetError(msg) {
+    if (!ttEls.formError) return;
+    if (!msg) {
+      ttEls.formError.hidden = true;
+      ttEls.formError.textContent = "";
+      return;
+    }
+    ttEls.formError.hidden = false;
+    ttEls.formError.textContent = String(msg);
+  }
+
+  function ttToPublicUrl(path) {
+    const p0 = String(path || "").trim();
+    if (!p0) return "";
+    if (/^https?:\/\//i.test(p0)) return p0;
+
+    // รองรับทั้ง uploads/... และ /uploads/...
+    if (p0.startsWith("/uploads/")) return `${API_BASE}${p0}`;
+    if (p0.startsWith("uploads/")) return `${API_BASE}/${p0}`;
+    if (p0.startsWith("./uploads/")) return `${API_BASE}/${p0.replace(/^\.\//, "")}`;
+
+    return p0;
+  }
+
+  function ttFormatCanvas(w, h) {
+    const cw = Number(w || 0);
+    const ch = Number(h || 0);
+    if (cw > 0 && ch > 0) return `${cw}×${ch}`;
+    return "-";
+  }
+
+  function ttSyncPreviewFromHidden() {
+    const bgPath = String(ttEls.inputBgFilepath?.value || "").trim();
+    const original = String(ttEls.inputBgOriginal?.value || "").trim();
+    const stored = String(ttEls.inputBgStored?.value || "").trim();
+    const cw = toInt(ttEls.inputCanvasW?.value, 0);
+    const ch = toInt(ttEls.inputCanvasH?.value, 0);
+
+    if (ttEls.bgFilename) ttEls.bgFilename.textContent = original || stored || bgPath || "-";
+    if (ttEls.bgDims) ttEls.bgDims.textContent = cw > 0 && ch > 0 ? `${cw} x ${ch}` : "-";
+    if (ttEls.canvasLabel) ttEls.canvasLabel.textContent = ttFormatCanvas(cw, ch);
+
+    if (ttEls.bgPreview) {
+      if (bgPath) {
+        ttEls.bgPreview.src = ttToPublicUrl(bgPath);
+        ttEls.bgPreview.style.display = "block";
+      } else {
+        ttEls.bgPreview.removeAttribute("src");
+        ttEls.bgPreview.style.display = "none";
+      }
+    }
+  }
+
+  function ttResetForm() {
+    ttSetError("");
+    if (ttEls.inputId) ttEls.inputId.value = "";
+    if (ttEls.inputName) ttEls.inputName.value = "";
+    if (ttEls.inputDetail) ttEls.inputDetail.value = "";
+
+    if (ttEls.fileBg) ttEls.fileBg.value = "";
+
+    if (ttEls.inputBgFilepath) ttEls.inputBgFilepath.value = "";
+    if (ttEls.inputBgOriginal) ttEls.inputBgOriginal.value = "";
+    if (ttEls.inputBgStored) ttEls.inputBgStored.value = "";
+    if (ttEls.inputBgSize) ttEls.inputBgSize.value = "";
+    if (ttEls.inputBgUploadedBy) ttEls.inputBgUploadedBy.value = "";
+    if (ttEls.inputBgUploadedAt) ttEls.inputBgUploadedAt.value = "";
+    if (ttEls.inputCanvasW) ttEls.inputCanvasW.value = "";
+    if (ttEls.inputCanvasH) ttEls.inputCanvasH.value = "";
+
+    ttSyncPreviewFromHidden();
+  }
+
+  function ttApplyRowToForm(row = {}) {
+    ttSetError("");
+
+    const id = row.template_type_id ?? row.id ?? "";
+    if (ttEls.inputId) ttEls.inputId.value = id ?? "";
+    if (ttEls.inputName) ttEls.inputName.value = row.template_name ?? "";
+    if (ttEls.inputDetail) ttEls.inputDetail.value = row.detail ?? "";
+
+    if (ttEls.fileBg) ttEls.fileBg.value = "";
+
+    if (ttEls.inputBgFilepath) ttEls.inputBgFilepath.value = row.bg_filepath ?? "";
+    if (ttEls.inputBgOriginal) ttEls.inputBgOriginal.value = row.bg_original_filename ?? "";
+    if (ttEls.inputBgStored) ttEls.inputBgStored.value = row.bg_stored_filename ?? "";
+    if (ttEls.inputBgSize) ttEls.inputBgSize.value = String(row.bg_file_size ?? "");
+    if (ttEls.inputBgUploadedBy) ttEls.inputBgUploadedBy.value = String(row.bg_uploaded_by ?? "");
+    if (ttEls.inputBgUploadedAt) ttEls.inputBgUploadedAt.value = String(row.bg_uploaded_at ?? "");
+    if (ttEls.inputCanvasW) ttEls.inputCanvasW.value = String(row.canvas_width ?? "");
+    if (ttEls.inputCanvasH) ttEls.inputCanvasH.value = String(row.canvas_height ?? "");
+
+    ttSyncPreviewFromHidden();
+  }
+
+  function ttOpenModal({ mode = "create", row } = {}) {
+    if (!ttEls.modalTitle || !ttEls.submitText) return;
+
+    if (mode === "edit") {
+      ttEls.modalTitle.textContent = "แก้ไขเทมเพลตโพสต์";
+      ttEls.submitText.textContent = "บันทึกการแก้ไข";
+      ttApplyRowToForm(row || {});
+    } else {
+      ttEls.modalTitle.textContent = "เพิ่มเทมเพลตโพสต์";
+      ttEls.submitText.textContent = "บันทึก";
+      ttResetForm();
+    }
+
+    openModal(ttEls.modalId);
+    setTimeout(() => ttEls.inputName?.focus(), 0);
+  }
+
+  function ttCloseModal() {
+    closeModal(ttEls.modalId);
+  }
+
+  function ttRenderRows(items = []) {
+    if (!ttEls.tbody) return;
+
+    if (!items.length) {
+      ttEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    ttEls.tbody.innerHTML = items
+      .map((r) => {
+        const id = r.template_type_id ?? r.id ?? "";
+        const bg = String(r.bg_filepath ?? "").trim();
+        const bgUrl = bg ? ttToPublicUrl(bg) : "";
+        const canvas = ttFormatCanvas(r.canvas_width, r.canvas_height);
+        const name = r.template_name ?? "";
+
+        const bgCell = bgUrl
+          ? `<img src="${ttEscapeHtml(bgUrl)}" alt="bg" style="width:90px; height:auto; border-radius:8px; border:1px solid #eee; background:#fafafa;" />`
+          : `<span class="muted">-</span>`;
+
+        return `
+        <tr>
+          <td>${ttEscapeHtml(id)}</td>
+          <td>${bgCell}</td>
+          <td>
+            <div style="font-weight:600;">${ttEscapeHtml(name)}</div>
+            ${r.detail ? `<div class="muted" style="margin-top:4px;">${ttEscapeHtml(r.detail)}</div>` : ""}
+          </td>
+          <td>${ttEscapeHtml(canvas)}</td>
+          <td>
+            <div class="table-actions">
+              <button class="btn btn-outline btn-sm" type="button" data-action="edit" data-id="${ttEscapeHtml(id)}">
+                <i class="fa-solid fa-pen"></i> แก้ไข
+              </button>
+              <button class="btn btn-danger btn-sm" type="button" data-action="delete" data-id="${ttEscapeHtml(id)}" data-title="${ttEscapeHtml(name)}">
+                <i class="fa-solid fa-trash"></i> ลบ
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+      })
+      .join("");
+  }
+
+  function ttRenderPagination() {
+    if (!ttEls.pagination) return;
+    ttState.totalPages = calcTotalPages({
+      total: ttState.total,
+      limit: ttState.limit,
+      totalPages: ttState.totalPages,
+    });
+
+    renderPager(ttEls.pagination, {
+      page: ttState.page,
+      totalPages: ttState.totalPages,
+    });
+  }
+
+  async function loadTemplateTypes() {
+    if (ttState.loading) return;
+    if (!ttEls.section) return;
+    if (!window.TemplateTypesAPI) {
+      console.warn("[template-types] Missing TemplateTypesAPI");
+      return;
+    }
+
+    ttState.loading = true;
+    try {
+      if (ttEls.tbody) ttEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">กำลังโหลด...</td></tr>`;
+
+      ttState.q = String(ttEls.search?.value || "").trim();
+      ttState.limit = parseInt(ttEls.limit?.value || String(ttState.limit), 10) || ttState.limit;
+
+      const res = await window.TemplateTypesAPI.list({
+        q: ttState.q,
+        page: ttState.page,
+        limit: ttState.limit,
+      });
+
+      const items = res?.data || [];
+      const pg = res?.pagination || {};
+
+      ttState.total = Number(pg?.total ?? items.length ?? 0);
+      ttState.page = Number(pg?.page ?? ttState.page);
+      ttState.limit = Number(pg?.limit ?? ttState.limit);
+      ttState.totalPages = Number(pg?.totalPages ?? pg?.total_pages ?? ttState.totalPages);
+
+      ttRenderRows(items);
+      ttRenderPagination();
+
+      if (ttEls.total) ttEls.total.textContent = `ทั้งหมด ${ttState.total} รายการ`;
+    } catch (e) {
+      if (ttEls.tbody) {
+        ttEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">โหลดข้อมูลไม่สำเร็จ: ${ttEscapeHtml(e?.message || String(e))}</td></tr>`;
+      }
+    } finally {
+      ttState.loading = false;
+    }
+  }
+
+  function initTemplateTypesSection() {
+    if (!ttEls.section) return;
+    if (ttState.inited) return;
+    ttState.inited = true;
+
+    // default limit
+    if (ttEls.limit && !ttEls.limit.value) ttEls.limit.value = String(ttState.limit);
+
+    // search debounce
+    let t = null;
+    ttEls.search?.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        ttState.page = 1;
+        loadTemplateTypes();
+      }, 300);
+    });
+
+    // limit
+    ttEls.limit?.addEventListener("change", () => {
+      ttState.page = 1;
+      loadTemplateTypes();
+    });
+
+    // refresh
+    ttEls.refresh?.addEventListener("click", () => {
+      loadTemplateTypes();
+    });
+
+    // pagination delegate
+    ttEls.pagination?.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-page]");
+      if (!btn || btn.disabled) return;
+      const next = toInt(btn.getAttribute("data-page"), 0);
+      if (!next || next < 1 || next > (ttState.totalPages || 1)) return;
+      if (next === ttState.page) return;
+      ttState.page = next;
+      loadTemplateTypes();
+    });
+
+    // table actions delegate
+    ttEls.tbody?.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+
+      const action = btn.getAttribute("data-action");
+      const id = btn.getAttribute("data-id");
+      if (!id) return;
+
+      if (action === "edit") {
+        try {
+          ttSetError("");
+          const res = await window.TemplateTypesAPI.getById(id);
+          const row = res?.data || {};
+          ttOpenModal({ mode: "edit", row });
+        } catch (err) {
+          alert(err?.message || String(err));
+        }
+        return;
+      }
+
+      if (action === "delete") {
+        const title = btn.getAttribute("data-title") || "";
+        const ok = confirm(`ยืนยันลบเทมเพลตโพสต์\n\n- ${title || id}`);
+        if (!ok) return;
+
+        try {
+          await window.TemplateTypesAPI.remove(id);
+          loadTemplateTypes();
+        } catch (err) {
+          alert(err?.message || String(err));
+        }
+      }
+    });
+
+    // add button
+    ttEls.btnAdd?.addEventListener("click", () => {
+      ttOpenModal({ mode: "create" });
+    });
+
+    // bg upload
+    ttEls.fileBg?.addEventListener("change", async () => {
+      const file = ttEls.fileBg?.files?.[0];
+      if (!file) return;
+      if (!window.TemplateTypesAPI?.uploadBg) {
+        ttSetError("ระบบอัปโหลดพื้นหลังยังไม่พร้อมใช้งาน");
+        return;
+      }
+
+      try {
+        ttSetError("");
+        if (ttEls.bgFilename) ttEls.bgFilename.textContent = "กำลังอัปโหลด...";
+        if (ttEls.bgDims) ttEls.bgDims.textContent = "-";
+        if (ttEls.canvasLabel) ttEls.canvasLabel.textContent = "-";
+
+        const res = await window.TemplateTypesAPI.uploadBg(file);
+        const info = res?.data || res || {};
+
+        // API returns: { path, original_filename, stored_filename, file_size, uploaded_by, uploaded_at, canvas_width, canvas_height }
+        if (ttEls.inputBgFilepath) ttEls.inputBgFilepath.value = String(info.path || "");
+        if (ttEls.inputBgOriginal) ttEls.inputBgOriginal.value = String(info.original_filename || "");
+        if (ttEls.inputBgStored) ttEls.inputBgStored.value = String(info.stored_filename || "");
+        if (ttEls.inputBgSize) ttEls.inputBgSize.value = String(info.file_size || "");
+        if (ttEls.inputBgUploadedBy) ttEls.inputBgUploadedBy.value = String(info.uploaded_by || "");
+        if (ttEls.inputBgUploadedAt) ttEls.inputBgUploadedAt.value = String(info.uploaded_at || "");
+        if (ttEls.inputCanvasW) ttEls.inputCanvasW.value = String(info.canvas_width || "");
+        if (ttEls.inputCanvasH) ttEls.inputCanvasH.value = String(info.canvas_height || "");
+
+        ttSyncPreviewFromHidden();
+      } catch (err) {
+        ttSetError(err?.message || String(err));
+      }
+    });
+
+    // submit create/update
+    ttEls.form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!window.TemplateTypesAPI) return;
+
+      const idRaw = String(ttEls.inputId?.value || "").trim();
+      const name = String(ttEls.inputName?.value || "").trim();
+      const detail = String(ttEls.inputDetail?.value || "");
+
+      if (!name) {
+        ttSetError("กรุณากรอกชื่อเทมเพลต");
+        ttEls.inputName?.focus();
+        return;
+      }
+
+      const payload = {
+        template_name: name,
+        detail,
+
+        bg_filepath: String(ttEls.inputBgFilepath?.value || "").trim(),
+        bg_original_filename: String(ttEls.inputBgOriginal?.value || "").trim(),
+        bg_stored_filename: String(ttEls.inputBgStored?.value || "").trim(),
+        bg_file_size: toInt(ttEls.inputBgSize?.value, 0),
+        bg_uploaded_by: toInt(ttEls.inputBgUploadedBy?.value, 0),
+        bg_uploaded_at: String(ttEls.inputBgUploadedAt?.value || "").trim(),
+        canvas_width: toInt(ttEls.inputCanvasW?.value, 0),
+        canvas_height: toInt(ttEls.inputCanvasH?.value, 0),
+      };
+
+      try {
+        ttSetError("");
+        if (idRaw) {
+          await window.TemplateTypesAPI.update(idRaw, payload);
+        } else {
+          await window.TemplateTypesAPI.create(payload);
+        }
+        ttCloseModal();
+        loadTemplateTypes();
+      } catch (err) {
+        ttSetError(err?.message || String(err));
+      }
+    });
+
+    // expose for section switcher
+    window.loadTemplateTypes = loadTemplateTypes;
+    window.initTemplateTypesSection = initTemplateTypesSection;
   }
 
 
