@@ -104,16 +104,12 @@ final class DocumentsController
      * เติมค่า field ที่ผู้ใช้ไม่ต้องกรอกในฟอร์ม
      * - stored_filename: สร้างจาก basename(filepath)
      * - file_size: คำนวณจากไฟล์ในเครื่องถ้า filepath เป็น path ภายในเว็บ
-     * - news_id: ไม่ต้องส่งจากฟอร์ม (ปล่อยเป็น null)
      *
      * @param array<string,mixed> $body
      * @return array<string,mixed>
      */
     private function normalizeBody(array $body): array
     {
-        // ไม่ให้ฟอร์มกำหนด news_id
-        $body['news_id'] = null;
-
         $filepath = trim((string)($body['filepath'] ?? ''));
 
         // stored_filename สร้างอัตโนมัติ ถ้าไม่ได้ส่งมา/ว่าง
@@ -169,7 +165,6 @@ final class DocumentsController
 
     /**
      * GET /documents?q=&page=&limit=&public=1
-     * - public=1 -> return only is_active=1 and is_private=0 (no auth)
      * - otherwise -> require auth
      */
     public function index(): void

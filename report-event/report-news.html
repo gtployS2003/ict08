@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
+	<title>ประชาสัมพันธ์ข่าวสาร</title>
+
+	<!-- Fonts -->
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link
+		href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+		rel="stylesheet">
+
+	<!-- CSS -->
+	<link rel="stylesheet" href="/ict8/assets/css/style.css" />
+	<link rel="stylesheet" href="/ict8/assets/css/schedule.css" />
+	<link rel="stylesheet" href="/ict8/assets/css/device.css" />
+	<link rel="stylesheet" href="/ict8/assets/css/gcms.css" />
+
+	<!-- Font Awesome -->
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+	<!-- Config + API -->
+	<script src="/ict8/backend/public/config.js.php"></script>
+	<script defer src="/ict8/assets/js/api/http.js"></script>
+
+	<!-- Shared -->
+	<script defer src="/ict8/assets/js/main.js"></script>
+	<script defer src="/ict8/assets/js/include.js"></script>
+
+	<!-- Page -->
+	<script defer src="/ict8/assets/js/report-news.js"></script>
+
+	<style>
+		/* gcms.css sets main padding-top for its header/nav; override for this standalone page */
+		main.main-news {
+			flex: 1;
+            padding: 170px 16px 60px;
+		}
+
+		.rn-docs-list {
+			margin-top: 10px;
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+		}
+
+		.rn-doc-item {
+			display: grid;
+			grid-template-columns: 1fr auto;
+			gap: 10px;
+			align-items: center;
+			border: 1px solid rgba(0, 0, 0, .10);
+			border-radius: 12px;
+			padding: 10px 12px;
+			background: #fff;
+		}
+
+		/* allow ellipsis inside grid */
+		.rn-doc-item>div {
+			min-width: 0;
+		}
+
+		.rn-doc-item .muted {
+			margin-top: 2px;
+			font-size: 12px;
+		}
+
+		/* shorten long paths with ... */
+		.rn-doc-item .muted a {
+			display: block;
+			max-width: 100%;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		/* picker table path column */
+		#rn-docs-overlay .data-table {
+			table-layout: fixed;
+		}
+
+		#rn-docs-overlay .data-table td:nth-child(3) {
+			overflow: hidden;
+		}
+
+		#rn-docs-overlay .data-table td:nth-child(3) a {
+			display: inline-block;
+			max-width: 100%;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			vertical-align: bottom;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="header-report"></div>
+	<div id="report-nav"></div>
+
+	<main class="main-news">
+		<div style="max-width: 1400px; margin: 0 auto; padding: 16px;">
+			<section class="dashboard-content" style="min-height:auto;">
+				<div class="setting-head">
+					<h1 class="setting-title" style="font-size: 20px;">ประชาสัมพันธ์ข่าวสาร</h1>
+					<div style="display:flex; gap:10px; align-items:center;">
+						<button id="rn-refresh" class="btn btn-ghost" type="button">
+							<i class="fa-solid fa-rotate"></i> รีเฟรช
+						</button>
+						<button id="rn-open-create" class="btn btn-primary" type="button">
+							<i class="fa-solid fa-plus"></i> เพิ่มข่าวประชาสัมพันธ์
+						</button>
+					</div>
+				</div>
+
+				<div class="table-toolbar">
+					<div class="search-box" style="max-width: 520px;">
+						<i class="fa-solid fa-magnifying-glass"></i>
+						<input id="rn-search" type="text" placeholder="ค้นหา: รหัสข่าวสาร / ชื่อข่าวสาร" autocomplete="off" />
+					</div>
+					<div class="muted" id="rn-count" style="margin-left:auto;"></div>
+				</div>
+
+				<div class="table-wrap">
+					<table class="data-table" aria-label="News table">
+						<thead>
+							<tr>
+								<th style="width: 160px;">รหัสข่าวสาร</th>
+								<th>ชื่อข่าวสาร</th>
+								<th style="width: 240px;">ประชาสัมพันธ์ผ่านเว็บไซต์</th>
+								<th style="width: 180px;">เพิ่มในหน้าหลัก</th>
+							</tr>
+						</thead>
+						<tbody id="rn-table-body">
+							<tr>
+								<td colspan="4" style="text-align:center; color:#6b7280;">กำลังโหลดข้อมูล...</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</section>
+		</div>
+
+		<!-- Create modal (reuse schedule overlay styles) -->
+		<div class="task-add-overlay" id="rn-create-overlay" aria-hidden="true">
+			<div class="task-add-modal" role="dialog" aria-modal="true" aria-labelledby="rn-create-title">
+				<div class="task-add-header">
+					<h3 class="task-add-title" id="rn-create-title">เพิ่มข่าวประชาสัมพันธ์</h3>
+					<button type="button" class="task-add-close" data-rn-close="1" aria-label="Close">×</button>
+				</div>
+
+				<form id="rn-create-form" class="task-add-body" autocomplete="off">
+					<div class="task-add-row">
+						<label for="rn-create-title-input">ชื่อข่าวสาร</label>
+						<input id="rn-create-title-input" type="text" maxlength="255" required style="width:100%;" />
+					</div>
+
+					<div class="task-add-row">
+						<label for="rn-create-content-input">เนื้อหา</label>
+						<textarea id="rn-create-content-input" rows="10" required
+							style="width:100%; padding:10px; border-radius:12px; border:1px solid rgba(0,0,0,.12);"></textarea>
+					</div>
+
+					<div class="task-add-row">
+						<label for="rn-create-url-input">ลิงก์แนบเพิ่มเติม (ถ้ามี)</label>
+						<input id="rn-create-url-input" type="url" placeholder="https://..." style="width:100%;" />
+						<p class="task-add-hint" style="margin:6px 0 0;">เช่น Google Drive / shorturl (ปล่อยว่างได้)</p>
+					</div>
+
+					<div class="task-add-row">
+						<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+							<label style="margin:0;">เอกสารแนบ</label>
+							<button type="button" class="btn btn-ghost" id="rn-docs-open">
+								<i class="fa-solid fa-paperclip"></i> เลือกเอกสารแนบ
+							</button>
+						</div>
+						<div class="rn-docs-list" id="rn-docs-list">
+							<div class="muted">ยังไม่ได้เลือกเอกสารแนบ</div>
+						</div>
+					</div>
+				</form>
+
+				<div class="task-add-footer">
+					<button type="button" class="task-add-cancel" data-rn-close="1">ยกเลิก</button>
+					<button type="submit" class="task-add-save" form="rn-create-form" id="rn-create-submit">บันทึก</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Documents picker modal for create form -->
+		<div class="task-add-overlay" id="rn-docs-overlay" aria-hidden="true">
+			<div class="task-add-modal" role="dialog" aria-modal="true" aria-labelledby="rn-docs-title">
+				<div class="task-add-header">
+					<h3 class="task-add-title" id="rn-docs-title">เลือกเอกสารแนบ</h3>
+					<button type="button" class="task-add-close" data-rn-docs-close="1" aria-label="Close">×</button>
+				</div>
+
+				<div class="task-add-body">
+					<div class="task-add-row" style="margin-top:0;">
+						<label for="rn-docs-search">ค้นหาเอกสาร (ชื่อ/พาธ/ID)</label>
+						<input id="rn-docs-search" type="search" placeholder="ค้นหา..." style="width:100%;" />
+					</div>
+
+					<div class="table-wrap" style="margin-top:10px;">
+						<table class="data-table" aria-label="Documents picker">
+							<thead>
+								<tr>
+									<th style="width: 90px;">ID</th>
+									<th style="width: 260px;">ชื่อไฟล์</th>
+									<th>พาธ/URL</th>
+									<th style="width: 160px;">สถานะ</th>
+									<th style="width: 160px;">จัดการ</th>
+								</tr>
+							</thead>
+							<tbody id="rn-docs-tbody">
+								<tr>
+									<td colspan="5" class="muted">กำลังโหลด...</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+
+					<div class="muted" id="rn-docs-hint" style="margin-top:10px;"></div>
+				</div>
+
+				<div class="task-add-footer">
+					<button type="button" class="task-add-cancel" data-rn-docs-close="1">ปิด</button>
+				</div>
+			</div>
+		</div>
+	</main>
+</body>
+
+</html>

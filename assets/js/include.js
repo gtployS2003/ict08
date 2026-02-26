@@ -72,6 +72,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadHtml("header-form", "/assets/include/header-form.html");
 
+  await loadHtml("report-nav", "/assets/include/nav-report.html");
+  await loadHtml("header-report", "/assets/include/header-report.html");
+
   // initNavbar หลัง inject nav ต่าง ๆ แล้ว (กันกรณี include โหลดช้ากว่า DOMContentLoaded)
   try {
     if (typeof window.initNavbar === "function") window.initNavbar();

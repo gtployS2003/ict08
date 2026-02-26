@@ -33,8 +33,9 @@
 
     <style>
         /* gcms.css sets main padding-top for its header/nav; override for this standalone page */
-        main {
-            padding-top: 24px;
+        main.main-report {
+            flex: 1;
+            padding: 170px 16px 60px;
         }
 
         /* status badges (poster / website) */
@@ -113,21 +114,10 @@
 </head>
 
 <body>
-    <header class="header">
-        <div class="header-left">
-            <a href="/ict8/report-event/report-event.html"><img class="logo" src="/ict8/assets/image/logo_หน่วย8.png"
-                    alt="โลโก้ศูนย์"></a>
-            <div>
-                <div class="title-main">
-                    ศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)
-                </div>
-                <div class="title-sub">
-                    Information And Communication Technology Center 8 (Phitsanulok)
-                </div>
-            </div>
-        </div>
-    </header>
-    <main class="main">
+    <div id="header-report"></div>
+    <div id="report-nav"></div>
+
+    <main class="main-report">
         <div style="max-width: 1400px; margin: 0 auto; padding: 16px;">
             <section class="dashboard-content" style="min-height: auto;">
                 <div class="setting-head">

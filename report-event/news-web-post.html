@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
+    <title>แก้ไขโพสต์ข่าวสาร (เว็บไซต์)</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/ict8/assets/css/style.css" />
+    <link rel="stylesheet" href="/ict8/assets/css/schedule.css" />
+    <link rel="stylesheet" href="/ict8/assets/css/device.css" />
+    <link rel="stylesheet" href="/ict8/assets/css/gcms.css" />
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Config + API -->
+    <script src="/ict8/backend/public/config.js.php"></script>
+    <script defer src="/ict8/assets/js/api/http.js"></script>
+
+    <!-- Shared -->
+    <script defer src="/ict8/assets/js/main.js"></script>
+    <script defer src="/ict8/assets/js/include.js"></script>
+
+    <!-- Page -->
+    <script defer src="/ict8/assets/js/report-news-web-post.js"></script>
+
+    <style>
+        main.main-news {
+            flex: 1;
+        }
+
+        .rnp-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .rnp-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .rnp-row input,
+        .rnp-row textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 0, 0, .12);
+        }
+
+        .rnp-row textarea {
+            resize: vertical;
+        }
+
+        .rnp-section {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0, 0, 0, .08);
+        }
+
+        .rnp-section h2 {
+            font-size: 16px;
+            margin: 0;
+        }
+
+        .rnp-section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .rnp-docs-list {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .rnp-doc-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+            border: 1px solid rgba(0, 0, 0, .10);
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: #fff;
+        }
+
+        /* allow ellipsis inside grid */
+        .rnp-doc-item>div {
+            min-width: 0;
+        }
+
+        .rnp-doc-item .muted {
+            margin-top: 2px;
+            font-size: 12px;
+        }
+
+        /* shorten long paths with ... */
+        .rnp-doc-item .muted a {
+            display: block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* picker table path column */
+        #rnp-docs-overlay .data-table {
+            table-layout: fixed;
+        }
+
+        #rnp-docs-overlay .data-table td:nth-child(3) {
+            overflow: hidden;
+        }
+
+        #rnp-docs-overlay .data-table td:nth-child(3) a {
+            display: inline-block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            vertical-align: bottom;
+        }
+
+        .is-disabled {
+            opacity: 0.55;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="header-report"></div>
+    <div id="report-nav"></div>
+
+    <main class="main-news">
+        <div style="max-width: 1100px; margin: 0 auto; padding: 16px;">
+            <section class="dashboard-content" style="min-height:auto;">
+                <div class="setting-head">
+                    <h1 class="setting-title" style="font-size: 20px;">แก้ไขโพสต์ข่าวสาร</h1>
+                    <a class="btn btn-ghost" href="/ict8/report-event/report-news.html">
+                        <i class="fa-solid fa-arrow-left"></i> กลับ
+                    </a>
+                </div>
+
+                <div class="muted" id="rnp-meta" style="margin-bottom:12px;"></div>
+
+                <form id="rnp-form" style="display:flex; flex-direction:column; gap:10px;">
+                    <div class="rnp-row">
+                        <label for="rnp-title">ชื่อข่าวสาร</label>
+                        <input id="rnp-title" type="text" maxlength="255" required />
+                    </div>
+
+                    <div class="rnp-row">
+                        <label for="rnp-content">รายละเอียดสำหรับโพสต์</label>
+                        <textarea id="rnp-content" rows="12" required></textarea>
+                    </div>
+
+                    <div class="rnp-row">
+                        <label for="rnp-link-url">ลิงก์แนบเพิ่มเติม (ถ้ามี)</label>
+                        <input id="rnp-link-url" type="url" placeholder="https://..." />
+                        <div class="muted">เช่น Google Drive / shorturl (ลิงก์นี้จะไม่แทนที่หน้าแสดงข่าว)</div>
+                    </div>
+
+                    <div class="rnp-section" aria-label="attachments">
+                        <div class="rnp-section-head">
+                            <h2>เอกสารแนบ</h2>
+                            <button type="button" class="btn btn-ghost" id="rnp-docs-open">
+                                <i class="fa-solid fa-paperclip"></i> เลือกเอกสารแนบ
+                            </button>
+                        </div>
+
+                        <div class="rnp-docs-list" id="rnp-docs-list">
+                            <div class="muted">กำลังโหลดเอกสารแนบ...</div>
+                        </div>
+                    </div>
+
+                    <div class="rnp-actions">
+                        <a class="btn btn-ghost" id="rnp-preview" href="#" target="_blank" rel="noopener">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> Preview
+                        </a>
+                        <button type="button" class="btn btn-ghost" id="rnp-reload">
+                            <i class="fa-solid fa-rotate"></i> โหลดใหม่
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="rnp-save">
+                            <i class="fa-solid fa-floppy-disk"></i> บันทึก
+                        </button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </main>
+
+    <!-- Documents picker modal -->
+    <div class="task-add-overlay" id="rnp-docs-overlay" aria-hidden="true">
+        <div class="task-add-modal" role="dialog" aria-modal="true" aria-labelledby="rnp-docs-title">
+            <div class="task-add-header">
+                <h3 class="task-add-title" id="rnp-docs-title">เลือกเอกสารแนบ</h3>
+                <button type="button" class="task-add-close" data-rnp-docs-close="1" aria-label="Close">×</button>
+            </div>
+
+            <div class="task-add-body">
+                <div class="task-add-row" style="margin-top:0;">
+                    <label for="rnp-docs-search">ค้นหาเอกสาร (ชื่อ/พาธ/ID)</label>
+                    <input id="rnp-docs-search" type="search" placeholder="ค้นหา..." style="width:100%;" />
+                </div>
+
+                <div class="table-wrap" style="margin-top:10px;">
+                    <table class="data-table" aria-label="Documents picker">
+                        <thead>
+                            <tr>
+                                <th style="width: 90px;">ID</th>
+                                <th style="width: 260px;">ชื่อไฟล์</th>
+                                <th>พาธ/URL</th>
+                                <th style="width: 190px;">สถานะ</th>
+                                <th style="width: 160px;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rnp-docs-tbody">
+                            <tr>
+                                <td colspan="5" class="muted">กำลังโหลด...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="muted" id="rnp-docs-hint" style="margin-top:10px;"></div>
+            </div>
+
+            <div class="task-add-footer">
+                <button type="button" class="task-add-cancel" data-rnp-docs-close="1">ปิด</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

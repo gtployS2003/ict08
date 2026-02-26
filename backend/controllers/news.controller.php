@@ -24,9 +24,14 @@ class NewsController {
     }
 
     public function create(): void {
+        $user = require_auth($this->pdo);
+
         $body = read_json_body();
         $missing = require_fields($body, ['title', 'content']);
         if ($missing) fail("Missing fields", 422, $missing);
+
+        // writer must be the user who creates the news
+        $body['writer'] = (int)($user['user_id'] ?? 0);
 
         $model = new NewsModel($this->pdo);
         $id = $model->create($body);
@@ -34,15 +39,21 @@ class NewsController {
     }
 
     public function update(int $id): void {
-        $body = read_json_body();
-        $missing = require_fields($body, ['title', 'content']);
-        if ($missing) fail("Missing fields", 422, $missing);
-
         $model = new NewsModel($this->pdo);
         $found = $model->get($id);
         if (!$found) fail("News not found", 404);
 
-        $model->update($id, $body);
+        $body = read_json_body();
+        if (!is_array($body) || count($body) === 0) {
+            fail("Missing fields", 422, ['body']);
+        }
+
+        // merge to allow partial updates (e.g. is_banner toggle)
+        $merged = array_merge($found, $body);
+        $missing = require_fields($merged, ['title', 'content']);
+        if ($missing) fail("Missing fields", 422, $missing);
+
+        $model->update($id, $merged);
         ok(["news_id" => $id], "Updated");
     }
 

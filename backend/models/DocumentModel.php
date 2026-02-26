@@ -52,7 +52,6 @@ final class DocumentModel
         $sql = "
             SELECT
                 d.document_id,
-                d.news_id,
                 d.filepath,
                 d.original_filename,
                 d.stored_filename,
@@ -122,7 +121,6 @@ final class DocumentModel
         $sql = "
             SELECT
                 d.document_id,
-                d.news_id,
                 d.filepath,
                 d.original_filename,
                 d.stored_filename,
@@ -146,7 +144,6 @@ final class DocumentModel
      */
     public function create(array $data): int
     {
-        $newsId = isset($data['news_id']) && $data['news_id'] !== '' ? (int)$data['news_id'] : null;
         $filepath = trim((string)($data['filepath'] ?? ''));
         $original = trim((string)($data['original_filename'] ?? ''));
         $stored = trim((string)($data['stored_filename'] ?? ''));
@@ -156,7 +153,6 @@ final class DocumentModel
 
         $sql = "
             INSERT INTO {$this->table} (
-                news_id,
                 filepath,
                 original_filename,
                 stored_filename,
@@ -164,7 +160,6 @@ final class DocumentModel
                 is_private,
                 is_active
             ) VALUES (
-                :news_id,
                 :filepath,
                 :original_filename,
                 :stored_filename,
@@ -175,7 +170,6 @@ final class DocumentModel
         ";
 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':news_id', $newsId, $newsId !== null ? PDO::PARAM_INT : PDO::PARAM_NULL);
         $stmt->bindValue(':filepath', $filepath, PDO::PARAM_STR);
         $stmt->bindValue(':original_filename', $original, PDO::PARAM_STR);
         $stmt->bindValue(':stored_filename', $stored, PDO::PARAM_STR);
@@ -192,7 +186,6 @@ final class DocumentModel
      */
     public function update(int $id, array $data): bool
     {
-        $newsId = array_key_exists('news_id', $data) ? ($data['news_id'] !== '' && $data['news_id'] !== null ? (int)$data['news_id'] : null) : null;
         $filepath = trim((string)($data['filepath'] ?? ''));
         $original = trim((string)($data['original_filename'] ?? ''));
         $stored = trim((string)($data['stored_filename'] ?? ''));
@@ -203,7 +196,6 @@ final class DocumentModel
         $sql = "
             UPDATE {$this->table}
             SET
-                news_id = :news_id,
                 filepath = :filepath,
                 original_filename = :original_filename,
                 stored_filename = :stored_filename,
@@ -215,7 +207,6 @@ final class DocumentModel
         ";
 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':news_id', $newsId, $newsId !== null ? PDO::PARAM_INT : PDO::PARAM_NULL);
         $stmt->bindValue(':filepath', $filepath, PDO::PARAM_STR);
         $stmt->bindValue(':original_filename', $original, PDO::PARAM_STR);
         $stmt->bindValue(':stored_filename', $stored, PDO::PARAM_STR);
