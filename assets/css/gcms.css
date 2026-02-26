@@ -1234,6 +1234,44 @@ select option {
   text-overflow: ellipsis;
 }
 
+/* =========================
+   Director modal preview
+========================= */
+#diractor-modal .modal__dialog {
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+}
+
+#diractor-modal .modal__body {
+  overflow: auto;
+}
+
+#diractor-modal .photo-preview {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+#diractor-modal .photo-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 340px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+#diractor-modal .photo-preview__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 /* scrollbar ให้เหมือน detail */
 #user-edit-modal .detail-form::-webkit-scrollbar {
   width: 8px;

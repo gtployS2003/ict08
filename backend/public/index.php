@@ -52,6 +52,7 @@ require_once __DIR__ . '/../routes/event_template_exports.routes.php';
 require_once __DIR__ . '/../routes/link_urls.routes.php';
 require_once __DIR__ . '/../routes/documents.routes.php';
 require_once __DIR__ . '/../routes/history_image_page.routes.php';
+require_once __DIR__ . '/../routes/site_diractor.routes.php';
 
 
 
@@ -116,6 +117,7 @@ try {
     if (link_urls_routes($method, $segments, $pdo)) exit;
     if (documents_routes($method, $segments, $pdo)) exit;
     if (history_image_page_routes($method, $segments, $pdo)) exit;
+    if (site_diractor_routes($method, $segments, $pdo)) exit;
 
     fail("Route not found", 404, ["path" => $path, "method" => $method]);
 

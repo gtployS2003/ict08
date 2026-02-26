@@ -219,6 +219,7 @@
     hide($("#btn-add-link-url"));
     hide($("#btn-add-related-document"));
     hide($("#btn-add-history-image"));
+    hide($("#btn-add-diractor"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -369,6 +370,14 @@
         setTitle("ภาพหน้าประวัติหน่วยงาน");
         initHistoryImagePageSection();
         loadHistoryImagePage();
+        break;
+
+      case "directors":
+        show($("#section-directors"));
+        show($("#btn-add-diractor"));
+        setTitle("รายชื่อผู้อำนวยการ");
+        initDiractorSection();
+        loadDiractors();
         break;
 
       case "link-url":
@@ -954,6 +963,528 @@
         } catch (err) {
           hipSetSectionStatus(err?.message || String(err), { isError: true });
         }
+      }
+    });
+  }
+
+
+  /* =========================
+   DIRECTORS (SITE DIRACTOR)
+   - Section: #section-directors
+   - Action: #btn-add-diractor
+   - Modal: #diractor-modal, #diractor-form
+   - Inputs: #diractor-id, #diractor-firstname, #diractor-lastname, #diractor-start, #diractor-end
+   - File: #diractor-file
+   - Remove: #diractor-remove-photo
+   - Preview: #diractor-preview, #diractor-preview-img, #diractor-preview-name, #diractor-clear
+   - Toolbar: #diractor-search, #diractor-limit, #diractor-refresh
+   - Table: #diractor-tbody
+   - Footer: #diractor-pagination, #diractor-total
+ ========================= */
+
+  const dirEls = {
+    section: $("#section-directors"),
+    tbody: $("#diractor-tbody"),
+
+    search: $("#diractor-search"),
+    limit: $("#diractor-limit"),
+    refreshBtn: $("#diractor-refresh"),
+    pagination: $("#diractor-pagination"),
+    total: $("#diractor-total"),
+
+    btnAdd: $("#btn-add-diractor"),
+
+    modal: $("#diractor-modal"),
+    form: $("#diractor-form"),
+    modalTitle: $("#diractor-modal-title"),
+    submitText: $("#diractor-submit-text"),
+    modalStatus: $("#diractor-modal-status"),
+    formError: $("#diractor-form-error"),
+
+    inputId: $("#diractor-id"),
+    inputFirstname: $("#diractor-firstname"),
+    inputLastname: $("#diractor-lastname"),
+    inputStart: $("#diractor-start"),
+    inputEnd: $("#diractor-end"),
+
+    file: $("#diractor-file"),
+    removePhoto: $("#diractor-remove-photo"),
+
+    previewWrap: $("#diractor-preview"),
+    previewImg: $("#diractor-preview-img"),
+    previewName: $("#diractor-preview-name"),
+    clearBtn: $("#diractor-clear"),
+  };
+
+  const dirState = {
+    q: "",
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 1,
+    inited: false,
+    loading: false,
+  };
+
+  const DIR_PLACEHOLDER = "/ict8/assets/image/director-none.png";
+
+  function dirToPublicUrl(fp) {
+    const p = String(fp || "").trim();
+    if (!p) return "";
+    if (/^https?:\/\//i.test(p)) return p;
+    if (p.startsWith("/uploads/")) return `${API_BASE}${p}`;
+    if (p.startsWith("uploads/")) return `${API_BASE}/${p}`;
+    if (p.startsWith("/")) return p;
+    return `/${p}`;
+  }
+
+  function dirSetSectionStatus(msg, { isError = false } = {}) {
+    if (!dirEls.total) return;
+    dirEls.total.textContent = msg ? String(msg) : "";
+    dirEls.total.style.color = isError ? "#b42318" : "";
+  }
+
+  function dirSetModalStatus(msg, { isError = false } = {}) {
+    if (!dirEls.modalStatus) return;
+    dirEls.modalStatus.textContent = msg ? String(msg) : "";
+    dirEls.modalStatus.style.color = isError ? "#b42318" : "";
+  }
+
+  function dirSetError(msg) {
+    if (!dirEls.formError) return;
+    if (!msg) {
+      dirEls.formError.hidden = true;
+      dirEls.formError.textContent = "";
+      return;
+    }
+    dirEls.formError.hidden = false;
+    dirEls.formError.textContent = String(msg);
+  }
+
+  function dirHidePreview() {
+    if (!dirEls.previewWrap) return;
+    dirEls.previewWrap.hidden = true;
+    if (dirEls.previewImg) dirEls.previewImg.removeAttribute("src");
+    if (dirEls.previewName) dirEls.previewName.textContent = "-";
+  }
+
+  function dirShowPreviewFromFile(file) {
+    if (!dirEls.previewWrap || !dirEls.previewImg || !dirEls.previewName) return;
+    const url = URL.createObjectURL(file);
+    dirEls.previewImg.src = url;
+    dirEls.previewName.textContent = `${file.name} (${Math.round((file.size || 0) / 1024)} KB)`;
+    dirEls.previewWrap.hidden = false;
+    dirEls.previewImg.onload = () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (_) {
+        // ignore
+      }
+    };
+  }
+
+  function dirShowPreviewFromPath(path) {
+    if (!dirEls.previewWrap || !dirEls.previewImg || !dirEls.previewName) return;
+    const url = path ? dirToPublicUrl(path) : DIR_PLACEHOLDER;
+    dirEls.previewImg.src = url;
+    dirEls.previewName.textContent = path ? String(path) : "(รูปเริ่มต้น)";
+    dirEls.previewWrap.hidden = false;
+  }
+
+  function dirToBEYear(value) {
+    const s = String(value || "").trim();
+    if (!s) return null;
+
+    // Support old format YYYY-MM-DD or YYYY/MM/DD
+    const m = s.match(/^(\d{4})[-/]/);
+    if (m) {
+      const y = parseInt(m[1], 10);
+      return Number.isFinite(y) ? y + 543 : null;
+    }
+
+    const y = parseInt(s, 10);
+    if (!Number.isFinite(y)) return null;
+
+    // Heuristic: AD years are < 2400, BE years are >= 2400
+    return y < 2400 ? y + 543 : y;
+  }
+
+  function dirToADYear(value) {
+    const s = String(value || "").trim();
+    if (!s) return "";
+
+    const m = s.match(/^(\d{4})[-/]/);
+    const y0 = m ? parseInt(m[1], 10) : parseInt(s, 10);
+    if (!Number.isFinite(y0)) return "";
+
+    // if BE, convert to AD
+    const y = y0 >= 2400 ? y0 - 543 : y0;
+    return String(y);
+  }
+
+  function dirFormatPeriod(start, end) {
+    const sBE = dirToBEYear(start);
+    const eBE = dirToBEYear(end);
+    if (!sBE) return "-";
+    return `พ.ศ.${sBE}-${eBE ? eBE : "ปัจจุบัน"}`;
+  }
+
+  function dirResetModal() {
+    dirSetError("");
+    dirSetModalStatus("");
+
+    if (dirEls.inputId) dirEls.inputId.value = "";
+    if (dirEls.inputFirstname) dirEls.inputFirstname.value = "";
+    if (dirEls.inputLastname) dirEls.inputLastname.value = "";
+    if (dirEls.inputStart) dirEls.inputStart.value = "";
+    if (dirEls.inputEnd) dirEls.inputEnd.value = "";
+    if (dirEls.removePhoto) dirEls.removePhoto.checked = false;
+
+    try {
+      if (dirEls.file) dirEls.file.value = "";
+    } catch (_) {
+      // ignore
+    }
+
+    dirHidePreview();
+  }
+
+  function dirOpenModal({ mode = "create", row } = {}) {
+    if (!dirEls.modal) return;
+
+    if (mode === "edit" && row) {
+      if (dirEls.modalTitle) dirEls.modalTitle.textContent = "แก้ไขรายชื่อผู้อำนวยการ";
+      if (dirEls.submitText) dirEls.submitText.textContent = "บันทึกการแก้ไข";
+      dirResetModal();
+
+      if (dirEls.inputId) dirEls.inputId.value = String(row.diractor_id ?? row.id ?? "");
+      if (dirEls.inputFirstname) dirEls.inputFirstname.value = String(row.firstname ?? "");
+      if (dirEls.inputLastname) dirEls.inputLastname.value = String(row.lastname ?? "");
+      if (dirEls.inputStart) {
+        const be = dirToBEYear(row.start);
+        dirEls.inputStart.value = be ? String(be) : "";
+      }
+      if (dirEls.inputEnd) {
+        const be = dirToBEYear(row.end);
+        dirEls.inputEnd.value = be ? String(be) : "";
+      }
+
+      const photoPath = String(row.photo_path || "").trim();
+      if (photoPath) {
+        dirShowPreviewFromPath(photoPath);
+      } else {
+        // show placeholder so admin sees what will be used
+        dirShowPreviewFromPath("");
+      }
+    } else {
+      if (dirEls.modalTitle) dirEls.modalTitle.textContent = "เพิ่มรายชื่อผู้อำนวยการ";
+      if (dirEls.submitText) dirEls.submitText.textContent = "บันทึก";
+      dirResetModal();
+      // show placeholder by default
+      dirShowPreviewFromPath("");
+    }
+
+    openModal("diractor-modal");
+    setTimeout(() => dirEls.inputFirstname?.focus?.(), 0);
+  }
+
+  function dirCloseModal() {
+    closeModal("diractor-modal");
+  }
+
+  function dirRenderPagination() {
+    if (!dirEls.pagination) return;
+    dirState.totalPages = calcTotalPages({
+      total: dirState.total,
+      limit: dirState.limit,
+      totalPages: dirState.totalPages,
+    });
+    renderPager(dirEls.pagination, {
+      page: dirState.page,
+      totalPages: dirState.totalPages,
+    });
+  }
+
+  function dirRenderRows(items = []) {
+    if (!dirEls.tbody) return;
+    if (!Array.isArray(items) || items.length === 0) {
+      dirEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    dirEls.tbody.innerHTML = items
+      .map((r) => {
+        const id = r.diractor_id ?? r.id ?? "";
+        const firstname = String(r.firstname ?? "");
+        const lastname = String(r.lastname ?? "");
+        const full = `${firstname} ${lastname}`.trim();
+        const start = String(r.start ?? "");
+        const end = String(r.end ?? "");
+        const photoPath = String(r.photo_path ?? "").trim();
+        const imgUrl = photoPath ? dirToPublicUrl(photoPath) : DIR_PLACEHOLDER;
+
+        return `
+          <tr>
+            <td>${escapeHtml(id)}</td>
+            <td>
+              <img src="${escapeHtml(imgUrl)}" alt="director" style="width:56px; height:56px; object-fit:cover; border-radius:12px; border:1px solid #eee; background:#fafafa;" />
+            </td>
+            <td>
+              <div style="font-weight:600;">${escapeHtml(full || "-")}</div>
+              <div class="muted" style="margin-top:4px;">${escapeHtml(firstname)} ${escapeHtml(lastname)}</div>
+            </td>
+            <td>${escapeHtml(dirFormatPeriod(start, end))}</td>
+            <td>
+              <div class="table-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-outline btn-sm" type="button" data-action="edit"
+                  data-id="${escapeHtml(id)}"
+                  data-firstname="${escapeHtml(firstname)}"
+                  data-lastname="${escapeHtml(lastname)}"
+                  data-start="${escapeHtml(start)}"
+                  data-end="${escapeHtml(end)}"
+                  data-photo="${escapeHtml(photoPath)}">
+                  <i class="fa-solid fa-pen"></i> แก้ไข
+                </button>
+                <button class="btn btn-danger btn-sm" type="button" data-action="delete"
+                  data-id="${escapeHtml(id)}"
+                  data-title="${escapeHtml(full || id)}">
+                  <i class="fa-solid fa-trash"></i> ลบ
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  async function loadDiractors() {
+    if (!dirEls.section) return;
+    if (dirState.loading) return;
+    dirState.loading = true;
+
+    try {
+      dirSetSectionStatus("กำลังโหลด...");
+      if (!window.SiteDiractorAPI?.list) throw new Error("SiteDiractorAPI.list not found");
+
+      dirState.q = String(dirEls.search?.value || "").trim();
+      dirState.limit = toInt(dirEls.limit?.value, dirState.limit || 50) || 50;
+
+      const res = await window.SiteDiractorAPI.list({
+        q: dirState.q,
+        page: dirState.page,
+        limit: dirState.limit,
+      });
+
+      const data = res?.data || {};
+      const items = data.items || [];
+      const pag = data.pagination || {};
+
+      dirState.total = Number(pag.total ?? items.length ?? 0);
+      dirState.totalPages = Number(pag.total_pages ?? dirState.totalPages ?? 1);
+      dirState.page = Number(pag.page ?? dirState.page ?? 1);
+      dirState.limit = Number(pag.limit ?? dirState.limit ?? 50);
+
+      dirRenderRows(items);
+      dirRenderPagination();
+      dirSetSectionStatus(`ทั้งหมด ${dirState.total} รายการ`);
+    } catch (err) {
+      dirSetSectionStatus(err?.message || String(err), { isError: true });
+      if (dirEls.tbody) dirEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">โหลดไม่สำเร็จ</td></tr>`;
+    } finally {
+      dirState.loading = false;
+    }
+  }
+
+  function initDiractorSection() {
+    if (dirState.inited) return;
+    dirState.inited = true;
+
+    // default limit
+    if (dirEls.limit && !dirEls.limit.value) dirEls.limit.value = String(dirState.limit);
+
+    dirEls.btnAdd?.addEventListener("click", () => {
+      dirOpenModal({ mode: "create" });
+    });
+
+    dirEls.refreshBtn?.addEventListener("click", () => {
+      loadDiractors();
+    });
+
+    // search debounce
+    let t = null;
+    dirEls.search?.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        dirState.page = 1;
+        loadDiractors();
+      }, 300);
+    });
+
+    dirEls.limit?.addEventListener("change", () => {
+      dirState.page = 1;
+      loadDiractors();
+    });
+
+    dirEls.pagination?.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-page]");
+      if (!btn || btn.disabled) return;
+      const next = toInt(btn.getAttribute("data-page"), 0);
+      if (!next || next < 1 || next > (dirState.totalPages || 1)) return;
+      if (next === dirState.page) return;
+      dirState.page = next;
+      loadDiractors();
+    });
+
+    dirEls.file?.addEventListener("change", () => {
+      const f = dirEls.file?.files?.[0];
+      if (!f) {
+        // if editing and there is existing photo, keep preview; otherwise placeholder
+        const currentSrc = String(dirEls.previewImg?.getAttribute("src") || "").trim();
+        if (!currentSrc) dirShowPreviewFromPath("");
+        return;
+      }
+      if (!/^image\//i.test(String(f.type || ""))) {
+        dirSetError("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+        try {
+          dirEls.file.value = "";
+        } catch (_) {
+          // ignore
+        }
+        return;
+      }
+
+      // selecting a new photo should override remove-photo intent
+      if (dirEls.removePhoto) dirEls.removePhoto.checked = false;
+
+      dirSetError("");
+      dirSetModalStatus("");
+      dirShowPreviewFromFile(f);
+    });
+
+    dirEls.clearBtn?.addEventListener("click", () => {
+      try {
+        if (dirEls.file) dirEls.file.value = "";
+      } catch (_) {
+        // ignore
+      }
+      dirSetError("");
+      dirSetModalStatus("");
+      // fallback to placeholder
+      dirShowPreviewFromPath("");
+    });
+
+    dirEls.removePhoto?.addEventListener("change", () => {
+      if (dirEls.removePhoto.checked) {
+        // show placeholder preview
+        dirShowPreviewFromPath("");
+      }
+    });
+
+    dirEls.tbody?.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-action");
+      const id = btn.getAttribute("data-id");
+      if (!action || !id) return;
+
+      if (action === "edit") {
+        const row = {
+          diractor_id: id,
+          firstname: btn.getAttribute("data-firstname") || "",
+          lastname: btn.getAttribute("data-lastname") || "",
+          start: btn.getAttribute("data-start") || "",
+          end: btn.getAttribute("data-end") || "",
+          photo_path: btn.getAttribute("data-photo") || "",
+        };
+        dirOpenModal({ mode: "edit", row });
+        return;
+      }
+
+      if (action === "delete") {
+        const title = btn.getAttribute("data-title") || id;
+        const okDel = confirm(`ยืนยันลบรายชื่อผู้อำนวยการ\n\n- ${title}`);
+        if (!okDel) return;
+
+        try {
+          dirSetSectionStatus("กำลังลบ...");
+          await window.SiteDiractorAPI.remove(id);
+          dirSetSectionStatus("ลบเรียบร้อย");
+
+          // reload current page; if it becomes empty, jump back one page
+          const oldPage = dirState.page;
+          await loadDiractors();
+          if (dirState.total === 0 && oldPage > 1) {
+            dirState.page = oldPage - 1;
+            await loadDiractors();
+          }
+        } catch (err) {
+          dirSetSectionStatus(err?.message || String(err), { isError: true });
+        }
+      }
+    });
+
+    dirEls.form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!window.SiteDiractorAPI) return;
+
+      const idRaw = String(dirEls.inputId?.value || "").trim();
+      const firstname = String(dirEls.inputFirstname?.value || "").trim();
+      const lastname = String(dirEls.inputLastname?.value || "").trim();
+      const startRaw = String(dirEls.inputStart?.value || "").trim();
+      const endRaw = String(dirEls.inputEnd?.value || "").trim();
+      const start = dirToADYear(startRaw);
+      const end = dirToADYear(endRaw);
+      const file = dirEls.file?.files?.[0];
+      const removePhoto = !!dirEls.removePhoto?.checked;
+
+      if (!firstname || !lastname || !start) {
+        dirSetError("กรุณากรอกชื่อ นามสกุล และปีที่เริ่มต้น");
+        return;
+      }
+
+      if (!/^\d{4}$/.test(start)) {
+        dirSetError("ปีที่เริ่มต้นไม่ถูกต้อง");
+        return;
+      }
+
+      if (end && !/^\d{4}$/.test(end)) {
+        dirSetError("ปีที่สิ้นสุดไม่ถูกต้อง");
+        return;
+      }
+
+      const submitBtn = dirEls.form?.querySelector?.("button[type='submit']");
+
+      try {
+        dirSetError("");
+        dirSetModalStatus("กำลังบันทึก...");
+        if (submitBtn) submitBtn.disabled = true;
+
+        const fd = new FormData();
+        fd.append("firstname", firstname);
+        fd.append("lastname", lastname);
+        fd.append("start", start);
+        fd.append("end", end);
+
+        if (idRaw) {
+          fd.append("remove_photo", removePhoto ? "1" : "0");
+        }
+        if (file) fd.append("file", file);
+
+        if (idRaw) {
+          await window.SiteDiractorAPI.update(idRaw, fd);
+        } else {
+          await window.SiteDiractorAPI.create(fd);
+        }
+
+        dirSetModalStatus("บันทึกสำเร็จ");
+        dirCloseModal();
+        await loadDiractors();
+      } catch (err) {
+        dirSetError(err?.message || String(err));
+        dirSetModalStatus("");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
       }
     });
   }

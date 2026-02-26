@@ -54,6 +54,7 @@
     <script src="/ict8/assets/js/api/contact-info.api.js"></script>
     <script src="/ict8/assets/js/api/template-types.api.js"></script>
     <script src="/ict8/assets/js/api/history-image-page.api.js"></script>
+    <script src="/ict8/assets/js/api/site-diractor.api.js"></script>
 
     <script src="/ict8/assets/js/include.js" defer></script>
     <script src="/ict8/assets/js/auth.js" defer></script>
@@ -159,6 +160,7 @@
                         <ul id="menu-website" class="testing-dropdown-menu" hidden>
                             <li><a href="#" data-section="banner">การตั้งค่า banner</a></li>
                             <li><a href="#" data-section="image-history">ภาพหน้าประวัติหน่วยงาน</a></li>
+                            <li><a href="#" data-section="directors">รายชื่อผู้อำนวยการ</a></li>
                             <li><a href="#" data-section="link-url">link ที่เกี่ยวข้อง</a></li>
                             <li><a href="#" data-section="related-documents">เอกสารที่เกี่ยวข้อง</a></li>
                         </ul>
@@ -277,6 +279,10 @@
                                 <i class="fa-solid fa-plus"></i> เพิ่มรูปหน้าประวัติหน่วยงาน
                             </button>
 
+                            <button id="btn-add-diractor" class="btn btn-primary" type="button" hidden>
+                                <i class="fa-solid fa-plus"></i> เพิ่มรายชื่อผู้อำนวยการ
+                            </button>
+
                             <button id="btn-add-link-url" class="btn btn-primary" type="button" hidden>
                                 <i class="fa-solid fa-plus"></i> เพิ่มลิงก์ที่เกี่ยวข้อง
                             </button>
@@ -294,6 +300,52 @@
                     <section id="section-default" class="setting-section">
                         <div class="empty-state">
                             <p>เลือกเมนูทางซ้ายเพื่อจัดการข้อมูล</p>
+                        </div>
+                    </section>
+
+                    <!-- SECTION: DIRECTORS (SITE DIRACTOR) -->
+                    <section id="section-directors" class="setting-section" hidden>
+                        <div class="table-toolbar">
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input id="diractor-search" type="search" placeholder="ค้นหา (ชื่อ/นามสกุล/ID)..." />
+                            </div>
+
+                            <div class="toolbar-right">
+                                <select id="diractor-limit">
+                                    <option value="20">20/หน้า</option>
+                                    <option value="50" selected>50/หน้า</option>
+                                    <option value="100">100/หน้า</option>
+                                </select>
+
+                                <button id="diractor-refresh" class="btn btn-ghost" type="button">
+                                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table class="data-table" aria-label="Directors table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 90px">ID</th>
+                                        <th style="width: 90px">รูป</th>
+                                        <th style="width: 260px">ชื่อ-นามสกุล</th>
+                                        <th>ช่วงเวลา</th>
+                                        <th style="width: 200px">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="diractor-tbody">
+                                    <tr>
+                                        <td colspan="5" class="muted">ยังไม่มีข้อมูล (หรือยังไม่ได้โหลด)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="table-footer">
+                            <div id="diractor-pagination" class="pagination"></div>
+                            <div id="diractor-total" class="muted"></div>
                         </div>
                     </section>
 
@@ -1496,6 +1548,83 @@
                     <button type="button" class="btn btn-ghost" data-close="history-image-modal">ยกเลิก</button>
                     <button type="submit" class="btn btn-primary">
                         <span id="history-image-modal-submit-text">อัปโหลด</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MODAL: DIRECTOR FORM -->
+    <div id="diractor-modal" class="modal" hidden>
+        <div class="modal__overlay" data-close="diractor-modal"></div>
+
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="diractor-modal-title">
+            <div class="modal__header">
+                <h3 id="diractor-modal-title">เพิ่มรายชื่อผู้อำนวยการ</h3>
+                <button class="modal__close" type="button" aria-label="Close" data-close="diractor-modal">✕</button>
+            </div>
+
+            <form id="diractor-form" class="modal__body" autocomplete="off">
+                <input type="hidden" id="diractor-id" name="diractor_id" />
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label for="diractor-firstname">คำนำหน้า ชื่อ</label>
+                        <input id="diractor-firstname" name="firstname" type="text" required />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="diractor-lastname">นามสกุล</label>
+                        <input id="diractor-lastname" name="lastname" type="text" required />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="diractor-start">ปีที่เริ่มต้น (พ.ศ.)</label>
+                        <input id="diractor-start" name="start" type="number" inputmode="numeric" required />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="diractor-end">ปีที่สิ้นสุด (พ.ศ.)</label>
+                        <input id="diractor-end" name="end" type="number" inputmode="numeric" placeholder="เว้นว่าง = ปัจจุบัน" />
+                        <div class="hint">ถ้าไม่ระบุจะแสดงผลเป็น “ปัจจุบัน”</div>
+                    </div>
+
+                    <div class="form-field full">
+                        <label for="diractor-file">อัปโหลดภาพ (ถ้ามี)</label>
+                        <input id="diractor-file" name="file" type="file" accept="image/jpeg,image/png,image/webp" />
+                        <div class="hint">รูปเริ่มต้น <code>director-none.png</code></div>
+                    </div>
+
+                    <div class="form-field form-field--toggle full">
+                        <span class="toggle-row__title">ใช้รูปค่าเริ่มต้น</span>
+                        <label class="toggle-inline">
+                            <span class="toggle toggle--gcms">
+                                <input id="diractor-remove-photo" type="checkbox" />
+                                <span class="toggle__track"><span class="toggle__thumb"></span></span>
+                            </span>
+                            <span class="toggle-inline__text">ลบรูปที่อัปโหลด (ถ้ามี)</span>
+                        </label>
+                    </div>
+
+                    <div class="form-field full">
+                        <div id="diractor-preview" class="photo-preview" hidden>
+                            <img id="diractor-preview-img" src="" alt="preview" />
+                            <div class="photo-preview__meta">
+                                <span id="diractor-preview-name">-</span>
+                                <button id="diractor-clear" type="button" class="btn btn-outline btn-sm">ล้างรูป</button>
+                            </div>
+                        </div>
+                        <small id="diractor-modal-status" class="muted"></small>
+                    </div>
+                </div>
+
+                <div id="diractor-form-error" class="form-error" hidden></div>
+
+                <div class="modal__footer">
+                    <button type="button" class="btn btn-ghost" data-close="diractor-modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span id="diractor-submit-text">บันทึก</span>
                     </button>
                 </div>
             </form>

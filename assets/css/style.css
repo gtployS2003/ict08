@@ -1937,8 +1937,11 @@ body {
     margin: auto;
     background: #ffffff;
     border-radius: 20px;
+    max-width: 1280px;
     padding-top: 40px;
     padding-bottom: 50px;
+    padding-left: 24px;
+    padding-right: 24px;
     text-align: center;
     align-items: center;
 }
@@ -1961,20 +1964,28 @@ body {
 .directors-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 60px 60px;
+    gap: clamp(18px, 3.8vw, 60px);
     justify-items: center;
-    padding: 30px 150px 20px;
+    padding: 30px clamp(16px, 8vw, 150px) 20px;
 }
 
 .director-card {
     display: flex;
     flex-direction: column;
     align-items: center;
+    width: 100%;
+    max-width: 260px;
+}
+
+.directors-photo-wrap {
+    width: 100%;
+    max-width: 260px;
 }
 
 .directors-photo-wrap img {
-    width: 260px;
-    height: 330px;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 260 / 330;
     border-radius: 30px;
     object-fit: cover;
     display: block;
@@ -1986,7 +1997,8 @@ body {
     border-radius: 12px;
     padding: 8px 12px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    width: 200px;
+    width: 100%;
+    max-width: 220px;
 }
 
 .director-name {
@@ -3114,6 +3126,25 @@ body {
         padding: 10px 24px 10px;
     }
 
+    /* directors page */
+    .directors-inner {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .directors-title {
+        font-size: 32px;
+    }
+
+    .directors-divider {
+        width: 260px;
+    }
+
+    .directors-grid {
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        padding: 24px 24px 18px;
+    }
+
     .footer-home {
         padding: 20px 24px 20px;
     }
@@ -3511,6 +3542,41 @@ body {
         padding: 10px 16px 10px;
     }
 
+    /* directors page */
+    .directors-inner {
+        padding-top: 28px;
+        padding-bottom: 36px;
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .directors-title {
+        font-size: 28px;
+    }
+
+    .directors-divider {
+        width: 220px;
+        margin-bottom: 22px;
+    }
+
+    .directors-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 18px 10px 12px;
+        gap: 22px 16px;
+    }
+
+    .director-card {
+        max-width: none;
+    }
+
+    .directors-photo-wrap {
+        max-width: 220px;
+    }
+
+    .director-label {
+        max-width: 220px;
+    }
+
     .page-btn,
     .page-number {
         width: 36px;
@@ -3577,6 +3643,29 @@ body {
 
     .news-grid {
         grid-template-columns: 1fr;
+    }
+
+    /* directors page */
+    .directors-title {
+        font-size: 26px;
+    }
+
+    .directors-divider {
+        width: 200px;
+    }
+
+    .directors-grid {
+        grid-template-columns: 1fr;
+        padding: 16px 6px 12px;
+        gap: 18px;
+    }
+
+    .directors-photo-wrap {
+        max-width: 240px;
+    }
+
+    .director-label {
+        max-width: 240px;
     }
 
     .footer-inner {
