@@ -138,7 +138,7 @@
                         </ul>
                     </div>
 
-                    <!-- 7) ประชาสัมพันธ์/โซเชียล -->
+                    <!-- 6) ประชาสัมพันธ์/โซเชียล -->
                     <div class="menu-group">
                         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-publicity">
                             <i class="fa-solid fa-hashtag"></i> ประชาสัมพันธ์/โซเชียล
@@ -146,6 +146,20 @@
                         </button>
                         <ul id="menu-publicity" class="testing-dropdown-menu" hidden>
                             <li><a href="#" data-section="template-types">เทมเพลตโพสต์</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- 7) การตั้งค่าเว็บไซต์ -->
+                    <div class="menu-group">
+                        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-website">
+                            <i class="fa-solid fa-globe"></i> การตั้งค่าเว็บไซต์
+                            <span class="arrow">▾</span>
+                        </button>
+                        <ul id="menu-website" class="testing-dropdown-menu" hidden>
+                            <li><a href="#" data-section="banner">การตั้งค่า banner</a></li>
+                            <li><a href="#" data-section="news">ข่าวสารบนเว็บไซต์</a></li>
+                            <li><a href="#" data-section="link-url">link ที่เกี่ยวข้อง</a></li>
+                            <li><a href="#" data-section="related-documents">เอกสารที่เกี่ยวข้อง</a></li>
                         </ul>
                     </div>
 
@@ -256,6 +270,14 @@
 
                             <button id="btn-add-template-type" class="btn btn-primary" type="button" hidden>
                                 <i class="fa-solid fa-plus"></i> เพิ่มเทมเพลตโพสต์
+                            </button>
+
+                            <button id="btn-add-link-url" class="btn btn-primary" type="button" hidden>
+                                <i class="fa-solid fa-plus"></i> เพิ่มลิงก์ที่เกี่ยวข้อง
+                            </button>
+
+                            <button id="btn-add-related-document" class="btn btn-primary" type="button" hidden>
+                                <i class="fa-solid fa-plus"></i> เพิ่มเอกสารที่เกี่ยวข้อง
                             </button>
 
 
@@ -1371,6 +1393,101 @@
                         <div class="table-footer">
                             <div id="template-type-pagination" class="pagination"></div>
                             <div id="template-type-total" class="muted"></div>
+                        </div>
+                    </section>
+
+                    <!-- SECTION: LINK URL (RELATED WEBSITES) -->
+                    <section id="section-link-url" class="setting-section" hidden>
+                        <div class="table-toolbar">
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input id="link-url-search" type="search" placeholder="ค้นหาลิงก์ที่เกี่ยวข้อง (ชื่อ/URL/รายละเอียด)..." />
+                            </div>
+
+                            <div class="toolbar-right">
+                                <select id="link-url-limit">
+                                    <option value="20">20/หน้า</option>
+                                    <option value="50" selected>50/หน้า</option>
+                                    <option value="100">100/หน้า</option>
+                                </select>
+
+                                <button id="link-url-refresh" class="btn btn-ghost" type="button">
+                                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table class="data-table" aria-label="Link URL table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 90px">ID</th>
+                                        <th style="width: 220px">ชื่อ</th>
+                                        <th>URL</th>
+                                        <th style="width: 120px">Banner</th>
+                                        <th style="width: 170px">จัดการ</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody id="link-url-tbody">
+                                    <tr>
+                                        <td colspan="5" class="muted">ยังไม่มีข้อมูล (หรือยังไม่ได้โหลด)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="table-footer">
+                            <div id="link-url-pagination" class="pagination"></div>
+                            <div id="link-url-total" class="muted"></div>
+                        </div>
+                    </section>
+
+                    <!-- SECTION: DOCUMENTS (DOWNLOAD) -->
+                    <section id="section-related-documents" class="setting-section" hidden>
+                        <div class="table-toolbar">
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input id="related-documents-search" type="search" placeholder="ค้นหาเอกสาร (ชื่อไฟล์/พาธ)..." />
+                            </div>
+
+                            <div class="toolbar-right">
+                                <select id="related-documents-limit">
+                                    <option value="20">20/หน้า</option>
+                                    <option value="50" selected>50/หน้า</option>
+                                    <option value="100">100/หน้า</option>
+                                </select>
+
+                                <button id="related-documents-refresh" class="btn btn-ghost" type="button">
+                                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table class="data-table" aria-label="Documents table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 90px">ID</th>
+                                        <th style="width: 240px">ชื่อไฟล์ (แสดงผล)</th>
+                                        <th style="width: 240px">ไฟล์ (พาธ/URL)</th>
+                                        <th style="width: 110px">Private</th>
+                                        <th style="width: 110px">Active</th>
+                                        <th style="width: 170px">จัดการ</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody id="related-documents-tbody">
+                                    <tr>
+                                        <td colspan="6" class="muted">ยังไม่มีข้อมูล (หรือยังไม่ได้โหลด)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="table-footer">
+                            <div id="related-documents-pagination" class="pagination"></div>
+                            <div id="related-documents-total" class="muted"></div>
                         </div>
                     </section>
 
@@ -2741,6 +2858,137 @@
         </div>
     </div>
 
+
+
+    <!-- MODAL: LINK URL FORM -->
+    <div id="link-url-modal" class="modal" hidden>
+        <div class="modal__overlay" data-close="link-url-modal"></div>
+
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="link-url-modal-title">
+            <div class="modal__header">
+                <h3 id="link-url-modal-title">เพิ่มลิงก์ที่เกี่ยวข้อง</h3>
+                <button class="modal__close" type="button" aria-label="Close" data-close="link-url-modal">✕</button>
+            </div>
+
+            <form id="link-url-form" class="modal__body" autocomplete="off">
+                <input type="hidden" id="link-url-id" name="url_id" />
+
+                <div class="form-grid">
+                    <div class="form-field full">
+                        <label for="link-url-title">ชื่อเว็บไซต์/ลิงก์</label>
+                        <input id="link-url-title" name="title" type="text" required />
+                    </div>
+
+                    <div class="form-field full">
+                        <label for="link-url-url">URL</label>
+                        <input id="link-url-url" name="link_url" type="url" placeholder="https://..." required />
+                    </div>
+
+                    <div class="form-field full">
+                        <label for="link-url-content">รายละเอียด</label>
+                        <textarea id="link-url-content" name="content" rows="4" placeholder="คำอธิบายเพิ่มเติม (ถ้ามี)"></textarea>
+                    </div>
+
+                    <div class="form-field form-field--toggle full">
+                        <span class="toggle-row__title">แสดงเป็น Banner</span>
+                        <label class="toggle-inline">
+                            <span class="toggle toggle--gcms">
+                                <input id="link-url-is-banner" type="checkbox" name="is_banner" />
+                                <span class="toggle__track"><span class="toggle__thumb"></span></span>
+                            </span>
+                            <span class="toggle-inline__text" id="link-url-is-banner-text">ไม่เป็น Banner</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="link-url-form-error" class="form-error" hidden></div>
+
+                <div class="modal__footer">
+                    <button type="button" class="btn btn-ghost" data-close="link-url-modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span id="link-url-submit-text">บันทึก</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: RELATED DOCUMENT FORM -->
+    <div id="related-documents-modal" class="modal" hidden>
+        <div class="modal__overlay" data-close="related-documents-modal"></div>
+
+        <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="related-documents-modal-title">
+            <div class="modal__header">
+                <h3 id="related-documents-modal-title">เพิ่มเอกสารที่เกี่ยวข้อง</h3>
+                <button class="modal__close" type="button" aria-label="Close" data-close="related-documents-modal">✕</button>
+            </div>
+
+            <form id="related-documents-form" class="modal__body" autocomplete="off">
+                <input type="hidden" id="related-documents-id" name="document_id" />
+
+                <div class="form-grid">
+                    <div class="form-field full">
+                        <label for="related-documents-title">ชื่อไฟล์ (แสดงผล)</label>
+                        <input id="related-documents-title" name="original_filename" type="text" required />
+                    </div>
+
+                    <div class="form-field full">
+                        <label for="related-documents-url">URL (ถ้ามี)</label>
+                        <input id="related-documents-url" name="url" type="url" placeholder="https://..." />
+                        <small class="muted">ถ้าใส่ URL ระบบจะใช้ URL นี้เป็นลิงก์ดาวน์โหลด</small>
+                    </div>
+
+                    <div class="form-field full">
+                        <label>อัปโหลดไฟล์</label>
+                        <div class="inline-row" style="gap: 10px; align-items: center;">
+                            <input id="related-documents-file" type="file" />
+                            <button id="related-documents-upload-btn" class="btn btn-outline" type="button">
+                                <i class="fa-solid fa-upload"></i> Upload
+                            </button>
+                        </div>
+                        <small id="related-documents-upload-status" class="muted"></small>
+                    </div>
+
+                    <div class="form-field full">
+                        <label for="related-documents-filepath">ไฟล์ (ระบบกำหนด)</label>
+                        <input id="related-documents-filepath" name="filepath" type="text" readonly required />
+                        <small class="muted">จะถูกเติมอัตโนมัติเมื่ออัปโหลดไฟล์ หรือเมื่อกรอก URL</small>
+                    </div>
+
+                    <div class="form-field form-field--toggle full">
+                        <span class="toggle-row__title">Private</span>
+                        <label class="toggle-inline">
+                            <span class="toggle toggle--gcms">
+                                <input id="related-documents-private" type="checkbox" name="is_private" />
+                                <span class="toggle__track"><span class="toggle__thumb"></span></span>
+                            </span>
+                            <span class="toggle-inline__text" id="related-documents-private-text">Public</span>
+                        </label>
+                    </div>
+
+                    <div class="form-field form-field--toggle full">
+                        <span class="toggle-row__title">Active</span>
+                        <label class="toggle-inline">
+                            <span class="toggle toggle--gcms">
+                                <input id="related-documents-active" type="checkbox" name="is_active" checked />
+                                <span class="toggle__track"><span class="toggle__thumb"></span></span>
+                            </span>
+                            <span class="toggle-inline__text" id="related-documents-active-text">ใช้งาน</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="related-documents-form-error" class="form-error" hidden></div>
+
+                <div class="modal__footer">
+                    <button type="button" class="btn btn-ghost" data-close="related-documents-modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span id="related-documents-submit-text">บันทึก</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 
 

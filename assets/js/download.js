@@ -19,6 +19,8 @@ let filterStartDate = null;
 let filterEndDate = null;
 let activeCategories = new Set(); // ว่าง = ทั้งหมด
 let currentSearch = '';
+let supportsCategories = true;
+let supportsDates = true;
 
 const THAI_MONTHS = [
   'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
@@ -28,31 +30,113 @@ const THAI_MONTHS = [
 document.addEventListener('DOMContentLoaded', () => {
   if (!downloadGridEl) return;
 
-  fetch('/ict8/assets/js/data-ex/form.json')
-    .then(res => res.json())
-    .then(data => {
-      // map data ให้มี dateObj + displayDate
-      allDocs = data.map(item => {
-        const dateObj = item.date ? new Date(item.date) : null;
-        return {
-          ...item,
-          dateObj,
-          displayDate: dateObj ? formatThaiDate(dateObj) : ''
-        };
-      });
-
-      filteredDocs = [...allDocs];
-      sortDocs();
-      renderDownloads();
-
-      setupSearch();
-      setupFilterPopup();
-      setupCategoryLogic();
-    })
-    .catch(err => {
-      console.error('Error loading form.json:', err);
-    });
+  loadDocumentsFromApi();
 });
+
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function toPublicFileUrl(fp) {
+  const s = String(fp || '').trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  // ไฟล์ upload มักเก็บเป็น /uploads/... ที่เสิร์ฟจาก backend/public
+  if (s.startsWith('/uploads/')) return `/ict8/backend/public${s}`;
+  if (s.startsWith('uploads/')) return `/ict8/backend/public/${s}`;
+  if (s.startsWith('./uploads/')) return `/ict8/backend/public/${s.replace(/^\.\//, '')}`;
+  return s;
+}
+
+function formatBytes(bytes) {
+  const n = Number(bytes || 0);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
+  const val = n / Math.pow(1024, i);
+  return `${val.toFixed(val >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function setFilterControlsEnabled({ categories, dates }) {
+  supportsCategories = !!categories;
+  supportsDates = !!dates;
+
+  // categories
+  if (!supportsCategories) {
+    if (catAllCheckbox) catAllCheckbox.checked = true;
+    catCheckboxes.forEach(cb => {
+      cb.checked = false;
+      cb.disabled = true;
+    });
+    if (catAllCheckbox) catAllCheckbox.disabled = true;
+    activeCategories = new Set();
+  } else {
+    catCheckboxes.forEach(cb => (cb.disabled = false));
+    if (catAllCheckbox) catAllCheckbox.disabled = false;
+  }
+
+  // dates
+  if (filterStartInput) filterStartInput.disabled = !supportsDates;
+  if (filterEndInput) filterEndInput.disabled = !supportsDates;
+  dateOrderRadios.forEach(r => (r.disabled = !supportsDates));
+
+  if (!supportsDates) {
+    if (filterStartInput) filterStartInput.value = '';
+    if (filterEndInput) filterEndInput.value = '';
+    filterStartDate = null;
+    filterEndDate = null;
+    currentDateOrder = 'desc';
+    dateOrderRadios.forEach(r => {
+      r.checked = (r.value === 'desc');
+    });
+  }
+}
+
+async function loadDocumentsFromApi() {
+  try {
+    // public list: ไม่ต้องใช้ auth
+    const qs = new URLSearchParams({ public: '1', page: '1', limit: '200' });
+    const res = await fetch(`/ict8/backend/public/documents?${qs.toString()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const items = json?.data?.items || [];
+
+    // map to UI shape
+    allDocs = items.map((row) => {
+      const dateObj = row.date ? new Date(row.date) : null;
+      return {
+        id: row.document_id,
+        title: row.original_filename || row.stored_filename || `เอกสาร #${row.document_id}`,
+        category: row.category || '',
+        description: row.description || '',
+        file: row.filepath || '',
+        size: row.file_size ? formatBytes(row.file_size) : '',
+        dateObj,
+        displayDate: dateObj ? formatThaiDate(dateObj) : '',
+      };
+    });
+
+    const hasCats = allDocs.some(d => !!d.category);
+    const hasDates = allDocs.some(d => !!d.dateObj);
+    setFilterControlsEnabled({ categories: hasCats, dates: hasDates });
+
+    filteredDocs = [...allDocs];
+    sortDocs();
+    renderDownloads();
+
+    setupSearch();
+    setupFilterPopup();
+    setupCategoryLogic();
+  } catch (err) {
+    console.error('Error loading documents from API:', err);
+    downloadGridEl.innerHTML = `<p>ไม่สามารถโหลดข้อมูลเอกสารได้</p>`;
+  }
+}
 
 // ===== Helper: แปลงเป็นวันที่ไทย =====
 function formatThaiDate(dateObj) {
@@ -71,7 +155,9 @@ function applyFilters() {
         (doc.title || '') + ' ' +
         (doc.category || '') + ' ' +
         (doc.displayDate || '') + ' ' +
-        (doc.description || '')
+        (doc.description || '') + ' ' +
+        (doc.file || '') + ' ' +
+        (doc.size || '')
       ).toLowerCase();
 
       if (!haystack.includes(currentSearch)) {
@@ -79,16 +165,14 @@ function applyFilters() {
       }
     }
 
-    // 2) filter วันที่
-    if (filterStartDate && doc.dateObj && doc.dateObj < filterStartDate) {
-      return false;
-    }
-    if (filterEndDate && doc.dateObj && doc.dateObj > filterEndDate) {
-      return false;
+    // 2) filter วันที่ (ถ้าไม่มีข้อมูลวันที่ จะไม่บังคับ)
+    if (supportsDates && doc.dateObj) {
+      if (filterStartDate && doc.dateObj < filterStartDate) return false;
+      if (filterEndDate && doc.dateObj > filterEndDate) return false;
     }
 
-    // 3) filter หมวดหมู่
-    if (activeCategories.size > 0) {
+    // 3) filter หมวดหมู่ (ถ้าไม่มีหมวดหมู่ในระบบ จะไม่บังคับ)
+    if (supportsCategories && activeCategories.size > 0) {
       if (!activeCategories.has(doc.category)) return false;
     }
 
@@ -100,6 +184,7 @@ function applyFilters() {
 }
 
 function sortDocs() {
+  if (!supportsDates) return;
   filteredDocs.sort((a, b) => {
     if (!a.dateObj || !b.dateObj) return 0;
     if (currentDateOrder === 'desc') {
@@ -119,24 +204,35 @@ function renderDownloads() {
     return;
   }
 
-  downloadGridEl.innerHTML = filteredDocs.map(doc => `
+  downloadGridEl.innerHTML = filteredDocs.map(doc => {
+    const title = escapeHtml(doc.title);
+    const desc = escapeHtml(doc.description || '');
+    const cat = escapeHtml(doc.category || '');
+    const date = escapeHtml(doc.displayDate || '');
+    const size = escapeHtml(doc.size || '');
+    const fileRaw = String(doc.file || '').trim();
+    const file = toPublicFileUrl(fileRaw);
+
+    return `
     <div class="download-card">
       <div class="download-main-info">
-        <h3 class="download-file-title">${doc.title}</h3>
+        <h3 class="download-file-title">${title}</h3>
         <div class="download-meta">
-          <span class="download-category">${doc.category}</span>
-          ${doc.displayDate ? `<span class="download-date">${doc.displayDate}</span>` : ''}
-          ${doc.size ? `<span class="download-size">${doc.size}</span>` : ''}
+          ${cat ? `<span class="download-category">${cat}</span>` : ''}
+          ${date ? `<span class="download-date">${date}</span>` : ''}
+          ${size ? `<span class="download-size">${size}</span>` : ''}
         </div>
-        <p class="download-desc">${doc.description || ''}</p>
+        ${desc ? `<p class="download-desc">${desc}</p>` : ''}
       </div>
       <div class="download-actions">
-        <a href="#" class="btn-download" data-file="${doc.file}">
-          ดาวน์โหลด
-        </a>
+        ${file
+          ? `<a href="${escapeHtml(file)}" class="btn-download" target="_blank" rel="noopener noreferrer">ดาวน์โหลด</a>`
+          : `<span class="muted">ไม่มีไฟล์แนบ</span>`
+        }
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 // ===== Search =====

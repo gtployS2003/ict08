@@ -93,7 +93,10 @@
       opts.headers["Authorization"] = `Bearer ${token}`;
     }
 
-    if (body !== undefined) {
+    if (body instanceof FormData) {
+      // browser will set multipart boundary automatically
+      opts.body = body;
+    } else if (body !== undefined) {
       opts.headers["Content-Type"] = "application/json; charset=utf-8";
       opts.body = JSON.stringify(body);
     }
@@ -212,6 +215,9 @@
     hide($("#btn-add-channel"));
     hide($("#btn-add-type-of-device"));
     hide($("#btn-add-main-type-of-device"));
+
+    hide($("#btn-add-link-url"));
+    hide($("#btn-add-related-document"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -354,6 +360,18 @@
         show($("#btn-add-template-type"));
         initTemplateTypesSection();
         loadTemplateTypes();
+        break;
+
+      case "link-url":
+        show($("#section-link-url"));
+        show($("#btn-add-link-url"));
+        setTitle("ลิงก์ที่เกี่ยวข้อง");
+        break;
+
+      case "related-documents":
+        show($("#section-related-documents"));
+        show($("#btn-add-related-document"));
+        setTitle("เอกสารที่เกี่ยวข้อง");
         break;
 
       default:
@@ -6722,6 +6740,684 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
   });
 
 
+  /* =========================
+    LINK URL (RELATED WEBSITES)
+  ========================= */
+  const linkUrlEls = {
+    section: $("#section-link-url"),
+    tbody: $("#link-url-tbody"),
+    search: $("#link-url-search"),
+    limit: $("#link-url-limit"),
+    refresh: $("#link-url-refresh"),
+    pagination: $("#link-url-pagination"),
+    total: $("#link-url-total"),
+
+    btnAdd: $("#btn-add-link-url"),
+
+    modalId: "link-url-modal",
+    modalTitle: $("#link-url-modal-title"),
+    submitText: $("#link-url-submit-text"),
+    form: $("#link-url-form"),
+    formError: $("#link-url-form-error"),
+
+    inputId: $("#link-url-id"),
+    inputTitle: $("#link-url-title"),
+    inputUrl: $("#link-url-url"),
+    inputContent: $("#link-url-content"),
+    inputIsBanner: $("#link-url-is-banner"),
+    isBannerText: $("#link-url-is-banner-text"),
+  };
+
+  const linkUrlState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    total: 0,
+    totalPages: 1,
+    loading: false,
+    inited: false,
+  };
+
+  function linkUrlSetError(msg) {
+    if (!linkUrlEls.formError) return;
+    if (!msg) {
+      linkUrlEls.formError.hidden = true;
+      linkUrlEls.formError.textContent = "";
+      return;
+    }
+    linkUrlEls.formError.hidden = false;
+    linkUrlEls.formError.textContent = String(msg);
+  }
+
+  function linkUrlSyncBannerText() {
+    if (!linkUrlEls.inputIsBanner || !linkUrlEls.isBannerText) return;
+    linkUrlEls.isBannerText.textContent = linkUrlEls.inputIsBanner.checked ? "เป็น Banner" : "ไม่เป็น Banner";
+  }
+
+  function linkUrlResetForm() {
+    linkUrlSetError("");
+    if (linkUrlEls.inputId) linkUrlEls.inputId.value = "";
+    if (linkUrlEls.inputTitle) linkUrlEls.inputTitle.value = "";
+    if (linkUrlEls.inputUrl) linkUrlEls.inputUrl.value = "";
+    if (linkUrlEls.inputContent) linkUrlEls.inputContent.value = "";
+    if (linkUrlEls.inputIsBanner) linkUrlEls.inputIsBanner.checked = false;
+    linkUrlSyncBannerText();
+  }
+
+  function linkUrlOpenModal({ mode = "create", row } = {}) {
+    if (!linkUrlEls.form) return;
+    linkUrlSetError("");
+
+    if (mode === "edit" && row) {
+      if (linkUrlEls.modalTitle) linkUrlEls.modalTitle.textContent = "แก้ไขลิงก์ที่เกี่ยวข้อง";
+      if (linkUrlEls.submitText) linkUrlEls.submitText.textContent = "บันทึกการแก้ไข";
+
+      if (linkUrlEls.inputId) linkUrlEls.inputId.value = String(row.url_id ?? "");
+      if (linkUrlEls.inputTitle) linkUrlEls.inputTitle.value = String(row.title ?? "");
+      if (linkUrlEls.inputUrl) linkUrlEls.inputUrl.value = String(row.link_url ?? "");
+      if (linkUrlEls.inputContent) linkUrlEls.inputContent.value = String(row.content ?? "");
+      if (linkUrlEls.inputIsBanner) linkUrlEls.inputIsBanner.checked = Number(row.is_banner ?? 0) === 1;
+    } else {
+      if (linkUrlEls.modalTitle) linkUrlEls.modalTitle.textContent = "เพิ่มลิงก์ที่เกี่ยวข้อง";
+      if (linkUrlEls.submitText) linkUrlEls.submitText.textContent = "บันทึก";
+      linkUrlResetForm();
+    }
+
+    linkUrlSyncBannerText();
+    openModal(linkUrlEls.modalId);
+    setTimeout(() => linkUrlEls.inputTitle?.focus(), 0);
+  }
+
+  function linkUrlRenderPagination() {
+    if (!linkUrlEls.pagination) return;
+    linkUrlState.totalPages = calcTotalPages({
+      total: linkUrlState.total,
+      limit: linkUrlState.limit,
+      totalPages: linkUrlState.totalPages,
+    });
+    renderPager(linkUrlEls.pagination, {
+      page: linkUrlState.page,
+      totalPages: linkUrlState.totalPages,
+    });
+  }
+
+  function linkUrlRenderRows(items = []) {
+    if (!linkUrlEls.tbody) return;
+    if (!items.length) {
+      linkUrlEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    linkUrlEls.tbody.innerHTML = items
+      .map((r) => {
+        const id = r.url_id ?? "";
+        const title = r.title ?? "";
+        const url = r.link_url ?? "";
+        const isBanner = Number(r.is_banner ?? 0) === 1;
+
+        const urlCell = url
+          ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`
+          : `<span class="muted">-</span>`;
+
+        return `
+          <tr>
+            <td>${escapeHtml(id)}</td>
+            <td>${escapeHtml(title)}</td>
+            <td>${urlCell}</td>
+            <td>${isBanner ? "ใช่" : "ไม่"}</td>
+            <td>
+              <div class="table-actions">
+                <button class="btn btn-outline btn-sm" type="button" data-action="edit"
+                  data-id="${escapeHtml(id)}"
+                  data-title="${escapeHtml(title)}"
+                  data-url="${escapeHtml(url)}"
+                  data-content="${escapeHtml(r.content ?? "") }"
+                  data-is_banner="${isBanner ? "1" : "0"}">
+                  <i class="fa-solid fa-pen"></i> แก้ไข
+                </button>
+                <button class="btn btn-danger btn-sm" type="button" data-action="delete" data-id="${escapeHtml(id)}" data-title="${escapeHtml(title)}">
+                  <i class="fa-solid fa-trash"></i> ลบ
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  async function loadLinkUrls() {
+    if (linkUrlState.loading) return;
+    if (!linkUrlEls.section) return;
+
+    linkUrlState.loading = true;
+    try {
+      if (linkUrlEls.tbody) linkUrlEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">กำลังโหลด...</td></tr>`;
+
+      linkUrlState.q = String(linkUrlEls.search?.value || "").trim();
+      linkUrlState.limit = Number(linkUrlEls.limit?.value || 50) || 50;
+
+      const qs = new URLSearchParams();
+      if (linkUrlState.q) qs.set("q", linkUrlState.q);
+      qs.set("page", String(linkUrlState.page));
+      qs.set("limit", String(linkUrlState.limit));
+
+      const json = await apiFetch(`/link-urls?${qs.toString()}`, { method: "GET" });
+      const data = json?.data || {};
+      const items = data.items || [];
+      const pg = data.pagination || {};
+
+      linkUrlState.total = Number(pg.total || items.length || 0);
+      linkUrlState.totalPages = Number(pg.total_pages || 1);
+      linkUrlState.page = Number(pg.page || linkUrlState.page);
+      linkUrlState.limit = Number(pg.limit || linkUrlState.limit);
+
+      linkUrlRenderRows(items);
+      linkUrlRenderPagination();
+      if (linkUrlEls.total) linkUrlEls.total.textContent = `ทั้งหมด ${linkUrlState.total} รายการ`;
+    } catch (err) {
+      if (linkUrlEls.tbody) {
+        linkUrlEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err?.message || String(err))}</td></tr>`;
+      }
+    } finally {
+      linkUrlState.loading = false;
+    }
+  }
+
+  function initLinkUrlSection() {
+    if (!linkUrlEls.section) return;
+    if (linkUrlState.inited) return;
+    linkUrlState.inited = true;
+
+    // search debounce
+    let t = null;
+    linkUrlEls.search?.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        linkUrlState.page = 1;
+        loadLinkUrls();
+      }, 300);
+    });
+
+    linkUrlEls.limit?.addEventListener("change", () => {
+      linkUrlState.page = 1;
+      loadLinkUrls();
+    });
+
+    linkUrlEls.refresh?.addEventListener("click", () => {
+      loadLinkUrls();
+    });
+
+    linkUrlEls.pagination?.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-page]");
+      if (!btn || btn.disabled) return;
+      const next = toInt(btn.getAttribute("data-page"), 0);
+      if (!next || next < 1 || next > (linkUrlState.totalPages || 1)) return;
+      if (next === linkUrlState.page) return;
+      linkUrlState.page = next;
+      loadLinkUrls();
+    });
+
+    linkUrlEls.btnAdd?.addEventListener("click", () => {
+      linkUrlOpenModal({ mode: "create" });
+    });
+
+    linkUrlEls.inputIsBanner?.addEventListener("change", () => {
+      linkUrlSyncBannerText();
+    });
+
+    // table actions
+    linkUrlEls.tbody?.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-action");
+      const id = btn.getAttribute("data-id");
+      if (!id) return;
+
+      if (action === "edit") {
+        linkUrlOpenModal({
+          mode: "edit",
+          row: {
+            url_id: id,
+            title: btn.getAttribute("data-title") || "",
+            link_url: btn.getAttribute("data-url") || "",
+            content: btn.getAttribute("data-content") || "",
+            is_banner: btn.getAttribute("data-is_banner") || "0",
+          },
+        });
+        return;
+      }
+
+      if (action === "delete") {
+        const title = btn.getAttribute("data-title") || id;
+        const okDel = confirm(`ยืนยันลบลิงก์ที่เกี่ยวข้อง\n\n- ${title}`);
+        if (!okDel) return;
+
+        try {
+          await apiFetch(`/link-urls/${encodeURIComponent(id)}`, { method: "DELETE" });
+          loadLinkUrls();
+        } catch (err) {
+          alert(err?.message || String(err));
+        }
+      }
+    });
+
+    // submit
+    linkUrlEls.form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const id = String(linkUrlEls.inputId?.value || "").trim();
+      const title = String(linkUrlEls.inputTitle?.value || "").trim();
+      const link_url = String(linkUrlEls.inputUrl?.value || "").trim();
+      const content = String(linkUrlEls.inputContent?.value || "");
+      const is_banner = linkUrlEls.inputIsBanner?.checked ? 1 : 0;
+
+      if (!title || !link_url) {
+        linkUrlSetError("กรุณากรอกชื่อและ URL");
+        return;
+      }
+
+      try {
+        linkUrlSetError("");
+
+        const payload = { title, link_url, content, is_banner };
+
+        if (id) {
+          await apiFetch(`/link-urls/${encodeURIComponent(id)}`, { method: "PUT", body: payload });
+        } else {
+          await apiFetch(`/link-urls`, { method: "POST", body: payload });
+        }
+
+        closeModal(linkUrlEls.modalId);
+        loadLinkUrls();
+      } catch (err) {
+        linkUrlSetError(err?.message || String(err));
+      }
+    });
+  }
+
+
+  /* =========================
+    DOCUMENTS (DOWNLOAD)
+  ========================= */
+  const docEls = {
+    section: $("#section-related-documents"),
+    tbody: $("#related-documents-tbody"),
+    search: $("#related-documents-search"),
+    limit: $("#related-documents-limit"),
+    refresh: $("#related-documents-refresh"),
+    pagination: $("#related-documents-pagination"),
+    total: $("#related-documents-total"),
+
+    btnAdd: $("#btn-add-related-document"),
+
+    modalId: "related-documents-modal",
+    modalTitle: $("#related-documents-modal-title"),
+    submitText: $("#related-documents-submit-text"),
+    form: $("#related-documents-form"),
+    formError: $("#related-documents-form-error"),
+
+    inputId: $("#related-documents-id"),
+    inputTitle: $("#related-documents-title"),
+    inputUrl: $("#related-documents-url"),
+    fileUpload: $("#related-documents-file"),
+    btnUpload: $("#related-documents-upload-btn"),
+    uploadStatus: $("#related-documents-upload-status"),
+    inputFilepath: $("#related-documents-filepath"),
+    inputPrivate: $("#related-documents-private"),
+    privateText: $("#related-documents-private-text"),
+    inputActive: $("#related-documents-active"),
+    activeText: $("#related-documents-active-text"),
+  };
+
+  const docState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    total: 0,
+    totalPages: 1,
+    loading: false,
+    inited: false,
+  };
+
+  function docSetError(msg) {
+    if (!docEls.formError) return;
+    if (!msg) {
+      docEls.formError.hidden = true;
+      docEls.formError.textContent = "";
+      return;
+    }
+    docEls.formError.hidden = false;
+    docEls.formError.textContent = String(msg);
+  }
+
+  function docSyncToggleText() {
+    if (docEls.inputPrivate && docEls.privateText) {
+      docEls.privateText.textContent = docEls.inputPrivate.checked ? "Private" : "Public";
+    }
+    if (docEls.inputActive && docEls.activeText) {
+      docEls.activeText.textContent = docEls.inputActive.checked ? "ใช้งาน" : "ไม่ใช้งาน";
+    }
+  }
+
+  function docResetForm() {
+    docSetError("");
+    if (docEls.inputId) docEls.inputId.value = "";
+    if (docEls.inputTitle) docEls.inputTitle.value = "";
+    if (docEls.inputUrl) docEls.inputUrl.value = "";
+    if (docEls.inputFilepath) docEls.inputFilepath.value = "";
+    if (docEls.fileUpload) docEls.fileUpload.value = "";
+    if (docEls.uploadStatus) docEls.uploadStatus.textContent = "";
+    if (docEls.inputPrivate) docEls.inputPrivate.checked = false;
+    if (docEls.inputActive) docEls.inputActive.checked = true;
+    docSyncToggleText();
+  }
+
+  function docToPublicUrl(path) {
+    const p0 = String(path || "").trim();
+    if (!p0) return "";
+    if (/^https?:\/\//i.test(p0)) return p0;
+    if (p0.startsWith("/uploads/")) return `${API_BASE}${p0}`;
+    if (p0.startsWith("uploads/")) return `${API_BASE}/${p0}`;
+    if (p0.startsWith("./uploads/")) return `${API_BASE}/${p0.replace(/^\.\//, "")}`;
+    return p0;
+  }
+
+  function docSyncFilepathFromUrl() {
+    const url = String(docEls.inputUrl?.value || "").trim();
+    if (!docEls.inputFilepath) return;
+    if (url) {
+      docEls.inputFilepath.value = url;
+      if (docEls.uploadStatus) docEls.uploadStatus.textContent = "";
+      if (docEls.fileUpload) docEls.fileUpload.value = "";
+    }
+  }
+
+  function docOpenModal({ mode = "create", row } = {}) {
+    if (!docEls.form) return;
+    docSetError("");
+
+    if (mode === "edit" && row) {
+      if (docEls.modalTitle) docEls.modalTitle.textContent = "แก้ไขเอกสารที่เกี่ยวข้อง";
+      if (docEls.submitText) docEls.submitText.textContent = "บันทึกการแก้ไข";
+
+      if (docEls.inputId) docEls.inputId.value = String(row.document_id ?? "");
+      if (docEls.inputTitle) docEls.inputTitle.value = String(row.original_filename ?? "");
+      if (docEls.inputFilepath) docEls.inputFilepath.value = String(row.filepath ?? "");
+      if (docEls.inputUrl) {
+        const fp = String(row.filepath ?? "").trim();
+        docEls.inputUrl.value = /^https?:\/\//i.test(fp) ? fp : "";
+      }
+      if (docEls.fileUpload) docEls.fileUpload.value = "";
+      if (docEls.uploadStatus) docEls.uploadStatus.textContent = "";
+      if (docEls.inputPrivate) docEls.inputPrivate.checked = Number(row.is_private ?? 0) === 1;
+      if (docEls.inputActive) docEls.inputActive.checked = Number(row.is_active ?? 1) === 1;
+    } else {
+      if (docEls.modalTitle) docEls.modalTitle.textContent = "เพิ่มเอกสารที่เกี่ยวข้อง";
+      if (docEls.submitText) docEls.submitText.textContent = "บันทึก";
+      docResetForm();
+    }
+
+    docSyncToggleText();
+    openModal(docEls.modalId);
+    setTimeout(() => docEls.inputTitle?.focus(), 0);
+  }
+
+  function docRenderPagination() {
+    if (!docEls.pagination) return;
+    docState.totalPages = calcTotalPages({
+      total: docState.total,
+      limit: docState.limit,
+      totalPages: docState.totalPages,
+    });
+
+    renderPager(docEls.pagination, {
+      page: docState.page,
+      totalPages: docState.totalPages,
+    });
+  }
+
+  function docRenderRows(items = []) {
+    if (!docEls.tbody) return;
+    if (!items.length) {
+      docEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    docEls.tbody.innerHTML = items
+      .map((r) => {
+        const id = r.document_id ?? "";
+        const title = r.original_filename ?? "";
+        const filepath = r.filepath ?? "";
+        const isPrivate = Number(r.is_private ?? 0) === 1;
+        const isActive = Number(r.is_active ?? 1) === 1;
+
+        const fileCell = filepath
+          ? `<a href="${escapeHtml(docToPublicUrl(filepath))}" target="_blank" rel="noopener noreferrer">${escapeHtml(filepath)}</a>`
+          : `<span class="muted">-</span>`;
+
+        return `
+          <tr>
+            <td>${escapeHtml(id)}</td>
+            <td>${escapeHtml(title)}</td>
+            <td>${fileCell}</td>
+            <td>${isPrivate ? "ใช่" : "ไม่"}</td>
+            <td>${isActive ? "ใช่" : "ไม่"}</td>
+            <td>
+              <div class="table-actions">
+                <button class="btn btn-outline btn-sm" type="button" data-action="edit"
+                  data-id="${escapeHtml(id)}"
+                  data-title="${escapeHtml(title)}"
+                  data-filepath="${escapeHtml(filepath)}"
+                  data-private="${isPrivate ? "1" : "0"}"
+                  data-active="${isActive ? "1" : "0"}">
+                  <i class="fa-solid fa-pen"></i> แก้ไข
+                </button>
+                <button class="btn btn-danger btn-sm" type="button" data-action="delete" data-id="${escapeHtml(id)}" data-title="${escapeHtml(title)}">
+                  <i class="fa-solid fa-trash"></i> ลบ
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  async function loadDocuments() {
+    if (docState.loading) return;
+    if (!docEls.section) return;
+
+    docState.loading = true;
+    try {
+      if (docEls.tbody) docEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">กำลังโหลด...</td></tr>`;
+
+      docState.q = String(docEls.search?.value || "").trim();
+      docState.limit = Number(docEls.limit?.value || 50) || 50;
+
+      const qs = new URLSearchParams();
+      if (docState.q) qs.set("q", docState.q);
+      qs.set("page", String(docState.page));
+      qs.set("limit", String(docState.limit));
+
+      const json = await apiFetch(`/documents?${qs.toString()}`, { method: "GET" });
+      const data = json?.data || {};
+      const items = data.items || [];
+      const pg = data.pagination || {};
+
+      docState.total = Number(pg.total || items.length || 0);
+      docState.totalPages = Number(pg.total_pages || 1);
+      docState.page = Number(pg.page || docState.page);
+      docState.limit = Number(pg.limit || docState.limit);
+
+      docRenderRows(items);
+      docRenderPagination();
+      if (docEls.total) docEls.total.textContent = `ทั้งหมด ${docState.total} รายการ`;
+    } catch (err) {
+      if (docEls.tbody) {
+        docEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err?.message || String(err))}</td></tr>`;
+      }
+    } finally {
+      docState.loading = false;
+    }
+  }
+
+  function initDocumentsSection() {
+    if (!docEls.section) return;
+    if (docState.inited) return;
+    docState.inited = true;
+
+    let t = null;
+    docEls.search?.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        docState.page = 1;
+        loadDocuments();
+      }, 300);
+    });
+
+    docEls.limit?.addEventListener("change", () => {
+      docState.page = 1;
+      loadDocuments();
+    });
+
+    docEls.refresh?.addEventListener("click", () => {
+      loadDocuments();
+    });
+
+    docEls.pagination?.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-page]");
+      if (!btn || btn.disabled) return;
+      const next = toInt(btn.getAttribute("data-page"), 0);
+      if (!next || next < 1 || next > (docState.totalPages || 1)) return;
+      if (next === docState.page) return;
+      docState.page = next;
+      loadDocuments();
+    });
+
+    docEls.btnAdd?.addEventListener("click", () => {
+      docOpenModal({ mode: "create" });
+    });
+
+    docEls.inputUrl?.addEventListener("input", () => {
+      docSyncFilepathFromUrl();
+    });
+
+    docEls.btnUpload?.addEventListener("click", async () => {
+      const file = docEls.fileUpload?.files?.[0];
+      if (!file) {
+        docSetError("กรุณาเลือกไฟล์ก่อนอัปโหลด");
+        return;
+      }
+
+      try {
+        docSetError("");
+        if (docEls.uploadStatus) docEls.uploadStatus.textContent = "กำลังอัปโหลด...";
+
+        const fd = new FormData();
+        fd.append("file", file);
+
+        const res = await apiFetch(`/documents/upload`, { method: "POST", body: fd });
+        const info = res?.data || {};
+        const path = String(info.path || "").trim();
+
+        if (!path) throw new Error("อัปโหลดไม่สำเร็จ (ไม่พบ path)");
+
+        if (docEls.inputFilepath) docEls.inputFilepath.value = path;
+        if (docEls.inputUrl) docEls.inputUrl.value = "";
+
+        if (docEls.inputTitle && !String(docEls.inputTitle.value || "").trim()) {
+          docEls.inputTitle.value = String(info.original_filename || file.name || "").trim();
+        }
+
+        if (docEls.uploadStatus) {
+          docEls.uploadStatus.textContent = `อัปโหลดแล้ว: ${String(info.original_filename || file.name || "")}`;
+        }
+      } catch (err) {
+        if (docEls.uploadStatus) docEls.uploadStatus.textContent = "";
+        docSetError(err?.message || String(err));
+      }
+    });
+
+    docEls.inputPrivate?.addEventListener("change", docSyncToggleText);
+    docEls.inputActive?.addEventListener("change", docSyncToggleText);
+
+    docEls.tbody?.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-action");
+      const id = btn.getAttribute("data-id");
+      if (!id) return;
+
+      if (action === "edit") {
+        docOpenModal({
+          mode: "edit",
+          row: {
+            document_id: id,
+            original_filename: btn.getAttribute("data-title") || "",
+            filepath: btn.getAttribute("data-filepath") || "",
+            is_private: btn.getAttribute("data-private") || "0",
+            is_active: btn.getAttribute("data-active") || "1",
+          },
+        });
+        return;
+      }
+
+      if (action === "delete") {
+        const title = btn.getAttribute("data-title") || id;
+        const okDel = confirm(`ยืนยันลบเอกสารที่เกี่ยวข้อง\n\n- ${title}`);
+        if (!okDel) return;
+
+        try {
+          await apiFetch(`/documents/${encodeURIComponent(id)}`, { method: "DELETE" });
+          loadDocuments();
+        } catch (err) {
+          alert(err?.message || String(err));
+        }
+      }
+    });
+
+    docEls.form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const id = String(docEls.inputId?.value || "").trim();
+      const original_filename = String(docEls.inputTitle?.value || "").trim();
+      const url = String(docEls.inputUrl?.value || "").trim();
+      const filepath = url || String(docEls.inputFilepath?.value || "").trim();
+
+      if (!original_filename || !filepath) {
+        docSetError("กรุณากรอกชื่อไฟล์ และกรอก URL หรืออัปโหลดไฟล์");
+        return;
+      }
+
+      const payload = {
+        original_filename,
+        filepath,
+        is_private: docEls.inputPrivate?.checked ? 1 : 0,
+        is_active: docEls.inputActive?.checked ? 1 : 0,
+      };
+
+      try {
+        docSetError("");
+        if (id) {
+          await apiFetch(`/documents/${encodeURIComponent(id)}`, { method: "PUT", body: payload });
+        } else {
+          await apiFetch(`/documents`, { method: "POST", body: payload });
+        }
+
+        closeModal(docEls.modalId);
+        loadDocuments();
+      } catch (err) {
+        docSetError(err?.message || String(err));
+      }
+    });
+  }
+
+  // init new sections (safe even if sections not present)
+  initLinkUrlSection();
+  initDocumentsSection();
+
+
   // คลิกเมนูซ้ายที่มี data-section
   document.addEventListener("click", async (e) => {
     const a = e.target.closest("a[data-section]");
@@ -6731,6 +7427,20 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
     const sectionKey = a.getAttribute("data-section");
 
     activateSection(sectionKey);
+
+    if (sectionKey === "link-url") {
+      linkUrlState.page = 1;
+      linkUrlState.q = (linkUrlEls.search?.value || "").trim();
+      linkUrlState.limit = Number(linkUrlEls.limit?.value || 50);
+      loadLinkUrls();
+    }
+
+    if (sectionKey === "related-documents") {
+      docState.page = 1;
+      docState.q = (docEls.search?.value || "").trim();
+      docState.limit = Number(docEls.limit?.value || 50);
+      loadDocuments();
+    }
 
     if (sectionKey === "organization-types") {
       orgTypeState.page = 1;

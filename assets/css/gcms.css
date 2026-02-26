@@ -634,6 +634,37 @@ select option {
   }
 }
 
+/* Keep related-documents table readable even with very long paths/URLs */
+#section-related-documents .data-table {
+  table-layout: fixed;
+  min-width: 0;
+}
+
+#section-related-documents .data-table thead th,
+#section-related-documents .data-table tbody td {
+  overflow: hidden;
+}
+
+/* Column 2: display filename */
+#section-related-documents .data-table tbody td:nth-child(2) {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Column 3: filepath/URL - prevent it from expanding the whole table */
+#section-related-documents .data-table tbody td:nth-child(3) {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#section-related-documents .data-table tbody td:nth-child(3) a {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---- Table footer / pagination ---- */
 .table-footer {
   display: flex;
@@ -1386,8 +1417,6 @@ select option {
 }
 
 /* ทำให้ hint เป็นม่วงเมื่อ ON */
-#nts-enabled:checked ~ .toggle__track { /* no-op safe */ }
-
 .toggle-row:has(#nts-enabled:checked) .toggle-row__hint{
   color: #532274;
 }

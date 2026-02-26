@@ -48,6 +48,10 @@ require_once __DIR__ . '/../routes/publicity_posts.routes.php';
 require_once __DIR__ . '/../routes/event_templates.routes.php';
 require_once __DIR__ . '/../routes/event_template_exports.routes.php';
 
+// website-related
+require_once __DIR__ . '/../routes/link_urls.routes.php';
+require_once __DIR__ . '/../routes/documents.routes.php';
+
 
 
 
@@ -107,6 +111,9 @@ try {
     if (publicity_posts_routes($method, $segments, $pdo)) exit;
     if (event_templates_routes($method, $segments, $pdo)) exit;
     if (event_template_exports_routes($method, $segments, $pdo)) exit;
+
+    if (link_urls_routes($method, $segments, $pdo)) exit;
+    if (documents_routes($method, $segments, $pdo)) exit;
 
     fail("Route not found", 404, ["path" => $path, "method" => $method]);
 
