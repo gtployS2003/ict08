@@ -9,14 +9,30 @@ class ActivitiesController {
     public function __construct(private PDO $pdo) {}
 
     public function list(): void {
-        $limit = (int)($_GET['limit'] ?? 20);
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = max(1, min(500, (int)($_GET['limit'] ?? 200)));
+        $q = trim((string)($_GET['q'] ?? ''));
+
         $model = new ActivityModel($this->pdo);
-        ok($model->list($limit));
+        $items = $model->listPublic($q, $page, $limit);
+        $total = $model->countPublic($q);
+        $totalPages = (int)ceil($total / max(1, $limit));
+        if ($totalPages < 1) $totalPages = 1;
+
+        ok([
+            'items' => $items,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'totalPages' => $totalPages,
+            ],
+        ]);
     }
 
     public function get(int $id): void {
         $model = new ActivityModel($this->pdo);
-        $row = $model->get($id);
+        $row = $model->getPublic($id);
         if (!$row) fail("Activity not found", 404);
         ok($row);
     }

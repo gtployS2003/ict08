@@ -54,6 +54,38 @@
     return s || "-";
   }
 
+  function isTruthy(v) {
+    if (v === true) return true;
+    if (v === false) return false;
+    const s = String(v ?? "").trim().toLowerCase();
+    return s === "1" || s === "true" || s === "yes" || s === "y";
+  }
+
+  function parseMysqlDateTime(s) {
+    const v = String(s ?? "").trim();
+    if (!v) return null;
+    const d = new Date(v.replace(" ", "T"));
+    if (isNaN(d.getTime())) return null;
+    return d;
+  }
+
+  // returns 1 if a > b, 0 if equal, -1 if a < b, null if invalid
+  function compareMysqlDateTime(a, b) {
+    const da = parseMysqlDateTime(a);
+    const db = parseMysqlDateTime(b);
+    if (!da || !db) return null;
+    const ta = da.getTime();
+    const tb = db.getTime();
+    if (ta === tb) return 0;
+    return ta > tb ? 1 : -1;
+  }
+
+  function renderBadge({ variant, icon, text, title } = {}) {
+    const v = variant ? ` pe-badge--${variant}` : "";
+    const t = title ? ` title="${escapeHtml(title)}"` : "";
+    return `<span class="pe-badge${v}"${t}><i class="${escapeHtml(icon || "")}"></i><span>${escapeHtml(text || "")}</span></span>`;
+  }
+
   async function api(path, { method = "GET", body } = {}) {
     if (typeof window.apiFetch === "function") {
       return window.apiFetch(path, { method, body });
@@ -251,7 +283,14 @@
         const title = fmt(row?.title);
         const isBanner = Number(row?.is_banner ?? 0) === 1;
 
+        const hasUpdateAt = row && Object.prototype.hasOwnProperty.call(row, 'update_at');
+        const editedCompare = compareMysqlDateTime(row?.update_at, row?.create_at);
+        const webEdited = hasUpdateAt && editedCompare === 1;
+
         const webUrl = `/ict8/report-event/news-web-post.html?news_id=${encodeURIComponent(id ?? "")}`;
+        const previewUrl = `/ict8/site/news-detail.html?id=${encodeURIComponent(id ?? "")}`;
+
+        
 
         return `
           <tr>
@@ -262,6 +301,9 @@
                 <a class="btn btn-sm btn-ghost" href="${webUrl}">
                   <i class="fa-regular fa-pen-to-square"></i> แก้ไขโพสต์
                 </a>
+                <div class="pe-badges">
+                  <a class="pe-link" href="${escapeHtml(previewUrl)}" target="_blank" rel="noopener" title="พรีวิวหน้าเว็บ"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                </div>
               </div>
             </td>
             <td>

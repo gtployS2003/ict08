@@ -4,13 +4,37 @@ declare(strict_types=1);
 
 final class PublicityPostModel
 {
+    private static ?string $activityPostIdColumn = null;
+
     public function __construct(private PDO $pdo) {}
+
+    private function activityPublicityPostColumn(): string
+    {
+        if (self::$activityPostIdColumn) return self::$activityPostIdColumn;
+
+        $stmt = $this->pdo->prepare(
+            "SELECT COLUMN_NAME
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'activity'
+               AND COLUMN_NAME IN ('publicity_post_id', 'publicuty_post_id')
+             ORDER BY (COLUMN_NAME = 'publicity_post_id') DESC
+             LIMIT 1"
+        );
+        $stmt->execute();
+        $col = (string)($stmt->fetchColumn() ?: '');
+        $col = $col === 'publicity_post_id' || $col === 'publicuty_post_id' ? $col : 'publicity_post_id';
+        self::$activityPostIdColumn = $col;
+        return self::$activityPostIdColumn;
+    }
 
     /**
      * @return array<int,array<string,mixed>>
      */
     public function list(string $q = '', int $page = 1, int $limit = 200): array
     {
+        $col = $this->activityPublicityPostColumn();
+
         $q = trim($q);
         $page = max(1, $page);
         $limit = max(1, min(500, $limit));
@@ -45,6 +69,7 @@ final class PublicityPostModel
                 pp.create_by,
                 pp.create_at,
                 pp.update_at,
+                a.activity_id,
                 et.event_template_id,
                 ete.filepath AS poster_export_filepath,
                 ete.exported_at AS poster_exported_at,
@@ -53,6 +78,8 @@ final class PublicityPostModel
                     ELSE 1
                 END AS has_poster_export
             FROM publicity_post pp
+            LEFT JOIN activity a
+                ON a.{$col} = pp.publicity_post_id
             LEFT JOIN event_template et
                 ON et.publicity_post_id = pp.publicity_post_id
             LEFT JOIN (
@@ -111,7 +138,16 @@ final class PublicityPostModel
 
     public function findByEventId(int $eventId): ?array
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM publicity_post WHERE event_id = :eid LIMIT 1');
+        $col = $this->activityPublicityPostColumn();
+        $stmt = $this->pdo->prepare('
+            SELECT
+                pp.*, a.activity_id
+            FROM publicity_post pp
+            LEFT JOIN activity a
+                ON a.' . $col . ' = pp.publicity_post_id
+            WHERE pp.event_id = :eid
+            LIMIT 1
+        ');
         $stmt->execute([':eid' => $eventId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;

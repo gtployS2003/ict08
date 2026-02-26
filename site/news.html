@@ -8,6 +8,8 @@
 
     <title>ประชาสัมพันธ์</title>
     <!-- js -->
+    <script src="/ict8/backend/public/config.js.php"></script>
+    <script defer src="/ict8/assets/js/api/http.js"></script>
     <script src="/ict8/assets/js/main.js" defer></script>
     <script src="/ict8/assets/js/include.js" defer></script>
 </head>
@@ -18,7 +20,7 @@
 
     <!-- ===== เมนูหลัก ===== -->
     <div id="navbar"></div>
-    <main>
+    <main class="site-home">
         <section class="news-page">
             <div class="news-page-inner">
                 <!-- แถว 1 : หัวข้ออยู่ตรงกลาง -->
@@ -32,9 +34,6 @@
                         <input type="text" placeholder="ค้นหา" />
                         <button type="button" class="news-search-clear">x</button>
                     </form>
-                    <button type="button" class="news-filter-btn" aria-label="ตัวกรอง">
-                        <i class="fa-solid fa-filter"></i>
-                    </button>
                 </div>
 
                 <!-- การ์ดข่าว -->
@@ -44,40 +43,6 @@
 
                 <div class="news-pagination">
                     <!-- เลข -->
-                </div>
-
-                <!-- Filter Popup -->
-                <div class="news-filter-popup-overlay">
-                    <div class="news-filter-popup">
-                        <h3 class="filter-title">ตัวกรองประชาสัมพันธ์</h3>
-
-                        <div class="filter-row">
-                            <label for="filter-start">วันที่เริ่มต้น</label>
-                            <input type="date" id="filter-start">
-                        </div>
-
-                        <div class="filter-row">
-                            <label for="filter-end">วันที่สิ้นสุด</label>
-                            <input type="date" id="filter-end">
-                        </div>
-
-                        <div class="filter-row">
-                            <span>เรียงลำดับวันที่</span>
-                            <label class="filter-radio">
-                                <input type="radio" name="dateOrder" value="desc" checked>
-                                วันที่ล่าสุด → วันที่เก่าสุด
-                            </label>
-                            <label class="filter-radio">
-                                <input type="radio" name="dateOrder" value="asc">
-                                วันที่เก่าสุด → วันที่ล่าสุด
-                            </label>
-                        </div>
-
-                        <div class="filter-actions">
-                            <button type="button" class="filter-clear">ล้างตัวกรอง</button>
-                            <button type="button" class="filter-apply">ใช้ตัวกรอง</button>
-                        </div>
-                    </div>
                 </div>
 
                 <script src="/ict8/assets/js/news.js"></script>

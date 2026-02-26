@@ -9,6 +9,8 @@
     <title>รายละเอียดประชาสัมพันธ์</title>
 
     <!-- js -->
+    <script src="/ict8/backend/public/config.js.php"></script>
+    <script defer src="/ict8/assets/js/api/http.js"></script>
     <script src="/ict8/assets/js/include.js" defer></script>
     <script src="/ict8/assets/js/main.js" defer></script>
     <script src="/ict8/assets/js/news-detail.js" defer></script>
@@ -49,6 +51,11 @@
                     <article class="news-detail-content" id="news-content">
                         <!-- JS จะใส่ content จาก JSON -->
                     </article>
+
+                    <section class="news-detail-attachments" id="news-attachments-wrap" style="display:none;">
+                        <h3 style="margin: 0 0 10px; font-size: 18px;">เอกสารแนบ</h3>
+                        <ul id="news-attachments" style="margin:0; padding-left: 18px;"></ul>
+                    </section>
 
                     <figure class="news-detail-image-wrap" id="news-image-wrap">
                         <img id="news-image" src="" alt="ภาพประชาสัมพันธ์">

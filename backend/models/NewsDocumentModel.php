@@ -16,8 +16,14 @@ final class NewsDocumentModel
      *
      * @return array<int, array<string,mixed>>
      */
-    public function listDocumentsByNewsId(int $newsId): array
+    public function listDocumentsByNewsId(int $newsId, bool $publicOnly = false): array
     {
+        $where = "nd.news_id = :news_id";
+        if ($publicOnly) {
+            // Public pages must not expose private or inactive documents.
+            $where .= " AND d.is_private = 0 AND d.is_active = 1";
+        }
+
         $sql = "
             SELECT
                 d.document_id,
@@ -30,7 +36,7 @@ final class NewsDocumentModel
             FROM {$this->documentTable} d
             INNER JOIN {$this->table} nd
                 ON nd.document_id = d.document_id
-            WHERE nd.news_id = :news_id
+            WHERE {$where}
             ORDER BY nd.news_document_id ASC
         ";
 

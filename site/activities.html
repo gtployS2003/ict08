@@ -11,6 +11,11 @@
     <!-- js -->
     <script src="/ict8/assets/js/include.js" defer></script>
     <script src="/ict8/assets/js/main.js" defer></script>
+
+    <!-- Config + API (public activities now come from DB) -->
+    <script src="/ict8/backend/public/config.js.php"></script>
+    <script defer src="/ict8/assets/js/api/http.js"></script>
+    <script defer src="/ict8/assets/js/activities.js"></script>
 </head>
 
 <body>
@@ -19,7 +24,7 @@
 
     <!-- ===== เมนูหลัก ===== -->
     <div id="navbar"></div>
-    <main>
+    <main class="site-home">
         <section class="activities-page">
             <div class="activities-page-inner">
 
@@ -31,32 +36,11 @@
 
                 <!-- search and filter -->
                 <div class="activities-filter-bar">
-                    <div class="activities-chip-group">
-                        <!-- ปุ่ม filter ตาม 12 category (มี "งานทั้งหมด" ด้วย) -->
-                        <button class="activity-chip active" data-category="all">งานทั้งหมด</button>
-                        <button class="activity-chip" data-category="เชื่อมโยงเครือข่าย">เชื่อมโยงเครือข่าย</button>
-                        <button class="activity-chip" data-category="ประสานฐานข้อมูล">ประสานฐานข้อมูล</button>
-                        <button class="activity-chip" data-category="แนะแนวด้านเทคโนโลยี">แนะแนวด้านเทคโนโลยี</button>
-                        <button class="activity-chip" data-category="ติดตามประเมินผล">ติดตามประเมินผล</button>
-                        <button class="activity-chip" data-category="สนับสนุนอุปกรณ์">สนับสนุนอุปกรณ์</button>
-                        <button class="activity-chip" data-category="ถวายความปลอดภัยฯ">ถวายความปลอดภัยฯ</button>
-                        <button class="activity-chip" data-category="ธุรการ/พัสดุ">ธุรการ/พัสดุ</button>
-                        <button class="activity-chip" data-category="ความปลอดภัยเครือข่าย">ความปลอดภัยเครือข่าย</button>
-                        <button class="activity-chip" data-category="วิดิทัศน์ทางไกล">วิดิทัศน์ทางไกล</button>
-                        <button class="activity-chip" data-category="ดาวเทียม/วิทยุ">ดาวเทียม/วิทยุ</button>
-                        <button class="activity-chip" data-category="CCTV">CCTV</button>
-                        <button class="activity-chip" data-category="งานอื่นๆ">งานอื่นๆ</button>
-                    </div>
-
                     <div class="activities-toolbar">
                         <form class="activities-search" action="#" onsubmit="return false;">
                             <input type="text" id="activity-search" placeholder="ค้นหา" />
                             <button type="button" class="activities-search-clear">x</button>
                         </form>
-
-                        <button type="button" class="activities-filter-icon" aria-label="ตัวกรอง">
-                            <i class="fa-solid fa-filter"></i>
-                        </button>
                     </div>
 
                 </div>
@@ -70,61 +54,6 @@
                 <div id="activities-pagination" class="activities-pagination">
                     <!-- js/activities.js จะสร้างปุ่มเลขหน้า + ลูกศร -->
                 </div>
-
-                <!-- ===== Filter Popup ===== -->
-                <div class="activities-filter-popup-overlay">
-                    <div class="activities-filter-popup">
-                        <h3 class="filter-title">ตัวกรองภาพกิจกรรม</h3>
-
-                        <!-- Start / End Date -->
-                        <div class="filter-row">
-                            <label for="activity-filter-start">วันที่เริ่มต้น</label>
-                            <input type="date" id="activity-filter-start">
-                        </div>
-
-                        <div class="filter-row">
-                            <label for="activity-filter-end">วันที่สิ้นสุด</label>
-                            <input type="date" id="activity-filter-end">
-                        </div>
-
-                        <!-- Province -->
-                        <div class="filter-row">
-                            <span>จังหวัดลูกข่าย</span>
-
-                            <label><input type="checkbox" class="filter-province" value="พิษณุโลก"> พิษณุโลก</label>
-                            <label><input type="checkbox" class="filter-province" value="ตาก"> ตาก</label>
-                            <label><input type="checkbox" class="filter-province" value="สุโขทัย"> สุโขทัย</label>
-                            <label><input type="checkbox" class="filter-province" value="อุตรดิตถ์"> อุตรดิตถ์</label>
-                            <label><input type="checkbox" class="filter-province" value="แพร่"> แพร่</label>
-                            <label><input type="checkbox" class="filter-province" value="น่าน"> น่าน</label>
-
-                            <label><input type="checkbox" id="province-all" checked> ทั้งหมด</label>
-                        </div>
-
-                        <!-- Sort -->
-                        <div class="filter-row">
-                            <span>เรียงลำดับวันที่</span>
-                            <label class="filter-radio">
-                                <input type="radio" name="activityDateOrder" value="desc" checked>
-                                วันที่ล่าสุด → วันที่เก่าสุด
-                            </label>
-                            <label class="filter-radio">
-                                <input type="radio" name="activityDateOrder" value="asc">
-                                วันที่เก่าสุด → วันที่ล่าสุด
-                            </label>
-                        </div>
-
-                        <div class="filter-actions">
-                            <button type="button" class="activity-filter-clear">ล้างตัวกรอง</button>
-                            <button type="button" class="activity-filter-apply">ใช้ตัวกรอง</button>
-                        </div>
-                    </div>
-                </div>
-
-
-                <script src="../ict8/assets/js/activities.js"></script>
-
-
             </div>
         </section>
 

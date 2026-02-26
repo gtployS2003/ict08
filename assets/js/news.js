@@ -1,39 +1,71 @@
 const PAGE_SIZE = 9;
 
+const API_BASE = (window.__APP_CONFIG__ && window.__APP_CONFIG__.API_BASE) || "/ict8/backend/public";
+
 let allNews = [];
 let filteredNews = [];
 let currentPage = 1;
-let latestYearOnly = false;
-let filterStartDate = null;
-let filterEndDate   = null;
-let dateOrder = 'desc';
 
 const gridEl = document.querySelector('.news-grid');
 const paginationEl = document.querySelector('.news-pagination');
 const searchInput = document.querySelector('.news-search input');
 const clearBtn = document.querySelector('.news-search-clear');
-const filterBtn = document.querySelector('.news-filter-btn');
-const filterPopupOverlay = document.querySelector('.news-filter-popup-overlay');
-const filterStartInput   = document.getElementById('filter-start');
-const filterEndInput     = document.getElementById('filter-end');
 
-if (gridEl) {
-  initNewsPage();
+if (gridEl) initNewsPage();
+
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
-function initNewsPage() {
-  fetch('/ict8/assets/js/data-ex/news.json')
-    .then((res) => res.json())
-    .then((data) => {
-      allNews = data;
-      filteredNews = [...allNews];
+function formatThaiDate(mysqlDateTime) {
+  const s = String(mysqlDateTime || '').trim();
+  if (!s) return '-';
+  const dt = new Date(s.replace(' ', 'T'));
+  if (isNaN(dt.getTime())) return s;
 
-      renderNewsList(1);
-      renderPagination();
-      setupSearch();
-      setupFilter();
-    })
-    .catch((err) => console.error('โหลดข้อมูลข่าวไม่สำเร็จ', err));
+  const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+  const d = dt.getDate();
+  const m = months[dt.getMonth()] || '';
+  const y = dt.getFullYear() + 543;
+  return `${d} ${m} ${y}`;
+}
+
+function normalizeNewsRow(row) {
+  const id = row?.news_id ?? row?.id;
+  return {
+    id,
+    title: row?.title ?? '',
+    content: row?.content ?? '',
+    writer: row?.writer_name ?? row?.writer ?? '',
+    date: formatThaiDate(row?.create_at ?? row?.date ?? ''),
+  };
+}
+
+async function initNewsPage() {
+  try {
+    const res = await fetch(`${API_BASE}/news?limit=500`, {
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const rows = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
+
+    allNews = rows.map(normalizeNewsRow);
+    filteredNews = [...allNews];
+
+    renderNewsList(1);
+    renderPagination();
+    setupSearch();
+  } catch (err) {
+    console.error('โหลดข้อมูลข่าวไม่สำเร็จ', err);
+    if (gridEl) gridEl.innerHTML = `<p>โหลดข้อมูลประชาสัมพันธ์ไม่สำเร็จ</p>`;
+  }
 }
 
 function renderNewsList(page = 1) {
@@ -53,9 +85,9 @@ function renderNewsList(page = 1) {
   gridEl.innerHTML = items
     .map(
       (item) => `
-    <a href="news-detail.html?id=${item.id}" target="_blank" rel="noopener noreferrer" class="news-card" >
-      <h3 class="news-cards-title">${item.title}</h3>
-      <p class="news-cards-date">${item.date}</p>
+    <a href="news-detail.html?id=${encodeURIComponent(String(item.id ?? ''))}" target="_blank" rel="noopener noreferrer" class="news-card" >
+      <h3 class="news-cards-title">${escapeHtml(item.title)}</h3>
+      <p class="news-cards-date">${escapeHtml(item.date)}</p>
       <p class="news-cards-link">
         รายละเอียดเพิ่มเติม
       </p>
@@ -179,78 +211,29 @@ function scrollToTop() {
   }
 }
 
-// ----------------- Search + Filter -----------------
+// ----------------- Search -----------------
 
 function setupSearch() {
   if (!searchInput) return;
 
   searchInput.addEventListener('input', () => {
-    applyFilterAndSearch();
+    applySearch();
   });
 
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
       searchInput.value = '';
-      applyFilterAndSearch();
+      applySearch();
     });
   }
 }
 
-function setupFilter() {
-  if (!filterBtn || !filterPopupOverlay) return;
-
-  // กดปุ่มกรอง → เปิด popup
-  filterBtn.addEventListener('click', () => {
-    filterPopupOverlay.classList.add('open');
-  });
-
-  // ปุ่มใช้ตัวกรอง
-  const applyBtn = filterPopupOverlay.querySelector('.filter-apply');
-  const clearBtnPopup = filterPopupOverlay.querySelector('.filter-clear');
-
-  applyBtn.addEventListener('click', () => {
-    // อ่านค่าวันที่จาก input type="date" (เป็น ค.ศ.)
-    const startVal = filterStartInput.value; // yyyy-mm-dd หรือ ''
-    const endVal   = filterEndInput.value;
-
-    filterStartDate = startVal ? new Date(startVal) : null;
-    filterEndDate   = endVal   ? new Date(endVal)   : null;
-
-    // อ่านตัวเลือกเรียงลำดับ
-    const orderEl = filterPopupOverlay.querySelector('input[name="dateOrder"]:checked');
-    dateOrder = orderEl ? orderEl.value : 'desc';
-
-    applyFilterAndSearch();
-    filterPopupOverlay.classList.remove('open');
-  });
-
-  // ปุ่มล้างตัวกรอง
-  clearBtnPopup.addEventListener('click', () => {
-    filterStartInput.value = '';
-    filterEndInput.value = '';
-    filterStartDate = null;
-    filterEndDate = null;
-    dateOrder = 'desc';
-
-    applyFilterAndSearch();
-    filterPopupOverlay.classList.remove('open');
-  });
-
-  // คลิกพื้นหลังเพื่อปิด popup
-  filterPopupOverlay.addEventListener('click', (e) => {
-    if (e.target === filterPopupOverlay) {
-      filterPopupOverlay.classList.remove('open');
-    }
-  });
-}
-
-
-function applyFilterAndSearch() {
+function applySearch() {
   const term = (searchInput?.value || '').trim().toLowerCase();
 
   let result = [...allNews];
 
-  // ---- 1) search text จาก title / content / writer / date (เหมือนเดิม) ----
+  // search text จาก title / content / writer / date
   if (term) {
     result = result.filter((n) => {
       const title   = n.title?.toLowerCase()   || '';
@@ -266,60 +249,8 @@ function applyFilterAndSearch() {
     });
   }
 
-  // ---- 2) filter ด้วยช่วงวันที่ จาก popup ----
-  if (filterStartDate || filterEndDate) {
-    result = result.filter((n) => {
-      const d = parseThaiDateToAD(n.date); // Date (ค.ศ.) จากข้อความ "29 เม.ย. 2568"
-      if (!d) return false;
-
-      if (filterStartDate && d < filterStartDate) return false;
-      if (filterEndDate   && d > filterEndDate)   return false;
-      return true;
-    });
-  }
-
-  // ---- 3) sort ตามวันที่ (ใหม่→เก่า หรือ เก่า→ใหม่) ----
-  result.sort((a, b) => {
-    const da = parseThaiDateToAD(a.date);
-    const db = parseThaiDateToAD(b.date);
-    if (!da || !db) return 0;
-    return dateOrder === 'desc' ? db - da : da - db;
-  });
-
   filteredNews = result;
   renderNewsList(1);
   renderPagination();
-}
-
-
-// helper: ดึงปี พ.ศ. จากข้อความวันที่ เช่น "29 เม.ย. 2568"
-function getThaiYearFromDateString(dateStr) {
-  if (!dateStr) return null;
-  const match = dateStr.match(/(\d{4})$/);
-  return match ? Number(match[1]) : null;
-}
-
-function parseThaiDateToAD(dateStr) {
-  // ตัวอย่าง dateStr: "29 เม.ย. 2568"
-  if (!dateStr) return null;
-
-  const monthMap = {
-    'ม.ค.': 0, 'ก.พ.': 1, 'มี.ค.': 2, 'เม.ย.': 3,
-    'พ.ค.': 4, 'มิ.ย.': 5, 'ก.ค.': 6, 'ส.ค.': 7,
-    'ก.ย.': 8, 'ต.ค.': 9, 'พ.ย.': 10, 'ธ.ค.': 11
-  };
-
-  const m = dateStr.match(/(\d{1,2})\s+([^\s]+)\s+(\d{4})/); // เลข วัน / ชื่อเดือน / ปี
-  if (!m) return null;
-
-  const day = Number(m[1]);
-  const monthName = m[2];
-  const yearBE = Number(m[3]);
-
-  const month = monthMap[monthName];
-  if (month === undefined) return null;
-
-  const yearAD = yearBE - 543;  // แปลง พ.ศ. → ค.ศ.
-  return new Date(yearAD, month, day);
 }
 

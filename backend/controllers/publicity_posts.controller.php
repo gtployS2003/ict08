@@ -7,6 +7,7 @@ require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../models/PublicityPostModel.php';
 require_once __DIR__ . '/../models/EventMediaModel.php';
 require_once __DIR__ . '/../models/PublicityPostMediaModel.php';
+require_once __DIR__ . '/../models/ActivityModel.php';
 
 // auth middleware
 $authPath = __DIR__ . '/../middleware/auth.php';
@@ -23,6 +24,46 @@ if (file_exists($devAuthPath)) {
 final class PublicityPostsController
 {
     public function __construct(private PDO $pdo) {}
+
+    /**
+     * POST /publicity-posts/{eventId}/publish
+     * Publish publicity_post to website by inserting into activity table.
+     */
+    public function publish(int $eventId): void
+    {
+        try {
+            $this->requireStaffAccess();
+
+            $eventId = max(1, (int)$eventId);
+            $pm = new PublicityPostModel($this->pdo);
+            $post = $pm->findByEventId($eventId);
+            if (!$post) {
+                json_response(['error' => true, 'message' => 'Publicity post not found'], 404);
+                return;
+            }
+
+            $postId = (int)($post['publicity_post_id'] ?? 0);
+            if ($postId <= 0) {
+                json_response(['error' => true, 'message' => 'Invalid publicity_post_id'], 500);
+                return;
+            }
+
+            $am = new ActivityModel($this->pdo);
+            $res = $am->publishByPublicityPostId($postId);
+
+            json_response([
+                'error' => false,
+                'data' => [
+                    'event_id' => $eventId,
+                    'publicity_post_id' => $postId,
+                    'activity_id' => (int)($res['activity_id'] ?? 0),
+                    'already_published' => (bool)($res['already_published'] ?? false),
+                ],
+            ]);
+        } catch (Throwable $e) {
+            json_response(['error' => true, 'message' => 'Failed to publish activity', 'detail' => $e->getMessage()], 500);
+        }
+    }
 
     /**
      * GET /publicity-posts?page=&limit=&q=

@@ -209,6 +209,50 @@
     if (el) el.textContent = text || "";
   }
 
+  async function publish() {
+    const eventId = getEventId();
+    if (!eventId) {
+      alert("ไม่พบ event_id");
+      return;
+    }
+
+    const ok = confirm(
+      "ต้องการโพสต์กิจกรรมขึ้นเว็บไซต์หรือไม่?\n\nหมายเหตุ: แนะนำให้กด 'บันทึก' ก่อน เพื่อให้เนื้อหาล่าสุดถูกเก็บไว้"
+    );
+    if (!ok) return;
+
+    const btn = $("#wep-publish");
+    if (btn) btn.disabled = true;
+
+    try {
+      const json = await api(`/publicity-posts/${encodeURIComponent(eventId)}/publish`, {
+        method: "POST",
+        body: {},
+      });
+
+      const data = json?.data || {};
+      const activityId = Number(data?.activity_id || 0);
+      const already = Boolean(data?.already_published);
+
+      if (activityId > 0) {
+        alert(already ? `โพสต์แล้ว (activity_id: ${activityId})` : `โพสต์ขึ้นเว็บไซต์เรียบร้อย (activity_id: ${activityId})`);
+
+        if (confirm("ต้องการเปิดหน้าตัวอย่างบนเว็บไซต์หรือไม่?") ) {
+          window.open(`/ict8/site/activity-detail.html?id=${encodeURIComponent(String(activityId))}`, "_blank", "noopener");
+        }
+      } else {
+        alert("โพสต์สำเร็จ แต่ไม่พบ activity_id ที่ตอบกลับ");
+      }
+
+      await load();
+    } catch (err) {
+      console.error(err);
+      alert(err?.message || "โพสต์ไม่สำเร็จ");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   async function load() {
     const eventId = getEventId();
     if (!eventId) {
@@ -230,7 +274,9 @@
     $("#wep-content").value = String(row.content ?? "");
 
     const updated = row.update_at ? ` • อัปเดตล่าสุด: ${row.update_at}` : "";
-    setMeta(`event_id: ${eventId}${updated}`);
+    const activityId = Number(row.activity_id || 0);
+    const published = activityId > 0 ? ` • โพสต์แล้ว (activity_id: ${activityId})` : " • ยังไม่โพสต์";
+    setMeta(`event_id: ${eventId}${updated}${published}`);
 
     // media
     await loadMedia();
@@ -287,6 +333,7 @@
   document.addEventListener("DOMContentLoaded", async () => {
     $("#wep-reload")?.addEventListener("click", () => load().catch(console.error));
     $("#wep-form")?.addEventListener("submit", save);
+    $("#wep-publish")?.addEventListener("click", () => publish().catch(console.error));
 
     // media UI events
     $("#wep-media-reload")?.addEventListener("click", () => loadMedia().catch(console.error));

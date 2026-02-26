@@ -50,6 +50,18 @@ class NewsController {
 
         // merge to allow partial updates (e.g. is_banner toggle)
         $merged = array_merge($found, $body);
+
+        // Update update_at only when the web-post fields are edited (not banner toggle)
+        $touchUpdateAt = false;
+        foreach (['title', 'content', 'link_url'] as $k) {
+            if (array_key_exists($k, $body)) {
+                $touchUpdateAt = true;
+                break;
+            }
+        }
+        if ($touchUpdateAt && $model->supportsUpdateAt()) {
+            $merged['update_at'] = date('Y-m-d H:i:s');
+        }
         $missing = require_fields($merged, ['title', 'content']);
         if ($missing) fail("Missing fields", 422, $missing);
 

@@ -40,6 +40,12 @@ function publicity_posts_routes(string $method, array $segments, PDO $pdo): bool
         return false;
     }
 
+    // POST /publicity-posts/{eventId}/publish
+    if ($method === 'POST' && count($segments) === 3 && is_numeric($segments[1]) && $segments[2] === 'publish') {
+        $ctl->publish((int)$segments[1]);
+        return true;
+    }
+
     // /publicity-posts
     if (count($segments) === 1) {
         if ($method === 'GET') {

@@ -163,6 +163,8 @@
 
         // Website status: update_at is only touched when title/content is edited (not banner toggle)
         const webEdited = compareMysqlDateTime(row?.update_at, row?.create_at) === 1;
+        const activityId = Number(row?.activity_id ?? 0);
+        const isPosted = activityId > 0;
 
         const posterUrl = `/ict8/report-event/poster.html?event_id=${encodeURIComponent(eventId ?? "")}`;
         const webUrl = `/ict8/report-event/web-post.html?event_id=${encodeURIComponent(eventId ?? "")}`;
@@ -188,18 +190,32 @@
               title: "ยังไม่ได้ทำ/บันทึกโปสเตอร์",
             });
 
-        const webBadge = webEdited
+        const webEditedBadge = webEdited
           ? renderBadge({
               variant: "ok",
               icon: "fa-solid fa-circle-check",
-              text: "แก้ไขแล้ว",
-              title: "บันทึกโพสต์เว็บไซต์แล้ว",
+              text: "บันทึกแล้ว",
+              title: "มีการบันทึกโพสต์เว็บไซต์แล้ว",
             })
           : renderBadge({
               variant: "todo",
               icon: "fa-regular fa-circle",
-              text: "ยังไม่แก้ไข",
+              text: "ยังไม่บันทึก",
               title: "ยังไม่เคยบันทึกการแก้ไขโพสต์เว็บไซต์",
+            });
+
+        const webPostedBadge = isPosted
+          ? renderBadge({
+              variant: "ok",
+              icon: "fa-solid fa-globe",
+              text: "โพสต์แล้ว",
+              title: "เผยแพร่ขึ้นหน้าเว็บไซต์แล้ว (มี activity_id)",
+            })
+          : renderBadge({
+              variant: "todo",
+              icon: "fa-regular fa-circle",
+              text: "ยังไม่โพสต์",
+              title: "ยังไม่ได้กดโพสต์ขึ้นเว็บไซต์",
             });
 
         return `
@@ -222,7 +238,11 @@
                 <a class="btn btn-sm btn-ghost" href="${webUrl}">
                   <i class="fa-regular fa-pen-to-square"></i> แก้ไขโพสต์
                 </a>
-                <div class="pe-badges">${webBadge}</div>
+                <div class="pe-badges">
+                  ${webEditedBadge}
+                  ${webPostedBadge}
+                  ${isPosted ? `<a class="pe-link" href="/ict8/site/activity-detail.html?id=${encodeURIComponent(String(activityId))}" target="_blank" rel="noopener" title="เปิดหน้ากิจกรรมบนเว็บไซต์"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ""}
+                </div>
               </div>
             </td>
             <td>

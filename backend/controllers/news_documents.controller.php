@@ -19,14 +19,17 @@ final class NewsDocumentsController
      */
     public function listByNewsId(int $newsId): void
     {
-        require_auth($this->pdo);
+        // Public endpoint: allow anonymous access.
+        // If not authenticated, only return active & non-private documents.
+        $user = get_auth_user($this->pdo);
+        $publicOnly = $user ? false : true;
 
         $newsModel = new NewsModel($this->pdo);
         $news = $newsModel->get($newsId);
         if (!$news) fail('News not found', 404);
 
         $model = new NewsDocumentModel($this->pdo);
-        $items = $model->listDocumentsByNewsId($newsId);
+        $items = $model->listDocumentsByNewsId($newsId, $publicOnly);
         ok(['items' => $items]);
     }
 

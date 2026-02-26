@@ -1,409 +1,305 @@
+// assets/js/activities.js
+// Public activities page: list published activities from DB via /activities API
+
 document.addEventListener("DOMContentLoaded", () => {
     const PAGE_SIZE = 12;
+
     const listEl = document.getElementById("activities-list");
     const paginationEl = document.getElementById("activities-pagination");
     const searchInput = document.getElementById("activity-search");
     const clearBtn = document.querySelector(".activities-search-clear");
-    const chipButtons = document.querySelectorAll(".activity-chip");
 
-    let allActivities = [];
-    let selectedCategories = new Set(["all"]);
-    let searchTerm = "";
-    let currentPage = 1;
-    let filterStart = null;
-    let filterEnd = null;
-    let filterProvinces = new Set();
-    let filterSort = "desc";
+    if (!listEl) return;
 
-    const params = new URLSearchParams(window.location.search);
-    const initialCategory = params.get("category");
+    const state = {
+        q: "",
+        page: 1,
+        totalPages: 1,
+        loading: false,
+        debounceTimer: null,
+    };
 
-    if (initialCategory && initialCategory !== "all") {
-        selectedCategories = new Set([initialCategory]);
-
-        chipButtons.forEach((btn) => {
-            const cat = btn.dataset.category;
-            if (cat === initialCategory) {
-                btn.classList.add("active");
-            } else if (cat === "all") {
-                btn.classList.remove("active");
-            } else {
-                btn.classList.remove("active");
-            }
-        });
-    } else {
-        selectedCategories = new Set(["all"]);
-        chipButtons.forEach((btn) => {
-            if (btn.dataset.category === "all") {
-                btn.classList.add("active");
-            } else {
-                btn.classList.remove("active");
-            }
-        });
+    function escapeHtml(str) {
+        if (str == null) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
-    fetch("/assets/js/data-ex/activity.json")
-        .then((res) => res.json())
-        .then((data) => {
-            allActivities = data;
-            render();
-        })
-        .catch((err) => console.error("load activity.json error:", err));
+    function buildFileUrl(filepath) {
+        const fp = String(filepath || "").trim();
+        if (!fp) return "";
 
-    function parseThaiDate(str) {
-        if (!str || typeof str !== "string") return null;
+        // DB usually stores: "uploads/..." or "/uploads/..."
+        // Physical location: backend/public/uploads/...
+        if (fp.startsWith("/uploads/")) {
+            return `/ict8/backend/public${fp}`;
+        }
+        if (fp.startsWith("uploads/")) {
+            return `/ict8/backend/public/${fp}`;
+        }
 
-        const parts = str.trim().split(/\s+/);
-        if (parts.length < 3) return null;
-
-        const day = parseInt(parts[0], 10);
-        const yearBE = parseInt(parts[2], 10); // ปี พ.ศ.
-
-        if (isNaN(day) || isNaN(yearBE)) return null;
-
-        // เอาชื่อเดือนไทยแบบย่อออกจากจุดทั้งหมด เช่น "พ.ย." -> "พย"
-        const monthKey = parts[1].replace(/\./g, "");
-
-        const monthMap = {
-            "มค": 0,
-            "กพ": 1,
-            "มีค": 2,
-            "เมย": 3,
-            "พค": 4,
-            "มิย": 5,
-            "กค": 6,
-            "สค": 7,
-            "กย": 8,
-            "ตค": 9,
-            "พย": 10,
-            "ธค": 11
-        };
-
-        const m = monthMap[monthKey];
-        if (m === undefined) return null;
-
-        const yearAD = yearBE - 543; // แปลง พ.ศ. -> ค.ศ.
-
-        return new Date(yearAD, m, day);
+        // Already absolute (e.g., /ict8/backend/public/uploads/...)
+        if (fp.startsWith("/")) return fp;
+        return `/ict8/backend/public/${fp}`;
     }
 
-    function applyFilter() {
-        return allActivities
-            .filter(item => {
-                const useAll =
-                    selectedCategories.size === 0 || selectedCategories.has("all");
+    function formatThaiDate(mysqlDt) {
+        const s = String(mysqlDt || "").trim();
+        if (!s) return "";
 
-                const matchCategory = useAll || selectedCategories.has(item.category);
+        // MySQL DATETIME: "YYYY-MM-DD HH:MM:SS"
+        const d = new Date(s.replace(" ", "T"));
+        if (Number.isNaN(d.getTime())) return s;
 
-                const q = searchTerm.trim().toLowerCase();
-                const matchSearch =
-                    !q ||
-                    item.title.toLowerCase().includes(q) ||
-                    (item.content && item.content.toLowerCase().includes(q)) ||
-                    (item.province && item.province.toLowerCase().includes(q)) ||
-                    (item.date && item.date.toLowerCase().includes(q));
-
-                // province filter
-                const matchProvince =
-                    filterProvinces.size === 0 || filterProvinces.has(item.province);
-                const itemDate = parseThaiDate(item.date);
-                let matchDate = true;
-                if (filterStart && itemDate && itemDate < filterStart) matchDate = false;
-                if (filterEnd && itemDate && itemDate > filterEnd) matchDate = false;
-                return matchCategory && matchSearch && matchProvince && matchDate;
-            })
-            .sort((a, b) => {
-                const da = parseThaiDate(a.date);
-                const db = parseThaiDate(b.date);
-                if (!da || !db) return 0;
-
-                return filterSort === "desc" ? db - da : da - db;
-            });
-
+        try {
+            return new Intl.DateTimeFormat("th-TH", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+            }).format(d);
+        } catch {
+            return s;
+        }
     }
 
-    function render() {
-        const filtered = applyFilter();
-        const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-        if (currentPage > totalPages) currentPage = totalPages;
-        const start = (currentPage - 1) * PAGE_SIZE;
-        const pageItems = filtered.slice(start, start + PAGE_SIZE);
-        renderList(pageItems);
-        renderPagination(totalPages);
+    function getMeta(item) {
+        const prov = String(item?.province_name || "").trim();
+        const dt = item?.end_datetime || item?.start_datetime || item?.update_at || item?.create_at;
+        const dateText = formatThaiDate(dt);
+        return [prov, dateText].filter((x) => String(x || "").trim() !== "").join(" · ") || "-";
+    }
+
+    function getCategory(item) {
+        const sub = String(item?.request_sub_type_name || "").trim();
+        if (sub) return sub;
+        const t = String(item?.request_type_name || "").trim();
+        return t || "-";
+    }
+
+    function setLoading(isLoading) {
+        state.loading = Boolean(isLoading);
+        listEl.setAttribute("aria-busy", state.loading ? "true" : "false");
     }
 
     function renderList(items) {
-        listEl.innerHTML = "";
-
-        if (!items.length) {
+        const rows = Array.isArray(items) ? items : [];
+        if (rows.length === 0) {
             listEl.innerHTML = `<p style="text-align:center;">ไม่พบกิจกรรม</p>`;
             return;
         }
 
-        const html = items
+        listEl.innerHTML = rows
             .map((item) => {
-                const imgSrc =
-                    item.images && item.images.length > 0
-                        ? item.images[0]
-                        : "/assets/image/activities/01.png";
+                const id = Number(item?.activity_id || 0);
+                const title = String(item?.title || "").trim() || "(ไม่ระบุชื่อกิจกรรม)";
+                const category = getCategory(item);
+                const meta = getMeta(item);
+                const cover = buildFileUrl(item?.cover_filepath) || "/ict8/assets/image/activities/01.png";
 
                 return `
-        <a href="activity-detail.html?id=${item.id}" target="_blank" rel="noopener noreferrer" class="activity-card">
-          <div class="activity-card-image">
-            <img src="${imgSrc}" alt="${item.title}">
-          </div>
-          <div class="activity-card-body">
-            <h3 class="activity-card-title">${item.title}</h3>
-            <span class="activity-card-category">${item.category}</span>
-            <div class="activity-card-meta">
-              ${item.province ? item.province + " · " : ""}${item.date}
-            </div>
-          </div>
-        </a>`;
+                    <a href="activity-detail.html?id=${encodeURIComponent(String(id))}" target="_blank" rel="noopener noreferrer" class="activity-card">
+                        <div class="activity-card-image">
+                            <img src="${escapeHtml(cover)}" alt="${escapeHtml(title)}" loading="lazy">
+                        </div>
+                        <div class="activity-card-body">
+                            <h3 class="activity-card-title">${escapeHtml(title)}</h3>
+                            <span class="activity-card-category">${escapeHtml(category)}</span>
+                            <div class="activity-card-meta">${escapeHtml(meta)}</div>
+                        </div>
+                    </a>
+                `;
             })
             .join("");
+    }
 
-        listEl.innerHTML = html;
+    function scrollToTop() {
+        const section = document.querySelector(".activities-page");
+        if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function updateUrl() {
+        const u = new URL(window.location.href);
+        if (state.q) u.searchParams.set("q", state.q);
+        else u.searchParams.delete("q");
+
+        if (state.page > 1) u.searchParams.set("page", String(state.page));
+        else u.searchParams.delete("page");
+
+        // remove legacy params from older UI
+        u.searchParams.delete("category");
+        window.history.replaceState({}, "", u.toString());
     }
 
     function renderPagination(totalPages) {
         if (!paginationEl) return;
 
-        if (totalPages <= 1) {
-            paginationEl.innerHTML = '';
+        const tp = Math.max(1, Number(totalPages || 1));
+        state.totalPages = tp;
+
+        if (tp <= 1) {
+            paginationEl.innerHTML = "";
             return;
         }
 
-        let html = '';
-
-        // ปุ่ม previous
-        html += `<button class="activities-page-btn activities-page-prev" ${currentPage === 1 ? 'disabled' : ''
-            }>&larr;</button>`;
+        let html = "";
+        html += `<button class="activities-page-btn activities-page-prev" ${state.page === 1 ? "disabled" : ""}>&larr;</button>`;
 
         const items = [];
         const first = 1;
-        const last = totalPages;
+        const last = tp;
 
-        if (totalPages <= 5) {
-            // แสดงทุกหน้าเลย
-            for (let i = 1; i <= totalPages; i++) {
-                items.push({ type: 'page', page: i });
-            }
+        if (tp <= 5) {
+            for (let i = 1; i <= tp; i++) items.push({ type: "page", page: i });
         } else {
-            if (currentPage <= 3) {
-                // 1 2 3 4 ... last
-                items.push({ type: 'page', page: 1 });
-                items.push({ type: 'page', page: 2 });
-                items.push({ type: 'page', page: 3 });
-                items.push({ type: 'page', page: 4 });
-                items.push({ type: 'dots' });
-                items.push({ type: 'page', page: last });
-            } else if (currentPage >= totalPages - 2) {
-                // first ... last-3 last-2 last-1 last
-                items.push({ type: 'page', page: first });
-                items.push({ type: 'dots' });
-                items.push({ type: 'page', page: last - 3 });
-                items.push({ type: 'page', page: last - 2 });
-                items.push({ type: 'page', page: last - 1 });
-                items.push({ type: 'page', page: last });
+            if (state.page <= 3) {
+                items.push({ type: "page", page: 1 });
+                items.push({ type: "page", page: 2 });
+                items.push({ type: "page", page: 3 });
+                items.push({ type: "page", page: 4 });
+                items.push({ type: "dots" });
+                items.push({ type: "page", page: last });
+            } else if (state.page >= tp - 2) {
+                items.push({ type: "page", page: first });
+                items.push({ type: "dots" });
+                items.push({ type: "page", page: last - 3 });
+                items.push({ type: "page", page: last - 2 });
+                items.push({ type: "page", page: last - 1 });
+                items.push({ type: "page", page: last });
             } else {
-                items.push({ type: 'page', page: first });
-                items.push({ type: 'dots' });
-                items.push({ type: 'page', page: currentPage - 1 });
-                items.push({ type: 'page', page: currentPage });
-                items.push({ type: 'page', page: currentPage + 1 });
-                items.push({ type: 'dots' });
-                items.push({ type: 'page', page: last });
+                items.push({ type: "page", page: first });
+                items.push({ type: "dots" });
+                items.push({ type: "page", page: state.page - 1 });
+                items.push({ type: "page", page: state.page });
+                items.push({ type: "page", page: state.page + 1 });
+                items.push({ type: "dots" });
+                items.push({ type: "page", page: last });
             }
         }
 
-        items.forEach((item) => {
-            if (item.type === 'dots') {
+        items.forEach((it) => {
+            if (it.type === "dots") {
                 html += `<span class="activities-page-dots">...</span>`;
             } else {
-                const i = item.page;
-                html += `<button class="activities-page-number ${i === currentPage ? 'active' : ''
-                    }" data-page="${i}">${i}</button>`;
+                const i = it.page;
+                html += `<button class="activities-page-number ${i === state.page ? "active" : ""}" data-page="${i}">${i}</button>`;
             }
         });
 
-        html += `<button class="activities-page-btn activities-page-next" ${currentPage === totalPages ? 'disabled' : ''
-            }>&rarr;</button>`;
+        html += `<button class="activities-page-btn activities-page-next" ${state.page === tp ? "disabled" : ""}>&rarr;</button>`;
 
         paginationEl.innerHTML = html;
 
-        paginationEl.querySelectorAll('.activities-page-number').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const page = Number(btn.dataset.page);
-                if (page === currentPage) return;
-                currentPage = page;
-                render();
+        paginationEl.querySelectorAll(".activities-page-number").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const p = Number(btn.dataset.page);
+                if (!Number.isFinite(p) || p <= 0 || p === state.page) return;
+                state.page = p;
+                updateUrl();
+                load().catch(console.error);
                 scrollToTop();
             });
         });
 
-        const prevBtn = paginationEl.querySelector('.activities-page-prev');
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => {
-                if (currentPage > 1) {
-                    currentPage -= 1;
-                    render();
-                    scrollToTop();
-                }
-            });
-        }
-
-        const nextBtn = paginationEl.querySelector('.activities-page-next');
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => {
-                if (currentPage < totalPages) {
-                    currentPage += 1;
-                    render();
-                    scrollToTop();
-                }
-            });
-        }
-    }
-
-    function scrollToTop() {
-        const section = document.querySelector('.activities-page');
-        if (section) {
-            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    }
-
-    chipButtons.forEach((btn) => {
-        btn.addEventListener("click", () => {
-            const cat = btn.dataset.category;
-
-            if (cat === "all") {
-                selectedCategories = new Set(["all"]);
-                chipButtons.forEach((b) => b.classList.remove("active"));
-                btn.classList.add("active");
-            } else {
-                if (selectedCategories.has(cat)) {
-                    selectedCategories.delete(cat);
-                    btn.classList.remove("active");
-                } else {
-                    selectedCategories.add(cat);
-                    btn.classList.add("active");
-                }
-
-                const allBtn = document.querySelector('.activity-chip[data-category="all"]');
-                if (selectedCategories.size > 0) {
-                    selectedCategories.delete("all");
-                    if (allBtn) allBtn.classList.remove("active");
-                }
-
-                if (selectedCategories.size === 0) {
-                    selectedCategories.add("all");
-                    if (allBtn) allBtn.classList.add("active");
-                }
-            }
-
-            currentPage = 1;
-            render();
+        paginationEl.querySelector(".activities-page-prev")?.addEventListener("click", () => {
+            if (state.page <= 1) return;
+            state.page -= 1;
+            updateUrl();
+            load().catch(console.error);
+            scrollToTop();
         });
-    });
 
-    if (searchInput) {
-        searchInput.addEventListener("input", () => {
-            searchTerm = searchInput.value;
-            currentPage = 1;
-            render();
+        paginationEl.querySelector(".activities-page-next")?.addEventListener("click", () => {
+            if (state.page >= tp) return;
+            state.page += 1;
+            updateUrl();
+            load().catch(console.error);
             scrollToTop();
         });
     }
 
-    if (clearBtn) {
+    async function api(path, { method = "GET", body } = {}) {
+        if (typeof window.apiFetch === "function") {
+            return window.apiFetch(path, { method, body, skipAuth: true });
+        }
+        // Fallback (should be rare): raw fetch against backend/public
+        const base = window.API_BASE_URL || "/ict8/backend/public";
+        const res = await fetch(`${base}${path}`);
+        const json = await res.json();
+        if (!res.ok || json?.ok === false) throw new Error(json?.message || `Request failed (${res.status})`);
+        return json;
+    }
+
+    async function load() {
+        if (state.loading) return;
+        setLoading(true);
+
+        try {
+            listEl.innerHTML = `<p style="text-align:center;">กำลังโหลด...</p>`;
+            if (paginationEl) paginationEl.innerHTML = "";
+
+            const qs = new URLSearchParams();
+            qs.set("page", String(state.page));
+            qs.set("limit", String(PAGE_SIZE));
+            if (state.q) qs.set("q", state.q);
+
+            const json = await api(`/activities?${qs.toString()}`, { method: "GET" });
+            const items = Array.isArray(json?.data?.items) ? json.data.items : [];
+            const pag = json?.data?.pagination || {};
+            const tp = Number(pag?.totalPages || 1) || 1;
+
+            renderList(items);
+            renderPagination(tp);
+        } catch (err) {
+            console.error(err);
+            listEl.innerHTML = `<p style="text-align:center;">โหลดข้อมูลไม่สำเร็จ</p>`;
+            if (paginationEl) paginationEl.innerHTML = "";
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // init from URL
+    try {
+        const u = new URL(window.location.href);
+        state.q = String(u.searchParams.get("q") || "").trim();
+        const p = Number(u.searchParams.get("page") || 1);
+        state.page = Number.isFinite(p) && p > 0 ? p : 1;
+    } catch {
+        // ignore
+    }
+
+    if (searchInput) {
+        searchInput.value = state.q;
+        searchInput.addEventListener("input", () => {
+            const nextQ = String(searchInput.value || "").trim();
+            if (state.debounceTimer) window.clearTimeout(state.debounceTimer);
+            state.debounceTimer = window.setTimeout(() => {
+                state.q = nextQ;
+                state.page = 1;
+                updateUrl();
+                load().catch(console.error);
+                scrollToTop();
+            }, 250);
+        });
+    }
+
+    if (clearBtn && searchInput) {
         clearBtn.addEventListener("click", () => {
             searchInput.value = "";
-            searchTerm = "";
-            currentPage = 1;
-            render();
+            state.q = "";
+            state.page = 1;
+            updateUrl();
+            load().catch(console.error);
+            scrollToTop();
         });
     }
 
-    document.querySelector(".activities-filter-icon").addEventListener("click", () => {
-        document.querySelector(".activities-filter-popup-overlay").classList.add("open");
-    });
-
-    document.querySelector(".activities-filter-popup-overlay").addEventListener("click", (e) => {
-        if (e.target.classList.contains("activities-filter-popup-overlay")) {
-            e.target.classList.remove("open");
-        }
-    });
-
-    document.querySelector(".activity-filter-clear").addEventListener("click", () => {
-        document.getElementById("activity-filter-start").value = "";
-        document.getElementById("activity-filter-end").value = "";
-
-        filterStart = null;
-        filterEnd = null;
-
-        filterProvinces.clear();
-        document.querySelectorAll(".filter-province").forEach(cb => cb.checked = false);
-        document.getElementById("province-all").checked = true;
-
-        filterSort = "desc";
-        document.querySelector('input[name="activityDateOrder"][value="desc"]').checked = true;
-
-        currentPage = 1;
-        render();
-    });
-
-    document.querySelector(".activity-filter-apply").addEventListener("click", () => {
-        const start = document.getElementById("activity-filter-start").value;
-        filterStart = start ? new Date(start) : null;
-
-        const end = document.getElementById("activity-filter-end").value;
-        filterEnd = end ? new Date(end) : null;
-
-        filterProvinces.clear();
-        document.querySelectorAll(".filter-province:checked").forEach(cb => {
-            filterProvinces.add(cb.value);
-        });
-
-        if (document.getElementById("province-all").checked) {
-            filterProvinces.clear();
-        }
-
-        filterSort = document.querySelector('input[name="activityDateOrder"]:checked').value;
-        document.querySelector(".activities-filter-popup-overlay").classList.remove("open");
-        currentPage = 1;
-        render();
-    });
-
-        // ===== Logic จังหวัดลูกข่าย กับ "ทั้งหมด" =====
-    const provinceAllCb = document.getElementById("province-all");
-    const provinceCbs = document.querySelectorAll(".filter-province");
-
-    if (provinceAllCb) {
-        // ถ้าเลือก "ทั้งหมด" -> ยกเลิกทุกจังหวัด
-        provinceAllCb.addEventListener("change", () => {
-            if (provinceAllCb.checked) {
-                provinceCbs.forEach(cb => {
-                    cb.checked = false;
-                });
-            }
-        });
-    }
-
-    provinceCbs.forEach(cb => {
-        cb.addEventListener("change", () => {
-            if (cb.checked) {
-                // ถ้ามีการเลือกจังหวัดใดจังหวัดหนึ่ง -> เอา "ทั้งหมด" ออก
-                if (provinceAllCb) provinceAllCb.checked = false;
-            } else {
-                // ถ้าไม่มีจังหวัดไหนถูกเลือกเลย -> ติ๊ก "ทั้งหมด" กลับ
-                const anyChecked = Array.from(provinceCbs).some(p => p.checked);
-                if (!anyChecked && provinceAllCb) {
-                    provinceAllCb.checked = true;
-                }
-            }
-        });
-    });
-
+    updateUrl();
+    load().catch(console.error);
 });
 
 

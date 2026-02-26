@@ -119,6 +119,23 @@ main {
     display: block;
     width: 100%;
   }
+
+  /* device pages layout */
+  main {
+    padding-top: 180px;
+  }
+
+  .device-map-layout {
+    grid-template-columns: 1fr;
+  }
+
+  #device-map {
+    height: 420px;
+  }
+
+  .device-map-sidebar {
+    max-height: none;
+  }
 }
 
 /* ==========================
