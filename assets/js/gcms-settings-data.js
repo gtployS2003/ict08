@@ -218,6 +218,7 @@
 
     hide($("#btn-add-link-url"));
     hide($("#btn-add-related-document"));
+    hide($("#btn-add-history-image"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -360,6 +361,14 @@
         show($("#btn-add-template-type"));
         initTemplateTypesSection();
         loadTemplateTypes();
+        break;
+
+      case "image-history":
+        show($("#section-image-history"));
+        show($("#btn-add-history-image"));
+        setTitle("ภาพหน้าประวัติหน่วยงาน");
+        initHistoryImagePageSection();
+        loadHistoryImagePage();
         break;
 
       case "link-url":
@@ -563,6 +572,389 @@
           alert(e?.message || String(e));
         }
       });
+    });
+  }
+
+  /* =========================
+   IMAGE HISTORY PAGE
+   - Section: #section-image-history
+   - Action: #btn-add-history-image
+   - Modal: #history-image-modal, #history-image-form
+   - Upload: #history-image-modal-file, #history-image-modal-set-active
+   - Preview: #history-image-modal-preview, #history-image-modal-preview-img, #history-image-modal-preview-name, #history-image-modal-clear
+   - Toolbar: #history-image-search, #history-image-limit, #history-image-refresh
+   - Table: #history-image-tbody
+   - Footer: #history-image-pagination, #history-image-total
+ ========================= */
+
+  const hipEls = {
+    section: $("#section-image-history"),
+    tbody: $("#history-image-tbody"),
+
+    search: $("#history-image-search"),
+    limit: $("#history-image-limit"),
+    refreshBtn: $("#history-image-refresh"),
+    pagination: $("#history-image-pagination"),
+    total: $("#history-image-total"),
+
+    btnAdd: $("#btn-add-history-image"),
+
+    modal: $("#history-image-modal"),
+    form: $("#history-image-form"),
+    file: $("#history-image-modal-file"),
+    setActive: $("#history-image-modal-set-active"),
+    modalStatus: $("#history-image-modal-status"),
+    modalError: $("#history-image-modal-error"),
+    submitText: $("#history-image-modal-submit-text"),
+
+    previewWrap: $("#history-image-modal-preview"),
+    previewImg: $("#history-image-modal-preview-img"),
+    previewName: $("#history-image-modal-preview-name"),
+    clearBtn: $("#history-image-modal-clear"),
+
+  };
+
+  const hipState = {
+    q: "",
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 1,
+    inited: false,
+    loading: false,
+  };
+
+  function hipToPublicUrl(fp) {
+    const p = String(fp || "").trim();
+    if (!p) return "";
+    if (/^https?:\/\//i.test(p)) return p;
+    if (p.startsWith("/uploads/")) return `${API_BASE}${p}`;
+    if (p.startsWith("/")) return p;
+    return `/${p}`;
+  }
+
+  function hipSetSectionStatus(msg, { isError = false } = {}) {
+    // Reuse #history-image-total as a lightweight status line (no separate status element in section)
+    if (!hipEls.total) return;
+    hipEls.total.textContent = msg ? String(msg) : "";
+    hipEls.total.style.color = isError ? "#b42318" : "";
+  }
+
+  function hipSetModalStatus(msg, { isError = false } = {}) {
+    if (!hipEls.modalStatus) return;
+    hipEls.modalStatus.textContent = msg ? String(msg) : "";
+    hipEls.modalStatus.style.color = isError ? "#b42318" : "";
+  }
+
+  function hipSetModalError(msg) {
+    if (!hipEls.modalError) return;
+    if (!msg) {
+      hipEls.modalError.hidden = true;
+      hipEls.modalError.textContent = "";
+      return;
+    }
+    hipEls.modalError.hidden = false;
+    hipEls.modalError.textContent = String(msg);
+  }
+
+  function hipResetModal() {
+    hipSetModalError("");
+    hipSetModalStatus("");
+
+    try {
+      if (hipEls.file) hipEls.file.value = "";
+    } catch (_) {
+      // ignore
+    }
+
+    if (hipEls.setActive) hipEls.setActive.checked = true;
+    hipHidePreview();
+
+    if (hipEls.submitText) hipEls.submitText.textContent = "อัปโหลด";
+    if (hipEls.file) hipEls.file.disabled = false;
+    // submit button lives inside the form; disable by querying
+    const submitBtn = hipEls.form?.querySelector?.("button[type='submit']");
+    if (submitBtn) submitBtn.disabled = false;
+  }
+
+  function hipOpenModal() {
+    hipResetModal();
+    openModal("history-image-modal");
+    setTimeout(() => hipEls.file?.focus?.(), 0);
+  }
+
+  function hipCloseModal() {
+    closeModal("history-image-modal");
+  }
+
+  function hipHidePreview() {
+    if (!hipEls.previewWrap) return;
+    hipEls.previewWrap.hidden = true;
+    if (hipEls.previewImg) hipEls.previewImg.removeAttribute("src");
+    if (hipEls.previewName) hipEls.previewName.textContent = "-";
+  }
+
+  function hipShowPreview(file) {
+    if (!hipEls.previewWrap || !hipEls.previewImg || !hipEls.previewName) return;
+
+    const url = URL.createObjectURL(file);
+    hipEls.previewImg.src = url;
+    hipEls.previewName.textContent = `${file.name} (${Math.round((file.size || 0) / 1024)} KB)`;
+    hipEls.previewWrap.hidden = false;
+
+    // revoke when image loads to avoid leaks
+    hipEls.previewImg.onload = () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (_) {
+        // ignore
+      }
+    };
+  }
+
+  function hipRenderRows(items = []) {
+    if (!hipEls.tbody) return;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      hipEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    hipEls.tbody.innerHTML = items
+      .map((r) => {
+        const id = r.history_image_page_id ?? r.id ?? "";
+        const path = String(r.path || "").trim();
+        const active = Number(r.is_active) === 1;
+
+        const imgUrl = path ? hipToPublicUrl(path) : "";
+        const imgCell = imgUrl
+          ? `<img src="${escapeHtml(imgUrl)}" alt="history" style="width:120px; height:auto; border-radius:10px; border:1px solid #eee; background:#fafafa;" />`
+          : `<span class="muted">-</span>`;
+
+        const activeCell = active ? `<span class="badge badge--success">ใช้งาน</span>` : `<span class="muted">-</span>`;
+
+        const btnActivate = active
+          ? `<button class="btn btn-outline btn-sm" type="button" disabled>
+              <i class="fa-solid fa-circle-check"></i> ใช้งานอยู่
+            </button>`
+          : `<button class="btn btn-primary btn-sm" type="button" data-action="activate" data-id="${escapeHtml(id)}">
+              <i class="fa-solid fa-bolt"></i> ตั้งเป็นรูปหลัก
+            </button>`;
+
+        return `
+          <tr>
+            <td>${escapeHtml(id)}</td>
+            <td>${imgCell}</td>
+            <td style="word-break:break-all;">${path ? escapeHtml(path) : "-"}</td>
+            <td>${activeCell}</td>
+            <td>
+              <div class="table-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+                ${btnActivate}
+                <button class="btn btn-danger btn-sm" type="button" data-action="delete" data-id="${escapeHtml(id)}" data-path="${escapeHtml(path)}">
+                  <i class="fa-solid fa-trash"></i> ลบ
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  function hipRenderPagination() {
+    if (!hipEls.pagination) return;
+    hipState.totalPages = calcTotalPages({
+      total: hipState.total,
+      limit: hipState.limit,
+      totalPages: hipState.totalPages,
+    });
+
+    renderPager(hipEls.pagination, {
+      page: hipState.page,
+      totalPages: hipState.totalPages,
+    });
+  }
+
+  async function loadHistoryImagePage() {
+    if (!hipEls.section) return;
+    if (hipState.loading) return;
+    hipState.loading = true;
+
+    try {
+      hipSetSectionStatus("กำลังโหลด...");
+      if (!window.HistoryImagePageAPI?.list) {
+        throw new Error("HistoryImagePageAPI.list not found");
+      }
+
+      hipState.q = String(hipEls.search?.value || "").trim();
+      hipState.limit = toInt(hipEls.limit?.value, hipState.limit || 50) || 50;
+
+      const res = await window.HistoryImagePageAPI.list({
+        q: hipState.q,
+        page: hipState.page,
+        limit: hipState.limit,
+      });
+      const data = res?.data || {};
+      const items = data.items || [];
+      const pag = data.pagination || {};
+
+      hipState.total = Number(pag.total ?? items.length ?? 0);
+      hipState.totalPages = Number(pag.total_pages ?? hipState.totalPages ?? 1);
+      hipState.page = Number(pag.page ?? hipState.page ?? 1);
+      hipState.limit = Number(pag.limit ?? hipState.limit ?? 50);
+
+      hipRenderRows(items);
+      hipRenderPagination();
+      hipSetSectionStatus(`ทั้งหมด ${hipState.total} รายการ`);
+    } catch (err) {
+      hipSetSectionStatus(err?.message || String(err), { isError: true });
+      if (hipEls.tbody) hipEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">โหลดไม่สำเร็จ</td></tr>`;
+    } finally {
+      hipState.loading = false;
+    }
+  }
+
+  function initHistoryImagePageSection() {
+    if (hipState.inited) return;
+    hipState.inited = true;
+
+    hipHidePreview();
+
+    hipEls.btnAdd?.addEventListener("click", () => {
+      hipOpenModal();
+    });
+
+    hipEls.file?.addEventListener("change", () => {
+      const f = hipEls.file?.files?.[0];
+      if (!f) {
+        hipHidePreview();
+        return;
+      }
+      if (!/^image\//i.test(String(f.type || ""))) {
+        hipSetModalError("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+        try {
+          hipEls.file.value = "";
+        } catch (_) {
+          // ignore
+        }
+        hipHidePreview();
+        return;
+      }
+      hipSetModalError("");
+      hipSetModalStatus("");
+      hipShowPreview(f);
+    });
+
+    hipEls.clearBtn?.addEventListener("click", () => {
+      hipSetModalError("");
+      hipSetModalStatus("");
+      try {
+        if (hipEls.file) hipEls.file.value = "";
+      } catch (_) {
+        // ignore
+      }
+      hipHidePreview();
+    });
+
+    hipEls.refreshBtn?.addEventListener("click", () => {
+      loadHistoryImagePage();
+    });
+
+    // search debounce
+    let t = null;
+    hipEls.search?.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        hipState.page = 1;
+        loadHistoryImagePage();
+      }, 300);
+    });
+
+    hipEls.limit?.addEventListener("change", () => {
+      hipState.page = 1;
+      loadHistoryImagePage();
+    });
+
+    hipEls.pagination?.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-page]");
+      if (!btn || btn.disabled) return;
+      const next = toInt(btn.getAttribute("data-page"), 0);
+      if (!next || next < 1 || next > (hipState.totalPages || 1)) return;
+      if (next === hipState.page) return;
+      hipState.page = next;
+      loadHistoryImagePage();
+    });
+
+    hipEls.form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = hipEls.file?.files?.[0];
+      if (!f) {
+        hipSetModalError("กรุณาแนบไฟล์ก่อนอัปโหลด");
+        return;
+      }
+
+      const submitBtn = hipEls.form?.querySelector?.("button[type='submit']");
+
+      try {
+        hipSetModalError("");
+        hipSetModalStatus("กำลังอัปโหลด...");
+        if (hipEls.submitText) hipEls.submitText.textContent = "กำลังอัปโหลด...";
+        if (submitBtn) submitBtn.disabled = true;
+        if (hipEls.file) hipEls.file.disabled = true;
+
+        if (!window.HistoryImagePageAPI?.upload) {
+          throw new Error("HistoryImagePageAPI.upload not found");
+        }
+
+        const setActive = !!hipEls.setActive?.checked;
+        await window.HistoryImagePageAPI.upload(f, { setActive });
+
+        hipSetModalStatus("อัปโหลดสำเร็จ");
+        hipCloseModal();
+        await loadHistoryImagePage();
+      } catch (err) {
+        hipSetModalError(err?.message || String(err));
+        hipSetModalStatus("", { isError: false });
+      } finally {
+        if (hipEls.submitText) hipEls.submitText.textContent = "อัปโหลด";
+        if (submitBtn) submitBtn.disabled = false;
+        if (hipEls.file) hipEls.file.disabled = false;
+      }
+    });
+
+    hipEls.tbody?.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-action");
+      const id = btn.getAttribute("data-id");
+      if (!action || !id) return;
+
+      if (action === "activate") {
+        const ok = confirm("ยืนยันตั้งรูปนี้เป็นรูปที่ใช้งานบนหน้าประวัติ?");
+        if (!ok) return;
+        try {
+          hipSetSectionStatus("กำลังอัปเดต...");
+          await window.HistoryImagePageAPI.activate(id);
+          hipSetSectionStatus("ตั้งค่าเรียบร้อย");
+          await loadHistoryImagePage();
+        } catch (err) {
+          hipSetSectionStatus(err?.message || String(err), { isError: true });
+        }
+      }
+
+      if (action === "delete") {
+        const path = btn.getAttribute("data-path") || "";
+        const okDel = confirm(`ยืนยันลบรูปนี้?\n\n- ID: ${id}\n- ${path}`);
+        if (!okDel) return;
+        try {
+          hipSetSectionStatus("กำลังลบ...");
+          await window.HistoryImagePageAPI.remove(id);
+          hipSetSectionStatus("ลบเรียบร้อย");
+          await loadHistoryImagePage();
+        } catch (err) {
+          hipSetSectionStatus(err?.message || String(err), { isError: true });
+        }
+      }
     });
   }
 

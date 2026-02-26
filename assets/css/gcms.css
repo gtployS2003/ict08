@@ -1186,6 +1186,54 @@ select option {
   background: #fff;
 }
 
+/* =========================
+   History Image modal preview
+   Fix: ตัวอย่างรูปใหญ่/ล้น popup
+========================= */
+#history-image-modal .modal__dialog {
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+}
+
+#history-image-modal .modal__body {
+  overflow: auto;
+}
+
+#history-image-modal .photo-preview {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+#history-image-modal .photo-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 340px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+#history-image-modal .photo-preview__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+#history-image-modal #history-image-modal-preview-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* scrollbar ให้เหมือน detail */
 #user-edit-modal .detail-form::-webkit-scrollbar {
   width: 8px;
