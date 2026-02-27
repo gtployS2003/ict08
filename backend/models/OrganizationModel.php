@@ -5,7 +5,7 @@ require_once __DIR__ . '/../config/db.php';
 
 class OrganizationModel
 {
-    private PDO $db;
+    private $db;
 
     public function __construct(?PDO $pdo = null)
     {

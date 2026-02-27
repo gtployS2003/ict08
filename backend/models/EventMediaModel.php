@@ -4,16 +4,23 @@ declare(strict_types=1);
 
 final class EventMediaModel
 {
-    private string $table = 'event_media';
+    /** @var string */
+    private $table = 'event_media';
 
-    public function __construct(private PDO $pdo) {}
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
+    }
 
     public function countByEventId(int $eventId): int
     {
-        $eventId = max(1, (int)$eventId);
+        $eventId = max(1, (int) $eventId);
         $stmt = $this->pdo->prepare("SELECT COUNT(*) AS c FROM {$this->table} WHERE event_id = :eid");
         $stmt->execute([':eid' => $eventId]);
-        return (int)($stmt->fetchColumn() ?: 0);
+        return (int) ($stmt->fetchColumn() ?: 0);
     }
 
     /**
@@ -30,8 +37,9 @@ final class EventMediaModel
      */
     public function ensureIndexForEvent(int $eventId): array
     {
-        $eventId = max(1, (int)$eventId);
-        if ($eventId <= 0) return ['inserted' => 0, 'source' => 'invalid'];
+        $eventId = max(1, (int) $eventId);
+        if ($eventId <= 0)
+            return ['inserted' => 0, 'source' => 'invalid'];
 
         // If already indexed, do nothing.
         if ($this->countByEventId($eventId) > 0) {
@@ -41,7 +49,7 @@ final class EventMediaModel
         // Determine request_id
         $stmt = $this->pdo->prepare('SELECT request_id FROM event WHERE event_id = :eid LIMIT 1');
         $stmt->execute([':eid' => $eventId]);
-        $requestId = (int)($stmt->fetchColumn() ?: 0);
+        $requestId = (int) ($stmt->fetchColumn() ?: 0);
 
         $sourceType = '';
         $sourceIds = [];
@@ -52,8 +60,9 @@ final class EventMediaModel
             $q->execute([':rid' => $requestId]);
             $rows = $q->fetchAll(PDO::FETCH_ASSOC) ?: [];
             foreach ($rows as $r) {
-                $id = (int)($r['id'] ?? 0);
-                if ($id > 0) $sourceIds[] = $id;
+                $id = (int) ($r['id'] ?? 0);
+                if ($id > 0)
+                    $sourceIds[] = $id;
             }
         } else {
             $sourceType = 'event_report_picture';
@@ -68,8 +77,9 @@ final class EventMediaModel
             $q->execute([':eid' => $eventId]);
             $rows = $q->fetchAll(PDO::FETCH_ASSOC) ?: [];
             foreach ($rows as $r) {
-                $id = (int)($r['id'] ?? 0);
-                if ($id > 0) $sourceIds[] = $id;
+                $id = (int) ($r['id'] ?? 0);
+                if ($id > 0)
+                    $sourceIds[] = $id;
             }
         }
 
@@ -93,7 +103,7 @@ final class EventMediaModel
                 $ins->execute([
                     ':eid' => $eventId,
                     ':stype' => $sourceType,
-                    ':sid' => (int)$sid,
+                    ':sid' => (int) $sid,
                     ':sort' => $sort,
                     ':cover' => $cover,
                 ]);
@@ -115,7 +125,7 @@ final class EventMediaModel
      */
     public function listByEventId(int $eventId): array
     {
-        $eventId = max(1, (int)$eventId);
+        $eventId = max(1, (int) $eventId);
 
         $sql = "
             SELECT

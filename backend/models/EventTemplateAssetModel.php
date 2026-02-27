@@ -6,7 +6,13 @@ final class EventTemplateAssetModel
 {
     private string $table = 'event_template_asset';
 
-    public function __construct(private PDO $pdo) {}
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
+    }
 
     /**
      * @return array<int,array<string,mixed>>

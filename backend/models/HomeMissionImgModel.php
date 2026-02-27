@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 final class HomeMissionImgModel
 {
-    private string $table = 'home_mission_img';
+    /** @var string */
+    private $table = 'home_mission_img';
 
-    public function __construct(private PDO $pdo)
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
     }
 
     /**
@@ -29,7 +34,7 @@ final class HomeMissionImgModel
 
             if (ctype_digit($q)) {
                 $conds[] = 'home_mission_img_id = :id';
-                $params[':id'] = (int)$q;
+                $params[':id'] = (int) $q;
             }
 
             $where = 'WHERE ' . implode(' OR ', $conds);
@@ -46,10 +51,10 @@ final class HomeMissionImgModel
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 
         if (isset($params[':q'])) {
-            $stmt->bindValue(':q', (string)$params[':q'], PDO::PARAM_STR);
+            $stmt->bindValue(':q', (string) $params[':q'], PDO::PARAM_STR);
         }
         if (isset($params[':id'])) {
-            $stmt->bindValue(':id', (int)$params[':id'], PDO::PARAM_INT);
+            $stmt->bindValue(':id', (int) $params[':id'], PDO::PARAM_INT);
         }
 
         $stmt->execute();
@@ -63,7 +68,7 @@ final class HomeMissionImgModel
         if ($q === '') {
             $stmt = $this->pdo->query("SELECT COUNT(*) FROM {$this->table}");
             $n = $stmt ? $stmt->fetchColumn() : 0;
-            return (int)($n ?: 0);
+            return (int) ($n ?: 0);
         }
 
         $conds = ['path LIKE :q'];
@@ -71,25 +76,25 @@ final class HomeMissionImgModel
 
         if (ctype_digit($q)) {
             $conds[] = 'home_mission_img_id = :id';
-            $params[':id'] = (int)$q;
+            $params[':id'] = (int) $q;
         }
 
         $sql = "SELECT COUNT(*) FROM {$this->table} WHERE " . implode(' OR ', $conds);
         $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':q', (string)$params[':q'], PDO::PARAM_STR);
+        $stmt->bindValue(':q', (string) $params[':q'], PDO::PARAM_STR);
         if (isset($params[':id'])) {
-            $stmt->bindValue(':id', (int)$params[':id'], PDO::PARAM_INT);
+            $stmt->bindValue(':id', (int) $params[':id'], PDO::PARAM_INT);
         }
         $stmt->execute();
         $n = $stmt->fetchColumn();
-        return (int)($n ?: 0);
+        return (int) ($n ?: 0);
     }
 
     public function countAll(): int
     {
         $stmt = $this->pdo->query("SELECT COUNT(*) FROM {$this->table}");
         $n = $stmt ? $stmt->fetchColumn() : 0;
-        return (int)($n ?: 0);
+        return (int) ($n ?: 0);
     }
 
     /**
@@ -107,7 +112,7 @@ final class HomeMissionImgModel
     {
         $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (path) VALUES (:path)");
         $stmt->execute([':path' => $path]);
-        return (int)$this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function delete(int $id): bool

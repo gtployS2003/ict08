@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 class NotificationModel
 {
-    public function __construct(private PDO $pdo) {}
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
+    }
 
     /**
      * สร้างแจ้งเตือนแบบผูกกับ event (เช่น ผู้เข้าร่วมงานภายใน)

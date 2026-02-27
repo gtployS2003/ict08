@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 final class NewsDocumentModel
 {
-    private string $table = '`news_document`';
-    private string $documentTable = '`document`';
+    /** @var string */
+    private $table = '`news_document`';
 
-    public function __construct(private PDO $pdo)
+    /** @var string */
+    private $documentTable = '`document`';
+
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
     }
 
     /**
@@ -76,7 +83,7 @@ final class NewsDocumentModel
         } catch (PDOException $e) {
             // Duplicate key -> already attached
             // MySQL: 23000 (integrity constraint violation)
-            if ((string)$e->getCode() === '23000') {
+            if ((string) $e->getCode() === '23000') {
                 return false;
             }
             throw $e;

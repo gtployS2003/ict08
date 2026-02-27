@@ -4,13 +4,21 @@ declare(strict_types=1);
 
 final class PublicityPostModel
 {
-    private static ?string $activityPostIdColumn = null;
+    /** @var string|null */
+    private static $activityPostIdColumn = null;
 
-    public function __construct(private PDO $pdo) {}
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(?PDO $pdo = null)
+    {
+        $this->pdo = $pdo ?: db();
+    }
 
     private function activityPublicityPostColumn(): string
     {
-        if (self::$activityPostIdColumn) return self::$activityPostIdColumn;
+        if (self::$activityPostIdColumn)
+            return self::$activityPostIdColumn;
 
         $stmt = $this->pdo->prepare(
             "SELECT COLUMN_NAME
@@ -22,7 +30,7 @@ final class PublicityPostModel
              LIMIT 1"
         );
         $stmt->execute();
-        $col = (string)($stmt->fetchColumn() ?: '');
+        $col = (string) ($stmt->fetchColumn() ?: '');
         $col = $col === 'publicity_post_id' || $col === 'publicuty_post_id' ? $col : 'publicity_post_id';
         self::$activityPostIdColumn = $col;
         return self::$activityPostIdColumn;
@@ -102,9 +110,9 @@ final class PublicityPostModel
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) {
             if ($k === ':limit' || $k === ':offset') {
-                $stmt->bindValue($k, (int)$v, PDO::PARAM_INT);
+                $stmt->bindValue($k, (int) $v, PDO::PARAM_INT);
             } else {
-                $stmt->bindValue($k, (string)$v, PDO::PARAM_STR);
+                $stmt->bindValue($k, (string) $v, PDO::PARAM_STR);
             }
         }
         $stmt->execute();
@@ -129,11 +137,11 @@ final class PublicityPostModel
         $sql = "SELECT COUNT(*) AS c FROM publicity_post pp {$where}";
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) {
-            $stmt->bindValue($k, (string)$v, PDO::PARAM_STR);
+            $stmt->bindValue($k, (string) $v, PDO::PARAM_STR);
         }
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-        return (int)($row['c'] ?? 0);
+        return (int) ($row['c'] ?? 0);
     }
 
     public function findByEventId(int $eventId): ?array
@@ -167,9 +175,10 @@ final class PublicityPostModel
             throw new RuntimeException('EVENT_NOT_FOUND');
         }
 
-        $title = (string)($ev['title'] ?? '');
-        if ($title === '') $title = 'กิจกรรม #' . $eventId;
-        $content = (string)($ev['detail'] ?? '');
+        $title = (string) ($ev['title'] ?? '');
+        if ($title === '')
+            $title = 'กิจกรรม #' . $eventId;
+        $content = (string) ($ev['detail'] ?? '');
 
         $ins = $this->pdo->prepare('
             INSERT INTO publicity_post
@@ -199,24 +208,25 @@ final class PublicityPostModel
         $touchUpdateAt = false;
 
         foreach ($allowed as $k) {
-            if (!array_key_exists($k, $fields)) continue;
+            if (!array_key_exists($k, $fields))
+                continue;
 
             if ($k === 'is_banner') {
                 $set[] = 'is_banner = :is_banner';
-                $params[':is_banner'] = (int)$fields['is_banner'] ? 1 : 0;
+                $params[':is_banner'] = (int) $fields['is_banner'] ? 1 : 0;
                 continue;
             }
 
             if ($k === 'title') {
                 $set[] = 'title = :title';
-                $params[':title'] = mb_substr((string)$fields['title'], 0, 255);
+                $params[':title'] = mb_substr((string) $fields['title'], 0, 255);
                 $touchUpdateAt = true;
                 continue;
             }
 
             if ($k === 'content') {
                 $set[] = 'content = :content';
-                $params[':content'] = (string)$fields['content'];
+                $params[':content'] = (string) $fields['content'];
                 $touchUpdateAt = true;
                 continue;
             }
@@ -224,7 +234,8 @@ final class PublicityPostModel
 
         if (!$set) {
             $row = $this->findByEventId($eventId);
-            if (!$row) throw new RuntimeException('PUBLICITY_POST_NOT_FOUND');
+            if (!$row)
+                throw new RuntimeException('PUBLICITY_POST_NOT_FOUND');
             return $row;
         }
 
@@ -238,15 +249,16 @@ final class PublicityPostModel
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) {
             if ($k === ':is_banner' || $k === ':eid') {
-                $stmt->bindValue($k, (int)$v, PDO::PARAM_INT);
+                $stmt->bindValue($k, (int) $v, PDO::PARAM_INT);
             } else {
-                $stmt->bindValue($k, (string)$v, PDO::PARAM_STR);
+                $stmt->bindValue($k, (string) $v, PDO::PARAM_STR);
             }
         }
         $stmt->execute();
 
         $row = $this->findByEventId($eventId);
-        if (!$row) throw new RuntimeException('PUBLICITY_POST_NOT_FOUND');
+        if (!$row)
+            throw new RuntimeException('PUBLICITY_POST_NOT_FOUND');
         return $row;
     }
 }

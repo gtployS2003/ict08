@@ -5,11 +5,12 @@ require_once __DIR__ . '/../config/db.php';
 
 class ProvinceModel
 {
-    private PDO $db;
+    /** @var PDO */
+    private $db;
 
-    public function __construct()
+    public function __construct(?PDO $pdo = null)
     {
-        $this->db = db();
+        $this->db = $pdo ?: db();
     }
 
     /**

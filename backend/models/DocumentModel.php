@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 final class DocumentModel
 {
-    private string $table = '`document`';
+    /** @var string */
+    private $table = '`document`';
 
-    public function __construct(private PDO $pdo)
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
     }
 
     /**
@@ -110,7 +115,7 @@ final class DocumentModel
         }
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return (int)($row['cnt'] ?? 0);
+        return (int) ($row['cnt'] ?? 0);
     }
 
     /**
@@ -144,12 +149,12 @@ final class DocumentModel
      */
     public function create(array $data): int
     {
-        $filepath = trim((string)($data['filepath'] ?? ''));
-        $original = trim((string)($data['original_filename'] ?? ''));
-        $stored = trim((string)($data['stored_filename'] ?? ''));
-        $size = (int)($data['file_size'] ?? 0);
-        $isPrivate = (int)($data['is_private'] ?? 0);
-        $isActive = (int)($data['is_active'] ?? 1);
+        $filepath = trim((string) ($data['filepath'] ?? ''));
+        $original = trim((string) ($data['original_filename'] ?? ''));
+        $stored = trim((string) ($data['stored_filename'] ?? ''));
+        $size = (int) ($data['file_size'] ?? 0);
+        $isPrivate = (int) ($data['is_private'] ?? 0);
+        $isActive = (int) ($data['is_active'] ?? 1);
 
         $sql = "
             INSERT INTO {$this->table} (
@@ -178,7 +183,7 @@ final class DocumentModel
         $stmt->bindValue(':is_active', $isActive, PDO::PARAM_INT);
         $stmt->execute();
 
-        return (int)$this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     /**
@@ -186,12 +191,12 @@ final class DocumentModel
      */
     public function update(int $id, array $data): bool
     {
-        $filepath = trim((string)($data['filepath'] ?? ''));
-        $original = trim((string)($data['original_filename'] ?? ''));
-        $stored = trim((string)($data['stored_filename'] ?? ''));
-        $size = (int)($data['file_size'] ?? 0);
-        $isPrivate = (int)($data['is_private'] ?? 0);
-        $isActive = (int)($data['is_active'] ?? 1);
+        $filepath = trim((string) ($data['filepath'] ?? ''));
+        $original = trim((string) ($data['original_filename'] ?? ''));
+        $stored = trim((string) ($data['stored_filename'] ?? ''));
+        $size = (int) ($data['file_size'] ?? 0);
+        $isPrivate = (int) ($data['is_private'] ?? 0);
+        $isActive = (int) ($data['is_active'] ?? 1);
 
         $sql = "
             UPDATE {$this->table}

@@ -5,8 +5,11 @@ require_once __DIR__ . '/../config/db.php';
 
 class UserRoleModel
 {
-    private PDO $db;
-    private string $table = 'user_role';
+    /** @var PDO */
+    private $db;
+
+    /** @var string */
+    private $table = 'user_role';
 
     public function __construct(?PDO $pdo = null)
     {
@@ -161,10 +164,11 @@ class UserRoleModel
         return $row;
     }
 
-     public function findByCode(string $code): ?array
+    public function findByCode(string $code): ?array
     {
         $code = trim($code);
-        if ($code === '') return null;
+        if ($code === '')
+            return null;
 
         $sql = "SELECT `user_role_id`, `code`, `role`
                 FROM `{$this->table}`

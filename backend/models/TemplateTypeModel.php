@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 final class TemplateTypeModel
 {
-    private string $table = 'template_type';
+    /** @var string */
+    private $table = 'template_type';
 
-    public function __construct(private PDO $pdo)
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(?PDO $pdo = null)
     {
+        $this->pdo = $pdo ?: db();
     }
 
     /**
@@ -84,7 +89,7 @@ final class TemplateTypeModel
         }
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return (int)($row['cnt'] ?? 0);
+        return (int) ($row['cnt'] ?? 0);
     }
 
     /**
@@ -123,18 +128,18 @@ final class TemplateTypeModel
      */
     public function create(array $data): int
     {
-        $name = trim((string)($data['template_name'] ?? ''));
-        $detail = (string)($data['detail'] ?? '');
+        $name = trim((string) ($data['template_name'] ?? ''));
+        $detail = (string) ($data['detail'] ?? '');
 
-        $bgFilepath = (string)($data['bg_filepath'] ?? '');
-        $bgOriginal = (string)($data['bg_original_filename'] ?? '');
-        $bgStored = (string)($data['bg_stored_filename'] ?? '');
-        $bgSize = (int)($data['bg_file_size'] ?? 0);
-        $bgUploadedBy = (int)($data['bg_uploaded_by'] ?? 0);
-        $bgUploadedAt = (string)($data['bg_uploaded_at'] ?? '');
+        $bgFilepath = (string) ($data['bg_filepath'] ?? '');
+        $bgOriginal = (string) ($data['bg_original_filename'] ?? '');
+        $bgStored = (string) ($data['bg_stored_filename'] ?? '');
+        $bgSize = (int) ($data['bg_file_size'] ?? 0);
+        $bgUploadedBy = (int) ($data['bg_uploaded_by'] ?? 0);
+        $bgUploadedAt = (string) ($data['bg_uploaded_at'] ?? '');
 
-        $cw = (int)($data['canvas_width'] ?? 0);
-        $ch = (int)($data['canvas_height'] ?? 0);
+        $cw = (int) ($data['canvas_width'] ?? 0);
+        $ch = (int) ($data['canvas_height'] ?? 0);
 
         $sql = "
             INSERT INTO {$this->table} (
@@ -177,7 +182,7 @@ final class TemplateTypeModel
         $stmt->bindValue(':ch', $ch, PDO::PARAM_INT);
         $stmt->execute();
 
-        return (int)$this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     /**
@@ -185,18 +190,18 @@ final class TemplateTypeModel
      */
     public function update(int $id, array $data): bool
     {
-        $name = trim((string)($data['template_name'] ?? ''));
-        $detail = (string)($data['detail'] ?? '');
+        $name = trim((string) ($data['template_name'] ?? ''));
+        $detail = (string) ($data['detail'] ?? '');
 
-        $bgFilepath = (string)($data['bg_filepath'] ?? '');
-        $bgOriginal = (string)($data['bg_original_filename'] ?? '');
-        $bgStored = (string)($data['bg_stored_filename'] ?? '');
-        $bgSize = (int)($data['bg_file_size'] ?? 0);
-        $bgUploadedBy = (int)($data['bg_uploaded_by'] ?? 0);
-        $bgUploadedAt = (string)($data['bg_uploaded_at'] ?? '');
+        $bgFilepath = (string) ($data['bg_filepath'] ?? '');
+        $bgOriginal = (string) ($data['bg_original_filename'] ?? '');
+        $bgStored = (string) ($data['bg_stored_filename'] ?? '');
+        $bgSize = (int) ($data['bg_file_size'] ?? 0);
+        $bgUploadedBy = (int) ($data['bg_uploaded_by'] ?? 0);
+        $bgUploadedAt = (string) ($data['bg_uploaded_at'] ?? '');
 
-        $cw = (int)($data['canvas_width'] ?? 0);
-        $ch = (int)($data['canvas_height'] ?? 0);
+        $cw = (int) ($data['canvas_width'] ?? 0);
+        $ch = (int) ($data['canvas_height'] ?? 0);
 
         $sql = "
             UPDATE {$this->table}

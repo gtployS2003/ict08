@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 final class EventParticipantModel
 {
-    public function __construct(private PDO $pdo) {}
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
+    }
 
     /**
      * Sync participants for an event.

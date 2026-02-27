@@ -6,7 +6,8 @@ require_once __DIR__ . '/../config/db.php';
 
 class PersonPrefixModel
 {
-    private PDO $pdo;
+    /** @var PDO */
+    private $pdo;
 
     public function __construct(?PDO $pdo = null)
     {
@@ -42,8 +43,8 @@ class PersonPrefixModel
      */
     public function list(?string $q, int $page = 1, int $limit = 50): array
     {
-        $page  = max(1, (int)$page);
-        $limit = max(1, min(200, (int)$limit));
+        $page = max(1, (int) $page);
+        $limit = max(1, min(200, (int) $limit));
         $offset = ($page - 1) * $limit;
 
         $where = '';
@@ -60,12 +61,14 @@ class PersonPrefixModel
         // total
         $sqlCount = "SELECT COUNT(*) FROM person_prefix" . $where;
         $stmt = $this->pdo->prepare($sqlCount);
-        foreach ($params as $k => $v) $stmt->bindValue($k, $v, PDO::PARAM_STR);
+        foreach ($params as $k => $v)
+            $stmt->bindValue($k, $v, PDO::PARAM_STR);
         $stmt->execute();
-        $total = (int)$stmt->fetchColumn();
+        $total = (int) $stmt->fetchColumn();
 
-        $totalPages = (int)ceil($total / $limit);
-        if ($totalPages <= 0) $totalPages = 1;
+        $totalPages = (int) ceil($total / $limit);
+        if ($totalPages <= 0)
+            $totalPages = 1;
         if ($page > $totalPages) {
             $page = $totalPages;
             $offset = ($page - 1) * $limit;
@@ -84,7 +87,8 @@ class PersonPrefixModel
         ";
 
         $stmt = $this->pdo->prepare($sql);
-        foreach ($params as $k => $v) $stmt->bindValue($k, $v, PDO::PARAM_STR);
+        foreach ($params as $k => $v)
+            $stmt->bindValue($k, $v, PDO::PARAM_STR);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
@@ -146,7 +150,7 @@ class PersonPrefixModel
         }
         $stmt->execute();
 
-        return (bool)$stmt->fetchColumn();
+        return (bool) $stmt->fetchColumn();
     }
 
     public function create(string $prefixEN, string $prefixTH): array
@@ -162,7 +166,7 @@ class PersonPrefixModel
         $stmt->bindValue(':en', $prefixEN, PDO::PARAM_STR);
         $stmt->execute();
 
-        $id = (int)$this->pdo->lastInsertId();
+        $id = (int) $this->pdo->lastInsertId();
         return $this->getById($id);
     }
 

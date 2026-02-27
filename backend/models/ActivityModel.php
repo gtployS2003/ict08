@@ -4,10 +4,19 @@ declare(strict_types=1);
 
 final class ActivityModel
 {
-    private string $table = 'activity';
-    private static ?string $activityPostIdColumn = null;
+    /** @var PDO */
+    private $pdo;
 
-    public function __construct(private PDO $pdo) {}
+    /** @var string */
+    private $table = 'activity';
+
+    /** @var string|null */
+    private static $activityPostIdColumn = null;
+
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
+    }
 
     /**
      * Some databases have a historical typo column name: `publicuty_post_id`.

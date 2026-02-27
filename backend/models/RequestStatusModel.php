@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 class RequestStatusModel
 {
-    public function __construct(private PDO $pdo)
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
     }
 
     public function list(string $q = '', int $requestTypeId = 0, int $page = 1, int $limit = 50): array

@@ -6,11 +6,12 @@ require_once __DIR__ . '/../config/db.php';
 
 class DepartmentModel
 {
-    private PDO $pdo;
+    /** @var PDO */
+    private $pdo;
 
     public function __construct(?PDO $pdo = null)
     {
-        $this->pdo = $pdo ?? db();
+        $this->pdo = $pdo ?: db();
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     }
 

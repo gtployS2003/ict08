@@ -3,7 +3,13 @@
 declare(strict_types=1);
 
 class NewsModel {
-    public function __construct(private PDO $pdo) {}
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
+    }
 
     private ?bool $supportsUpdateAt = null;
 

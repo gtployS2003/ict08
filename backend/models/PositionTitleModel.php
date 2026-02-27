@@ -6,13 +6,14 @@ require_once __DIR__ . '/../config/db.php';
 
 class PositionTitleModel
 {
-    private PDO $pdo;
+    /** @var PDO */
+    private $pdo;
 
     public function __construct(?PDO $pdo = null)
-    {
-        $this->pdo = $pdo ?? db();
-        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    }
+{
+    $this->pdo = $pdo ?: db();
+    $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+}
 
     /**
      * List position titles with search + filters + pagination
@@ -147,7 +148,7 @@ class PositionTitleModel
         ];
     }
 
-        /**
+    /**
      * Lightweight list for dropdown
      * GET /position-titles/dropdown?organization_id=&department_id=
      *

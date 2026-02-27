@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 final class SiteMissionModel
 {
-    public function __construct(private PDO $pdo)
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
     }
 
     /**

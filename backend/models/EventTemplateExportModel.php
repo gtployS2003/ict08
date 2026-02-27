@@ -4,16 +4,23 @@ declare(strict_types=1);
 
 final class EventTemplateExportModel
 {
-    private string $table = 'event_template_export';
+    /** @var string */
+    private $table = 'event_template_export';
 
-    public function __construct(private PDO $pdo) {}
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
+    }
 
     /**
      * @return array<string,mixed>|null
      */
     public function findByEventTemplateId(int $eventTemplateId): ?array
     {
-        $eventTemplateId = max(1, (int)$eventTemplateId);
+        $eventTemplateId = max(1, (int) $eventTemplateId);
         $sql = "SELECT * FROM {$this->table} WHERE event_template_id = :tid ORDER BY event_template_export_id DESC LIMIT 1";
         $st = $this->pdo->prepare($sql);
         $st->execute([':tid' => $eventTemplateId]);
@@ -34,13 +41,13 @@ final class EventTemplateExportModel
         ?int $fileSize,
         int $exportedBy
     ): int {
-        $eventTemplateId = max(1, (int)$eventTemplateId);
-        $exportedBy = max(0, (int)$exportedBy);
-        $fileSize = $fileSize !== null ? (int)$fileSize : null;
+        $eventTemplateId = max(1, (int) $eventTemplateId);
+        $exportedBy = max(0, (int) $exportedBy);
+        $fileSize = $fileSize !== null ? (int) $fileSize : null;
 
         $existing = $this->findByEventTemplateId($eventTemplateId);
         if ($existing) {
-            $id = (int)($existing['event_template_export_id'] ?? 0);
+            $id = (int) ($existing['event_template_export_id'] ?? 0);
             $sql = "UPDATE {$this->table}
                     SET filepath = :filepath,
                         original_filename = :original_filename,
@@ -75,7 +82,7 @@ final class EventTemplateExportModel
             ':exported_by' => $exportedBy > 0 ? $exportedBy : null,
         ]);
 
-        return (int)$this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     /**
@@ -83,7 +90,7 @@ final class EventTemplateExportModel
      */
     public function findById(int $id): ?array
     {
-        $id = max(1, (int)$id);
+        $id = max(1, (int) $id);
         $sql = "SELECT * FROM {$this->table} WHERE event_template_export_id = :id";
         $st = $this->pdo->prepare($sql);
         $st->execute([':id' => $id]);

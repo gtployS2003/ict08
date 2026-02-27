@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 final class LinkUrlModel
 {
-    private string $table = '`link_url`';
+    /** @var string */
+    private $table = '`link_url`';
 
-    public function __construct(private PDO $pdo)
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
     }
 
     /**
@@ -95,7 +100,7 @@ final class LinkUrlModel
         }
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return (int)($row['cnt'] ?? 0);
+        return (int) ($row['cnt'] ?? 0);
     }
 
     /**
@@ -129,10 +134,10 @@ final class LinkUrlModel
      */
     public function create(array $data, int $writerId = 0): int
     {
-        $title = trim((string)($data['title'] ?? ''));
-        $content = (string)($data['content'] ?? '');
-        $linkUrl = trim((string)($data['link_url'] ?? ''));
-        $isBanner = (int)($data['is_banner'] ?? 0);
+        $title = trim((string) ($data['title'] ?? ''));
+        $content = (string) ($data['content'] ?? '');
+        $linkUrl = trim((string) ($data['link_url'] ?? ''));
+        $isBanner = (int) ($data['is_banner'] ?? 0);
 
         $sql = "
             INSERT INTO {$this->table} (
@@ -160,7 +165,7 @@ final class LinkUrlModel
         $stmt->bindValue(':writer', $writerId, PDO::PARAM_INT);
         $stmt->execute();
 
-        return (int)$this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     /**
@@ -168,10 +173,10 @@ final class LinkUrlModel
      */
     public function update(int $id, array $data, int $writerId = 0): bool
     {
-        $title = trim((string)($data['title'] ?? ''));
-        $content = (string)($data['content'] ?? '');
-        $linkUrl = trim((string)($data['link_url'] ?? ''));
-        $isBanner = (int)($data['is_banner'] ?? 0);
+        $title = trim((string) ($data['title'] ?? ''));
+        $content = (string) ($data['content'] ?? '');
+        $linkUrl = trim((string) ($data['link_url'] ?? ''));
+        $isBanner = (int) ($data['is_banner'] ?? 0);
 
         $sql = "
             UPDATE {$this->table}

@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 final class BannerModel
 {
-    private string $table = 'banner';
-    private static ?string $activityPostIdColumn = null;
+    /** @var PDO */
+    private $pdo;
 
-    public function __construct(private PDO $pdo)
+    /** @var string */
+    private $table = 'banner';
+
+    /** @var string|null */
+    private static $activityPostIdColumn = null;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
     }
 
     /**

@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 final class TypeOfDeviceModel
 {
-    private string $table = 'type_of_device';
+    /** @var string */
+    private $table = 'type_of_device';
 
-    public function __construct(private PDO $pdo)
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(?PDO $pdo = null)
     {
+        $this->pdo = $pdo ?: db();
     }
 
     /**
@@ -89,7 +94,7 @@ final class TypeOfDeviceModel
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return (int)($row['cnt'] ?? 0);
+        return (int) ($row['cnt'] ?? 0);
     }
 
     /**
@@ -125,10 +130,10 @@ final class TypeOfDeviceModel
      */
     public function create(array $data): int
     {
-        $title = trim((string)($data['type_of_device_title'] ?? ''));
-        $hasNetwork = (int)($data['has_network'] ?? 0);
-        $iconOnline = (string)($data['icon_path_online'] ?? '');
-        $iconOffline = (string)($data['icon_path_offline'] ?? '');
+        $title = trim((string) ($data['type_of_device_title'] ?? ''));
+        $hasNetwork = (int) ($data['has_network'] ?? 0);
+        $iconOnline = (string) ($data['icon_path_online'] ?? '');
+        $iconOffline = (string) ($data['icon_path_offline'] ?? '');
 
         $hasNetwork = ($hasNetwork === 1) ? 1 : 0;
 
@@ -153,7 +158,7 @@ final class TypeOfDeviceModel
         $stmt->bindValue(':icon_offline', $iconOffline, PDO::PARAM_STR);
 
         $stmt->execute();
-        return (int)$this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     /**
@@ -162,10 +167,10 @@ final class TypeOfDeviceModel
      */
     public function update(int $id, array $data): bool
     {
-        $title = trim((string)($data['type_of_device_title'] ?? ''));
-        $hasNetwork = (int)($data['has_network'] ?? 0);
-        $iconOnline = (string)($data['icon_path_online'] ?? '');
-        $iconOffline = (string)($data['icon_path_offline'] ?? '');
+        $title = trim((string) ($data['type_of_device_title'] ?? ''));
+        $hasNetwork = (int) ($data['has_network'] ?? 0);
+        $iconOnline = (string) ($data['icon_path_online'] ?? '');
+        $iconOffline = (string) ($data['icon_path_offline'] ?? '');
 
         $hasNetwork = ($hasNetwork === 1) ? 1 : 0;
 

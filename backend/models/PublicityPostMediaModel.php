@@ -4,16 +4,23 @@ declare(strict_types=1);
 
 final class PublicityPostMediaModel
 {
-    private string $table = 'publicity_post_media';
+    /** @var string */
+    private $table = 'publicity_post_media';
 
-    public function __construct(private PDO $pdo) {}
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(?PDO $pdo = null)
+    {
+        $this->pdo = $pdo ?: db();
+    }
 
     /**
      * @return array<int,array{publicity_post_media_id:int,post_id:int,event_media_id:int,sort_order:int,is_cover:int,created_at:mixed}>
      */
     public function listByPostId(int $postId): array
     {
-        $postId = max(1, (int)$postId);
+        $postId = max(1, (int) $postId);
         $sql = "
             SELECT
                 ppm.publicity_post_media_id,
@@ -39,7 +46,7 @@ final class PublicityPostMediaModel
      */
     public function replaceForPostId(int $postId, array $items): void
     {
-        $postId = max(1, (int)$postId);
+        $postId = max(1, (int) $postId);
 
         $this->pdo->beginTransaction();
         try {
@@ -55,10 +62,11 @@ final class PublicityPostMediaModel
                 ");
 
                 foreach ($items as $it) {
-                    $mid = max(1, (int)($it['event_media_id'] ?? 0));
-                    if ($mid <= 0) continue;
-                    $sort = max(1, (int)($it['sort_order'] ?? 1));
-                    $cover = (int)($it['is_cover'] ?? 0) ? 1 : 0;
+                    $mid = max(1, (int) ($it['event_media_id'] ?? 0));
+                    if ($mid <= 0)
+                        continue;
+                    $sort = max(1, (int) ($it['sort_order'] ?? 1));
+                    $cover = (int) ($it['is_cover'] ?? 0) ? 1 : 0;
 
                     $ins->execute([
                         ':pid' => $postId,
