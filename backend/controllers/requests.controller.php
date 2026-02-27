@@ -1398,7 +1398,7 @@ class RequestsController
         return max(0, $maxNo) + 1;
     }
 
-    private function resolveHeadStaffUserId(mixed $headOfRequestId): int
+    private function resolveHeadStaffUserId($headOfRequestId): int
     {
         if ($headOfRequestId === null || $headOfRequestId === '' || !is_numeric($headOfRequestId)) {
             return 0;
