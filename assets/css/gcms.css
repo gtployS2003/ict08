@@ -574,6 +574,35 @@ select option {
   flex-wrap: wrap;
 }
 
+/* ---- Drag reorder (Mission) ---- */
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fafafa;
+  color: rgba(0, 0, 0, 0.55);
+  cursor: grab;
+  user-select: none;
+}
+
+.drag-handle:hover {
+  background: #efe9ff;
+  border-color: rgba(83, 34, 116, 0.35);
+  color: #532274;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+tr.is-dragging {
+  opacity: 0.55;
+}
+
 /* ---- Icon thumbnails (Type of Device) ---- */
 .gcms-icon-wrap {
   display: flex;
@@ -1303,6 +1332,45 @@ select option {
 }
 
 #structure-modal .photo-preview__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* =========================
+   Mission modal preview
+   Fix: ตัวอย่างรูปใหญ่/ล้น popup
+========================= */
+#mission-modal .modal__dialog {
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+}
+
+#mission-modal .modal__body {
+  overflow: auto;
+}
+
+#mission-modal .photo-preview {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+#mission-modal .photo-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 260px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+#mission-modal .photo-preview__meta {
   display: flex;
   align-items: center;
   justify-content: space-between;

@@ -54,6 +54,7 @@ require_once __DIR__ . '/../routes/documents.routes.php';
 require_once __DIR__ . '/../routes/history_image_page.routes.php';
 require_once __DIR__ . '/../routes/site_diractor.routes.php';
 require_once __DIR__ . '/../routes/site_structure.routes.php';
+require_once __DIR__ . '/../routes/site_mission.routes.php';
 
 
 
@@ -137,6 +138,7 @@ try {
     if (history_image_page_routes($method, $segments, $pdo)) exit;
     if (site_diractor_routes($method, $segments, $pdo)) exit;
     if (site_structure_routes($method, $segments, $pdo)) exit;
+    if (site_mission_routes($method, $segments, $pdo)) exit;
 
     fail("Route not found", 404, ["path" => $path, "method" => $method]);
 

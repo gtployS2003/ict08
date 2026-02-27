@@ -220,6 +220,7 @@
     hide($("#btn-add-related-document"));
     hide($("#btn-add-history-image"));
     hide($("#btn-add-diractor"));
+    hide($("#btn-add-mission"));
     hide($("#btn-add-structure"));
 
     // เปิด section ตาม key
@@ -379,6 +380,14 @@
         setTitle("โครงสร้างบุคลากร");
         initStructureSection();
         loadStructures();
+        break;
+
+      case "mission":
+        show($("#section-mission"));
+        show($("#btn-add-mission"));
+        setTitle("ตั้งค่าภารกิจบนเว็บไซต์");
+        initMissionSection();
+        loadMissions();
         break;
 
       case "directors":
@@ -1032,6 +1041,531 @@
       } catch (err) {
         strSetError(err?.message || String(err));
         strSetModalStatus("");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  /* =========================
+   MISSION (SITE MISSION)
+   - Section: #section-mission
+   - Action: #btn-add-mission
+   - Modal: #mission-modal, #mission-form
+   - Inputs: #mission-id, #mission-title, #mission-discription, #mission-sort-order
+   - File: #mission-file
+   - Remove: #mission-remove-photo
+   - Preview: #mission-preview, #mission-preview-img, #mission-preview-name, #mission-clear
+   - Toolbar: #mission-search, #mission-limit, #mission-refresh
+   - Table: #mission-tbody (drag rows to reorder)
+   - Footer: #mission-pagination, #mission-total
+  ========================= */
+
+  const msEls = {
+    section: $("#section-mission"),
+    tbody: $("#mission-tbody"),
+
+    search: $("#mission-search"),
+    limit: $("#mission-limit"),
+    refreshBtn: $("#mission-refresh"),
+    pagination: $("#mission-pagination"),
+    total: $("#mission-total"),
+
+    btnAdd: $("#btn-add-mission"),
+
+    modal: $("#mission-modal"),
+    form: $("#mission-form"),
+    modalTitle: $("#mission-modal-title"),
+    submitText: $("#mission-submit-text"),
+    modalStatus: $("#mission-modal-status"),
+    formError: $("#mission-form-error"),
+
+    inputId: $("#mission-id"),
+    inputTitle: $("#mission-title"),
+    inputDesc: $("#mission-discription"),
+    inputSort: $("#mission-sort-order"),
+
+    file: $("#mission-file"),
+    removePhoto: $("#mission-remove-photo"),
+
+    previewWrap: $("#mission-preview"),
+    previewImg: $("#mission-preview-img"),
+    previewName: $("#mission-preview-name"),
+    clearBtn: $("#mission-clear"),
+  };
+
+  const msState = {
+    q: "",
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 1,
+    inited: false,
+    loading: false,
+    draggingId: null,
+    lastOrder: [],
+  };
+
+  const MS_PLACEHOLDER = "/ict8/assets/image/activity-1.png";
+
+  function msToPublicUrl(fp) {
+    const p = String(fp || "").trim();
+    if (!p) return "";
+    if (/^https?:\/\//i.test(p)) return p;
+    if (p.startsWith("/uploads/")) return `${API_BASE}${p}`;
+    if (p.startsWith("uploads/")) return `${API_BASE}/${p}`;
+    if (p.startsWith("/")) return p;
+    return `/${p}`;
+  }
+
+  function msSetSectionStatus(msg, { isError = false } = {}) {
+    if (!msEls.total) return;
+    msEls.total.textContent = msg ? String(msg) : "";
+    msEls.total.style.color = isError ? "#b42318" : "";
+  }
+
+  function msSetModalStatus(msg, { isError = false } = {}) {
+    if (!msEls.modalStatus) return;
+    msEls.modalStatus.textContent = msg ? String(msg) : "";
+    msEls.modalStatus.style.color = isError ? "#b42318" : "";
+  }
+
+  function msSetError(msg) {
+    if (!msEls.formError) return;
+    if (!msg) {
+      msEls.formError.hidden = true;
+      msEls.formError.textContent = "";
+      return;
+    }
+    msEls.formError.hidden = false;
+    msEls.formError.textContent = String(msg);
+  }
+
+  function msHidePreview() {
+    if (!msEls.previewWrap) return;
+    msEls.previewWrap.hidden = true;
+    if (msEls.previewImg) msEls.previewImg.removeAttribute("src");
+    if (msEls.previewName) msEls.previewName.textContent = "-";
+  }
+
+  function msShowPreviewFromPath(path) {
+    if (!msEls.previewWrap || !msEls.previewImg || !msEls.previewName) return;
+    const p = String(path || "").trim();
+    if (!p) {
+      msHidePreview();
+      return;
+    }
+
+    const url = msToPublicUrl(p);
+    msEls.previewImg.src = url;
+    msEls.previewImg.onerror = () => {
+      try {
+        msEls.previewImg.onerror = null;
+      } catch (_) {
+        // ignore
+      }
+      msEls.previewImg.src = MS_PLACEHOLDER;
+    };
+
+    const filename = p.split("/").filter(Boolean).pop() || p;
+    msEls.previewName.textContent = filename;
+    msEls.previewWrap.hidden = false;
+  }
+
+  function msShowPreviewFromFile(file) {
+    if (!msEls.previewWrap || !msEls.previewImg || !msEls.previewName) return;
+    const url = URL.createObjectURL(file);
+    msEls.previewImg.src = url;
+    msEls.previewName.textContent = file?.name || "-";
+    msEls.previewWrap.hidden = false;
+
+    msEls.previewImg.onload = () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (_) {
+        // ignore
+      }
+    };
+  }
+
+  function msResetModal() {
+    msSetError("");
+    msSetModalStatus("");
+    if (msEls.form) msEls.form.reset();
+    if (msEls.inputId) msEls.inputId.value = "";
+    if (msEls.removePhoto) msEls.removePhoto.checked = false;
+    msHidePreview();
+  }
+
+  async function msOpenModal({ mode = "create", row } = {}) {
+    if (!msEls.modal) return;
+
+    if (mode === "edit" && row) {
+      if (msEls.modalTitle) msEls.modalTitle.textContent = "แก้ไขภารกิจบนเว็บไซต์";
+      if (msEls.submitText) msEls.submitText.textContent = "บันทึกการแก้ไข";
+      msResetModal();
+
+      const id = row.site_mission_id ?? row.id ?? "";
+      const title = row.title ?? "";
+      const desc = row.discription ?? row.description ?? "";
+      const sort = row.sort_order ?? "";
+      const photo = String(row.img_path ?? "").trim();
+
+      if (msEls.inputId) msEls.inputId.value = String(id);
+      if (msEls.inputTitle) msEls.inputTitle.value = String(title);
+      if (msEls.inputDesc) msEls.inputDesc.value = String(desc);
+      if (msEls.inputSort) msEls.inputSort.value = sort === null || sort === undefined ? "" : String(sort);
+
+      openModal("mission-modal");
+      msShowPreviewFromPath(photo);
+    } else {
+      if (msEls.modalTitle) msEls.modalTitle.textContent = "เพิ่มภารกิจบนเว็บไซต์";
+      if (msEls.submitText) msEls.submitText.textContent = "บันทึก";
+      msResetModal();
+      openModal("mission-modal");
+      msShowPreviewFromPath("");
+    }
+
+    setTimeout(() => msEls.inputTitle?.focus?.(), 0);
+  }
+
+  function msCloseModal() {
+    closeModal("mission-modal");
+  }
+
+  function msRenderRows(items) {
+    if (!msEls.tbody) return;
+    const rows = Array.isArray(items) ? items : [];
+    if (!rows.length) {
+      msEls.tbody.innerHTML = `<tr><td colspan="7" class="muted">ยังไม่มีข้อมูล</td></tr>`;
+      msState.lastOrder = [];
+      return;
+    }
+
+    msState.lastOrder = rows.map((x) => Number(x.site_mission_id));
+
+    msEls.tbody.innerHTML = rows
+      .map((r) => {
+        const id = r.site_mission_id;
+        const title = String(r.title || "");
+        const desc = String(r.discription || "");
+        const sort = r.sort_order ?? "";
+        const photo = String(r.img_path || "").trim();
+        const img = photo ? msToPublicUrl(photo) : MS_PLACEHOLDER;
+
+        const descShort = desc.length > 120 ? desc.slice(0, 120) + "…" : desc;
+
+        return `
+          <tr class="mission-row" data-id="${escapeHtml(id)}" draggable="true">
+            <td style="text-align:center;">
+              <span class="drag-handle" title="ลากเพื่อเรียงลำดับ" aria-label="ลากเพื่อเรียงลำดับ">
+                <i class="fa-solid fa-grip-vertical"></i>
+              </span>
+            </td>
+            <td>${escapeHtml(id)}</td>
+            <td>
+              <img src="${escapeHtml(img)}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:10px;border:1px solid #eee;background:#fafafa" onerror="this.onerror=null;this.src='${escapeHtml(MS_PLACEHOLDER)}';" />
+            </td>
+            <td>${escapeHtml(sort === null ? "" : String(sort))}</td>
+            <td>${escapeHtml(title)}</td>
+            <td class="muted">${escapeHtml(descShort)}</td>
+            <td>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-outline btn-sm" type="button" data-action="edit"
+                  data-id="${escapeHtml(id)}"
+                  data-title="${escapeHtml(title)}"
+                  data-discription="${escapeHtml(desc)}"
+                  data-sort_order="${escapeHtml(sort === null ? "" : String(sort))}"
+                  data-photo="${escapeHtml(photo)}"
+                >แก้ไข</button>
+                <button class="btn btn-danger btn-sm" type="button" data-action="delete" data-id="${escapeHtml(id)}" data-title="${escapeHtml(title)}">ลบ</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("\n");
+  }
+
+  function msRenderPagination() {
+    if (!msEls.pagination) return;
+    renderPager(msEls.pagination, { page: msState.page, totalPages: msState.totalPages });
+  }
+
+  async function loadMissions() {
+    if (!msEls.section) return;
+    if (msState.loading) return;
+    msState.loading = true;
+
+    try {
+      msSetSectionStatus("กำลังโหลด...");
+      if (!window.SiteMissionAPI?.list) throw new Error("SiteMissionAPI.list not found");
+
+      msState.q = String(msEls.search?.value || "").trim();
+      msState.limit = toInt(msEls.limit?.value, msState.limit || 50) || 50;
+
+      const res = await window.SiteMissionAPI.list({
+        q: msState.q,
+        page: msState.page,
+        limit: msState.limit,
+      });
+
+      const data = res?.data || {};
+      const items = data.items || [];
+      const pag = data.pagination || {};
+
+      msState.total = Number(pag.total ?? items.length ?? 0);
+      msState.totalPages = Number(pag.total_pages ?? msState.totalPages ?? 1);
+      msState.page = Number(pag.page ?? msState.page ?? 1);
+      msState.limit = Number(pag.limit ?? msState.limit ?? 50);
+
+      msRenderRows(items);
+      msRenderPagination();
+      msSetSectionStatus(`ทั้งหมด ${msState.total} รายการ`);
+    } catch (err) {
+      msSetSectionStatus(err?.message || String(err), { isError: true });
+      if (msEls.tbody) msEls.tbody.innerHTML = `<tr><td colspan="7" class="muted">โหลดไม่สำเร็จ</td></tr>`;
+    } finally {
+      msState.loading = false;
+    }
+  }
+
+  function msGetCurrentOrderIds() {
+    if (!msEls.tbody) return [];
+    return Array.from(msEls.tbody.querySelectorAll("tr[data-id]")).map((tr) => Number(tr.getAttribute("data-id")));
+  }
+
+  function msBindDragAndDropOnce() {
+    if (!msEls.tbody || msEls.tbody.__MISSION_DND_BOUND__) return;
+    msEls.tbody.__MISSION_DND_BOUND__ = true;
+
+    let dragEl = null;
+
+    msEls.tbody.addEventListener("dragstart", (e) => {
+      const tr = e.target?.closest?.("tr[data-id]");
+      if (!tr) return;
+      // only start drag from handle
+      if (!e.target?.closest?.(".drag-handle")) {
+        e.preventDefault();
+        return;
+      }
+      dragEl = tr;
+      tr.classList.add("is-dragging");
+      try {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", tr.getAttribute("data-id") || "");
+      } catch (_) {
+        // ignore
+      }
+    });
+
+    msEls.tbody.addEventListener("dragend", () => {
+      if (dragEl) dragEl.classList.remove("is-dragging");
+      dragEl = null;
+    });
+
+    msEls.tbody.addEventListener("dragover", (e) => {
+      if (!dragEl) return;
+      e.preventDefault();
+
+      const over = e.target?.closest?.("tr[data-id]");
+      if (!over || over === dragEl) return;
+
+      const rect = over.getBoundingClientRect();
+      const isAfter = e.clientY > rect.top + rect.height / 2;
+      if (isAfter) {
+        over.after(dragEl);
+      } else {
+        over.before(dragEl);
+      }
+    });
+
+    msEls.tbody.addEventListener("drop", async (e) => {
+      if (!dragEl) return;
+      e.preventDefault();
+
+      // Reorder is only safe when all items are visible.
+      if (msState.page !== 1 || msState.total > msState.limit) {
+        msSetSectionStatus("การเรียงลำดับต้องอยู่หน้า 1 และตั้ง limit ให้แสดงทั้งหมด", { isError: true });
+        // revert by reloading
+        await loadMissions();
+        return;
+      }
+
+      const ids = msGetCurrentOrderIds();
+      const same = ids.length === msState.lastOrder.length && ids.every((x, i) => x === msState.lastOrder[i]);
+      if (same) return;
+
+      try {
+        msSetSectionStatus("กำลังบันทึกลำดับ...");
+        await window.SiteMissionAPI.reorder(ids);
+        msSetSectionStatus("บันทึกลำดับสำเร็จ");
+        await loadMissions();
+      } catch (err) {
+        msSetSectionStatus(err?.message || String(err), { isError: true });
+        await loadMissions();
+      }
+    });
+  }
+
+  function initMissionSection() {
+    if (msState.inited) return;
+    msState.inited = true;
+
+    if (msEls.limit && !msEls.limit.value) msEls.limit.value = String(msState.limit);
+
+    msBindDragAndDropOnce();
+
+    msEls.btnAdd?.addEventListener("click", () => msOpenModal({ mode: "create" }));
+    msEls.refreshBtn?.addEventListener("click", () => loadMissions());
+
+    let t = null;
+    msEls.search?.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        msState.page = 1;
+        loadMissions();
+      }, 300);
+    });
+
+    msEls.limit?.addEventListener("change", () => {
+      msState.page = 1;
+      loadMissions();
+    });
+
+    msEls.pagination?.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-page]");
+      if (!btn || btn.disabled) return;
+      const next = toInt(btn.getAttribute("data-page"), 0);
+      if (!next || next < 1 || next > (msState.totalPages || 1)) return;
+      if (next === msState.page) return;
+      msState.page = next;
+      loadMissions();
+    });
+
+    msEls.file?.addEventListener("change", () => {
+      const f = msEls.file?.files?.[0];
+      if (!f) {
+        const currentSrc = String(msEls.previewImg?.getAttribute("src") || "").trim();
+        if (!currentSrc) msShowPreviewFromPath("");
+        return;
+      }
+      if (!/^image\//i.test(String(f.type || ""))) {
+        msSetError("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+        try {
+          msEls.file.value = "";
+        } catch (_) {
+          // ignore
+        }
+        return;
+      }
+      if (msEls.removePhoto) msEls.removePhoto.checked = false;
+      msSetError("");
+      msSetModalStatus("");
+      msShowPreviewFromFile(f);
+    });
+
+    msEls.clearBtn?.addEventListener("click", () => {
+      try {
+        if (msEls.file) msEls.file.value = "";
+      } catch (_) {
+        // ignore
+      }
+      msSetError("");
+      msSetModalStatus("");
+      msShowPreviewFromPath("");
+    });
+
+    msEls.removePhoto?.addEventListener("change", () => {
+      if (msEls.removePhoto.checked) msShowPreviewFromPath("");
+    });
+
+    msEls.tbody?.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-action");
+      const id = btn.getAttribute("data-id");
+      if (!action || !id) return;
+
+      if (action === "edit") {
+        const row = {
+          site_mission_id: id,
+          title: btn.getAttribute("data-title") || "",
+          discription: btn.getAttribute("data-discription") || "",
+          sort_order: btn.getAttribute("data-sort_order") || "",
+          img_path: btn.getAttribute("data-photo") || "",
+        };
+        await msOpenModal({ mode: "edit", row });
+        return;
+      }
+
+      if (action === "delete") {
+        const title = btn.getAttribute("data-title") || id;
+        const okDel = confirm(`ยืนยันลบภารกิจ\n\n- ${title}`);
+        if (!okDel) return;
+
+        try {
+          msSetSectionStatus("กำลังลบ...");
+          await window.SiteMissionAPI.remove(id);
+          msSetSectionStatus("ลบเรียบร้อย");
+
+          const oldPage = msState.page;
+          await loadMissions();
+          if (msState.total === 0 && oldPage > 1) {
+            msState.page = oldPage - 1;
+            await loadMissions();
+          }
+        } catch (err) {
+          msSetSectionStatus(err?.message || String(err), { isError: true });
+        }
+      }
+    });
+
+    msEls.form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!window.SiteMissionAPI) return;
+
+      const idRaw = String(msEls.inputId?.value || "").trim();
+      const title = String(msEls.inputTitle?.value || "").trim();
+      const discription = String(msEls.inputDesc?.value || "").trim();
+      const sortOrder = String(msEls.inputSort?.value || "").trim();
+      const file = msEls.file?.files?.[0];
+      const removePhoto = !!msEls.removePhoto?.checked;
+
+      if (!title || !discription) {
+        msSetError("กรุณากรอกข้อมูลให้ครบ: หัวข้อ และรายละเอียด");
+        return;
+      }
+
+      const submitBtn = msEls.form?.querySelector?.("button[type='submit']");
+
+      try {
+        msSetError("");
+        msSetModalStatus("กำลังบันทึก...");
+        if (submitBtn) submitBtn.disabled = true;
+
+        const fd = new FormData();
+        fd.append("title", title);
+        fd.append("discription", discription);
+        if (sortOrder) fd.append("sort_order", sortOrder);
+
+        if (idRaw) {
+          fd.append("remove_photo", removePhoto ? "1" : "0");
+        }
+        if (file) fd.append("file", file);
+
+        if (idRaw) {
+          await window.SiteMissionAPI.update(idRaw, fd);
+        } else {
+          await window.SiteMissionAPI.create(fd);
+        }
+
+        msSetModalStatus("บันทึกสำเร็จ");
+        msCloseModal();
+        await loadMissions();
+      } catch (err) {
+        msSetError(err?.message || String(err));
+        msSetModalStatus("");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
       }
