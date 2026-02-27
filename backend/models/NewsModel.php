@@ -7,13 +7,14 @@ class NewsModel
     /** @var PDO */
     private $pdo;
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
-
     /** @var bool|null */
     private $supportsUpdateAt = null;
+
+    public function __construct($pdo = null)
+    {
+        $this->pdo = ($pdo instanceof PDO) ? $pdo : db();
+    }
+
 
     private function tableHasColumn(string $table, string $column): bool
     {
