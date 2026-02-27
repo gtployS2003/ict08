@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 class LineService
 {
-    private string $accessToken;
+    /** @var string */
+    private $accessToken;
 
     public function __construct(string $accessToken)
     {
