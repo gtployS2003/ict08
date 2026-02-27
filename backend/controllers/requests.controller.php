@@ -28,7 +28,7 @@ class RequestsController
     private const REQUEST_TYPE_REPAIR = 3; // แจ้งเสีย/ซ่อมอุปกรณ์
     private const REQUEST_TYPE_OTHER = 4; // ขอใช้บริการอื่น ๆ ของหน่วยงาน
 
-        /** @var PDO */
+    /** @var PDO */
     private $pdo;
 
     public function __construct(PDO $pdo)
@@ -45,9 +45,9 @@ class RequestsController
         try {
             $this->requireStaffAccess();
 
-            $q = trim((string)($_GET['search'] ?? $_GET['q'] ?? ''));
-            $page = max(1, (int)($_GET['page'] ?? 1));
-            $limit = max(1, min(200, (int)($_GET['limit'] ?? 50)));
+            $q = trim((string) ($_GET['search'] ?? $_GET['q'] ?? ''));
+            $page = max(1, (int) ($_GET['page'] ?? 1));
+            $limit = max(1, min(200, (int) ($_GET['limit'] ?? 50)));
             $offset = ($page - 1) * $limit;
 
             $params = [];
@@ -71,7 +71,7 @@ class RequestsController
                 $stmtCount->bindValue($k, $v, PDO::PARAM_STR);
             }
             $stmtCount->execute();
-            $total = (int)($stmtCount->fetchColumn() ?: 0);
+            $total = (int) ($stmtCount->fetchColumn() ?: 0);
 
             $sql = "
                 SELECT
@@ -123,7 +123,7 @@ class RequestsController
                     'page' => $page,
                     'limit' => $limit,
                     'total' => $total,
-                    'totalPages' => (int)ceil($total / max(1, $limit)),
+                    'totalPages' => (int) ceil($total / max(1, $limit)),
                 ],
             ]);
         } catch (Throwable $e) {
@@ -143,7 +143,7 @@ class RequestsController
         try {
             $this->requireStaffAccess();
 
-            $id = max(1, (int)$id);
+            $id = max(1, (int) $id);
 
             $sql = "
                 SELECT
@@ -245,7 +245,7 @@ class RequestsController
         try {
             $me = $this->requireStaffAccess(true);
 
-            $id = max(1, (int)$id);
+            $id = max(1, (int) $id);
             $body = read_json_body();
 
             $model = new RequestModel($this->pdo);
@@ -259,7 +259,7 @@ class RequestsController
             }
 
             // request_type is immutable on this page
-            $requestTypeId = (int)($req['request_type'] ?? 0);
+            $requestTypeId = (int) ($req['request_type'] ?? 0);
             if ($requestTypeId <= 0) {
                 json_response([
                     'error' => true,
@@ -269,8 +269,8 @@ class RequestsController
             }
 
             $subject = array_key_exists('subject', $body)
-                ? trim((string)($body['subject'] ?? ''))
-                : (string)($req['subject'] ?? '');
+                ? trim((string) ($body['subject'] ?? ''))
+                : (string) ($req['subject'] ?? '');
 
             if ($subject === '') {
                 json_response([
@@ -288,11 +288,11 @@ class RequestsController
             }
 
             $detail = array_key_exists('detail', $body)
-                ? (string)($body['detail'] ?? '')
-                : (string)($req['detail'] ?? '');
+                ? (string) ($body['detail'] ?? '')
+                : (string) ($req['detail'] ?? '');
 
-            $start = array_key_exists('start_date_time', $body) ? trim((string)($body['start_date_time'] ?? '')) : (string)($req['start_date_time'] ?? '');
-            $end = array_key_exists('end_date_time', $body) ? trim((string)($body['end_date_time'] ?? '')) : (string)($req['end_date_time'] ?? '');
+            $start = array_key_exists('start_date_time', $body) ? trim((string) ($body['start_date_time'] ?? '')) : (string) ($req['start_date_time'] ?? '');
+            $end = array_key_exists('end_date_time', $body) ? trim((string) ($body['end_date_time'] ?? '')) : (string) ($req['end_date_time'] ?? '');
 
             $startVal = ($start === '' ? null : $start);
             $endVal = ($end === '' ? null : $end);
@@ -326,12 +326,13 @@ class RequestsController
             $headRaw = $body['head_of_request_id'] ?? null;
             $headId = null;
             if ($headRaw !== null && $headRaw !== '' && is_numeric($headRaw)) {
-                $headId = (int)$headRaw;
-                if ($headId <= 0) $headId = null;
+                $headId = (int) $headRaw;
+                if ($headId <= 0)
+                    $headId = null;
             }
 
             $requestSubTypeId = $req['request_sub_type'] ?? null;
-            $subTypeInt = (is_numeric($requestSubTypeId) && (int)$requestSubTypeId > 0) ? (int)$requestSubTypeId : 0;
+            $subTypeInt = (is_numeric($requestSubTypeId) && (int) $requestSubTypeId > 0) ? (int) $requestSubTypeId : 0;
             if ($headId !== null) {
                 if ($subTypeInt <= 0) {
                     json_response([
@@ -356,8 +357,9 @@ class RequestsController
             $urgRaw = $body['urgency_id'] ?? null;
             $urgencyId = null;
             if ($urgRaw !== null && $urgRaw !== '' && is_numeric($urgRaw)) {
-                $urgencyId = (int)$urgRaw;
-                if ($urgencyId <= 0) $urgencyId = null;
+                $urgencyId = (int) $urgRaw;
+                if ($urgencyId <= 0)
+                    $urgencyId = null;
             }
             if ($urgencyId !== null) {
                 $chkUrg = $this->pdo->prepare('SELECT 1 FROM urgency WHERE urgency_id = :id LIMIT 1');
@@ -375,8 +377,9 @@ class RequestsController
             $statusRaw = $body['current_status_id'] ?? null;
             $statusId = null;
             if ($statusRaw !== null && $statusRaw !== '' && is_numeric($statusRaw)) {
-                $statusId = (int)$statusRaw;
-                if ($statusId <= 0) $statusId = null;
+                $statusId = (int) $statusRaw;
+                if ($statusId <= 0)
+                    $statusId = null;
             }
 
             if ($statusId !== null) {
@@ -391,7 +394,7 @@ class RequestsController
                 }
             } else {
                 // keep existing if still valid, else set default
-                $existingSid = (int)($req['current_status_id'] ?? 0);
+                $existingSid = (int) ($req['current_status_id'] ?? 0);
                 if ($existingSid > 0) {
                     $chkStatus = $this->pdo->prepare('SELECT 1 FROM request_status WHERE status_id = :sid AND request_type_id = :rt LIMIT 1');
                     $chkStatus->execute([':sid' => $existingSid, ':rt' => $requestTypeId]);
@@ -404,20 +407,20 @@ class RequestsController
                     $stmtDef = $this->pdo->prepare('SELECT status_id FROM request_status WHERE request_type_id = :rt ORDER BY sort_order ASC, status_id ASC LIMIT 1');
                     $stmtDef->execute([':rt' => $requestTypeId]);
                     $defSid = $stmtDef->fetchColumn();
-                    $statusId = (is_numeric($defSid) && (int)$defSid > 0) ? (int)$defSid : null;
+                    $statusId = (is_numeric($defSid) && (int) $defSid > 0) ? (int) $defSid : null;
                 }
             }
 
             // approve_by_id + approve_channel_id are stored when status becomes 'approved'
-            $existingStatusId = (int)($req['current_status_id'] ?? 0);
+            $existingStatusId = (int) ($req['current_status_id'] ?? 0);
             $oldCode = $existingStatusId > 0 ? $this->getStatusCodeById($existingStatusId) : null;
-            $newCode = ($statusId !== null && $statusId > 0) ? $this->getStatusCodeById((int)$statusId) : $oldCode;
+            $newCode = ($statusId !== null && $statusId > 0) ? $this->getStatusCodeById((int) $statusId) : $oldCode;
 
             $setApproveMeta = ($newCode === 'approved' && $oldCode !== 'approved');
 
-            $userId = (int)($me['user_id'] ?? 0);
+            $userId = (int) ($me['user_id'] ?? 0);
             if ($userId <= 0) {
-                $userId = (int)($this->getAuthUserId() ?? 0);
+                $userId = (int) ($this->getAuthUserId() ?? 0);
             }
 
             $approveById = null;
@@ -476,9 +479,9 @@ class RequestsController
 
             if ($setApproveMeta) {
                 // side effects when request transitions to approved
-                $updatedBy = (int)($me['user_id'] ?? 0);
+                $updatedBy = (int) ($me['user_id'] ?? 0);
                 if ($updatedBy <= 0) {
-                    $updatedBy = (int)($this->getAuthUserId() ?? 0);
+                    $updatedBy = (int) ($this->getAuthUserId() ?? 0);
                 }
                 if ($updatedBy <= 0) {
                     $updatedBy = 0;
@@ -523,7 +526,7 @@ class RequestsController
         try {
             $me = $this->requireStaffAccess(true);
 
-            $id = max(1, (int)$id);
+            $id = max(1, (int) $id);
             $model = new RequestModel($this->pdo);
             $req = $model->findById($id);
             if (!$req) {
@@ -534,9 +537,9 @@ class RequestsController
                 return;
             }
 
-            $uploadedBy = (int)($me['user_id'] ?? 0);
+            $uploadedBy = (int) ($me['user_id'] ?? 0);
             if ($uploadedBy <= 0) {
-                $uploadedBy = (int)($this->getAuthUserId() ?? 0);
+                $uploadedBy = (int) ($this->getAuthUserId() ?? 0);
             }
             if ($uploadedBy <= 0) {
                 $uploadedBy = 0;
@@ -633,7 +636,7 @@ class RequestsController
         try {
             $this->requireStaffAccess();
 
-            $id = max(1, (int)$id);
+            $id = max(1, (int) $id);
             $model = new RequestModel($this->pdo);
             $req = $model->findById($id);
             if (!$req) {
@@ -1022,8 +1025,8 @@ class RequestsController
                 try {
                     $notifSvc = new NotificationService($this->pdo);
                     $dispatch = $notifSvc->dispatchToStaff(
-                        (int)($notifMeta['notification_type_id'] ?? 0),
-                        (string)($notifMeta['message'] ?? '')
+                        (int) ($notifMeta['notification_type_id'] ?? 0),
+                        (string) ($notifMeta['message'] ?? '')
                     );
                     // log เฉย ๆ ไม่ให้กระทบ response
                     if (($dispatch['ok'] ?? false) !== true) {
@@ -1061,7 +1064,7 @@ class RequestsController
         try {
             $me = $this->requireStaffAccess(true);
 
-            $requestId = max(1, (int)$requestId);
+            $requestId = max(1, (int) $requestId);
             $statusCode = trim($statusCode);
 
             // load request
@@ -1075,7 +1078,7 @@ class RequestsController
                 return;
             }
 
-            $requestTypeId = (int)($req['request_type'] ?? 0);
+            $requestTypeId = (int) ($req['request_type'] ?? 0);
             if ($requestTypeId <= 0) {
                 json_response([
                     'error' => true,
@@ -1094,15 +1097,15 @@ class RequestsController
                 return;
             }
 
-            $approverId = (int)($me['user_id'] ?? 0);
+            $approverId = (int) ($me['user_id'] ?? 0);
             if ($approverId <= 0) {
-                $approverId = (int)($this->getAuthUserId() ?? 0);
+                $approverId = (int) ($this->getAuthUserId() ?? 0);
             }
 
             $statusCodeNorm = strtolower($statusCode);
             $isApprovedTarget = ($statusCodeNorm === 'approved');
 
-            $existingStatusId = (int)($req['current_status_id'] ?? 0);
+            $existingStatusId = (int) ($req['current_status_id'] ?? 0);
             $oldCode = $existingStatusId > 0 ? $this->getStatusCodeById($existingStatusId) : null;
             $isApprovedTransition = ($isApprovedTarget && $oldCode !== 'approved');
 
@@ -1166,7 +1169,7 @@ class RequestsController
                 'message' => 'Updated',
                 'data' => array_merge(
                     $updated ?? ['request_id' => $requestId, 'current_status_id' => $targetStatusId],
-                    $eventMeta && isset($eventMeta['event_id']) ? ['event_id' => (int)$eventMeta['event_id']] : []
+                    $eventMeta && isset($eventMeta['event_id']) ? ['event_id' => (int) $eventMeta['event_id']] : []
                 ),
             ]);
         } catch (Throwable $e) {
@@ -1195,16 +1198,17 @@ class RequestsController
      */
     private function handleApprovedSideEffects(int $requestId, array $requestRow, array $overrides, int $updatedByUserId): array
     {
-        $requestId = max(1, (int)$requestId);
+        $requestId = max(1, (int) $requestId);
 
-        $updatedByUserId = (int)$updatedByUserId;
-        if ($updatedByUserId < 0) $updatedByUserId = 0;
+        $updatedByUserId = (int) $updatedByUserId;
+        if ($updatedByUserId < 0)
+            $updatedByUserId = 0;
 
         $req = array_merge($requestRow, $overrides);
 
-        $requestTypeId = (int)($req['request_type'] ?? 0);
-        $subject = trim((string)($req['subject'] ?? ''));
-        $detail = (string)($req['detail'] ?? '');
+        $requestTypeId = (int) ($req['request_type'] ?? 0);
+        $subject = trim((string) ($req['subject'] ?? ''));
+        $detail = (string) ($req['detail'] ?? '');
 
         // 1) create/find event
         $eventModel = new EventModel($this->pdo);
@@ -1214,7 +1218,7 @@ class RequestsController
         $eventId = 0;
 
         if ($existingEvent && isset($existingEvent['event_id'])) {
-            $eventId = (int)$existingEvent['event_id'];
+            $eventId = (int) $existingEvent['event_id'];
         } else {
             $eventStatusId = $this->getDefaultEventStatusIdByRequestType($requestTypeId);
 
@@ -1248,7 +1252,7 @@ class RequestsController
         $linkLine = $eventLink !== '' ? ("\nแก้ไขรายละเอียดงาน: " . $eventLink) : '';
 
         // 3) recipients
-        $requesterId = (int)($req['requester_id'] ?? 0);
+        $requesterId = (int) ($req['requester_id'] ?? 0);
         $headOfRequestId = $req['head_of_request_id'] ?? null;
         $headUserId = $this->resolveHeadStaffUserId($headOfRequestId);
 
@@ -1298,14 +1302,16 @@ class RequestsController
      */
     private function dispatchApprovedJobs(array $jobs): void
     {
-        if (empty($jobs)) return;
+        if (empty($jobs))
+            return;
 
         try {
             $svc = new NotificationService($this->pdo);
             foreach ($jobs as $j) {
-                $uid = (int)($j['user_id'] ?? 0);
-                $msg = trim((string)($j['message'] ?? ''));
-                if ($uid <= 0 || $msg === '') continue;
+                $uid = (int) ($j['user_id'] ?? 0);
+                $msg = trim((string) ($j['message'] ?? ''));
+                if ($uid <= 0 || $msg === '')
+                    continue;
                 $resp = $svc->dispatchToUsers([$uid], $msg);
                 if (($resp['ok'] ?? false) !== true) {
                     error_log('[REQUESTS] dispatchToUsers not ok: ' . json_encode($resp, JSON_UNESCAPED_UNICODE));
@@ -1324,8 +1330,9 @@ class RequestsController
 
     private function getDefaultEventStatusIdByRequestType(int $requestTypeId): ?int
     {
-        $requestTypeId = max(0, (int)$requestTypeId);
-        if ($requestTypeId <= 0) return null;
+        $requestTypeId = max(0, (int) $requestTypeId);
+        if ($requestTypeId <= 0)
+            return null;
 
         $stmt = $this->pdo->prepare('
             SELECT event_status_id
@@ -1336,7 +1343,7 @@ class RequestsController
         ');
         $stmt->execute([':rt' => $requestTypeId]);
         $id = $stmt->fetchColumn();
-        return (is_numeric($id) && (int)$id > 0) ? (int)$id : null;
+        return (is_numeric($id) && (int) $id > 0) ? (int) $id : null;
     }
 
     /**
@@ -1352,14 +1359,14 @@ class RequestsController
         if ($startDatetime !== '') {
             try {
                 $dt = new DateTimeImmutable($startDatetime);
-                $y = (int)$dt->format('Y');
+                $y = (int) $dt->format('Y');
             } catch (Throwable $e) {
                 $y = 0;
             }
         }
 
         if ($y <= 0) {
-            $y = (int)date('Y');
+            $y = (int) date('Y');
         }
 
         // Convert to Thai B.E.
@@ -1372,7 +1379,7 @@ class RequestsController
      */
     private function getNextEventRoundNo(int $eventYearBE): int
     {
-        $eventYearBE = (int)$eventYearBE;
+        $eventYearBE = (int) $eventYearBE;
         if ($eventYearBE <= 0) {
             $eventYearBE = $this->computeEventYearBE(null);
         }
@@ -1387,7 +1394,7 @@ class RequestsController
         ');
         $stmt->execute([':y' => $eventYearBE]);
         $max = $stmt->fetchColumn();
-        $maxNo = (is_numeric($max) ? (int)$max : 0);
+        $maxNo = (is_numeric($max) ? (int) $max : 0);
         return max(0, $maxNo) + 1;
     }
 
@@ -1396,8 +1403,9 @@ class RequestsController
         if ($headOfRequestId === null || $headOfRequestId === '' || !is_numeric($headOfRequestId)) {
             return 0;
         }
-        $hid = (int)$headOfRequestId;
-        if ($hid <= 0) return 0;
+        $hid = (int) $headOfRequestId;
+        if ($hid <= 0)
+            return 0;
 
         // Join with `user` via head_of_request.staff_id (FK -> user.user_id)
         $stmt = $this->pdo->prepare('
@@ -1409,21 +1417,25 @@ class RequestsController
         ');
         $stmt->execute([':id' => $hid]);
         $uid = $stmt->fetchColumn();
-        return (is_numeric($uid) && (int)$uid > 0) ? (int)$uid : 0;
+        return (is_numeric($uid) && (int) $uid > 0) ? (int) $uid : 0;
     }
 
     private function buildEventEditUrl(int $eventId): string
     {
-        $eventId = max(0, (int)$eventId);
-        if ($eventId <= 0) return '';
+        $eventId = max(0, (int) $eventId);
+        if ($eventId <= 0)
+            return '';
 
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = (string)($_SERVER['HTTP_HOST'] ?? '');
-        if ($host === '') return '';
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
+        if ($host === '')
+            return '';
 
         $basePath = env('BASE_PATH', '/ict8') ?: '/ict8';
-        if ($basePath === '') $basePath = '/ict8';
-        if ($basePath[0] !== '/') $basePath = '/' . $basePath;
+        if ($basePath === '')
+            $basePath = '/ict8';
+        if ($basePath[0] !== '/')
+            $basePath = '/' . $basePath;
 
         return $scheme . '://' . $host . rtrim($basePath, '/') . '/schedule/event-edit.html?event_id=' . $eventId;
     }
@@ -1431,7 +1443,8 @@ class RequestsController
     private function getStatusIdByCode(int $requestTypeId, string $statusCode): ?int
     {
         $statusCode = trim($statusCode);
-        if ($requestTypeId <= 0 || $statusCode === '') return null;
+        if ($requestTypeId <= 0 || $statusCode === '')
+            return null;
 
         $sql = "
             SELECT status_id
@@ -1446,19 +1459,21 @@ class RequestsController
             ':code' => $statusCode,
         ]);
         $sid = $stmt->fetchColumn();
-        if (!is_numeric($sid) || (int)$sid <= 0) return null;
-        return (int)$sid;
+        if (!is_numeric($sid) || (int) $sid <= 0)
+            return null;
+        return (int) $sid;
     }
 
     private function getChannelIdByName(string $channelName): ?int
     {
         $name = strtolower(trim($channelName));
-        if ($name === '') return null;
+        if ($name === '')
+            return null;
 
         $stmt = $this->pdo->prepare('SELECT channel_id FROM channel WHERE LOWER(channel) = :c LIMIT 1');
         $stmt->execute([':c' => $name]);
         $id = $stmt->fetchColumn();
-        return (is_numeric($id) && (int)$id > 0) ? (int)$id : null;
+        return (is_numeric($id) && (int) $id > 0) ? (int) $id : null;
     }
 
     /**
@@ -1467,12 +1482,14 @@ class RequestsController
      */
     private function resolveApproveById(int $requestTypeId, int $userId): ?int
     {
-        $requestTypeId = max(0, (int)$requestTypeId);
-        $userId = max(0, (int)$userId);
-        if ($requestTypeId <= 0 || $userId <= 0) return null;
+        $requestTypeId = max(0, (int) $requestTypeId);
+        $userId = max(0, (int) $userId);
+        if ($requestTypeId <= 0 || $userId <= 0)
+            return null;
 
         $notifTypeId = $this->resolveNotificationTypeIdForRequestType($requestTypeId);
-        if ($notifTypeId === null) return null;
+        if ($notifTypeId === null)
+            return null;
 
         $stmt = $this->pdo->prepare('
             SELECT id
@@ -1484,28 +1501,34 @@ class RequestsController
         ');
         $stmt->execute([':tid' => $notifTypeId, ':uid' => $userId]);
         $id = $stmt->fetchColumn();
-        return (is_numeric($id) && (int)$id > 0) ? (int)$id : null;
+        return (is_numeric($id) && (int) $id > 0) ? (int) $id : null;
     }
 
     private function resolveNotificationTypeIdForRequestType(int $requestTypeId): ?int
     {
-        // Keep mapping consistent with NotificationService
-        return match ($requestTypeId) {
-            3 => NotificationService::NOTIF_TYPE_REQUEST_REPAIR,
-            4 => NotificationService::NOTIF_TYPE_REQUEST_OTHER,
-            2 => NotificationService::NOTIF_TYPE_REQUEST_CONFERENCE,
-            default => null,
-        };
+        $requestTypeId = (int) $requestTypeId;
+
+        switch ($requestTypeId) {
+            case 3:
+                return NotificationService::NOTIF_TYPE_REQUEST_REPAIR;
+            case 4:
+                return NotificationService::NOTIF_TYPE_REQUEST_OTHER;
+            case 2:
+                return NotificationService::NOTIF_TYPE_REQUEST_CONFERENCE;
+            default:
+                return null;
+        }
     }
 
     private function getStatusCodeById(int $statusId): ?string
     {
-        $statusId = max(0, (int)$statusId);
-        if ($statusId <= 0) return null;
+        $statusId = max(0, (int) $statusId);
+        if ($statusId <= 0)
+            return null;
 
         $stmt = $this->pdo->prepare('SELECT status_code FROM request_status WHERE status_id = :id LIMIT 1');
         $stmt->execute([':id' => $statusId]);
-        $code = strtolower(trim((string)($stmt->fetchColumn() ?? '')));
+        $code = strtolower(trim((string) ($stmt->fetchColumn() ?? '')));
         return $code !== '' ? $code : null;
     }
 
@@ -1520,7 +1543,7 @@ class RequestsController
         if (function_exists('get_bearer_token')) {
             $hasToken = (get_bearer_token() !== null);
         } else {
-            $auth = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+            $auth = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
             $hasToken = stripos($auth, 'Bearer ') !== false;
         }
 
@@ -1667,7 +1690,8 @@ class RequestsController
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':device_id' => $deviceId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$row) return null;
+        if (!$row)
+            return null;
 
         // ถ้าอุปกรณ์ไม่มี org ก็ถือว่าใช้ไม่ได้สำหรับ flow นี้
         if (!isset($row['organization_id']) || !is_numeric($row['organization_id'])) {
