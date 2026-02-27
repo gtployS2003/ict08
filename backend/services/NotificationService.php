@@ -17,8 +17,12 @@ final class NotificationService
     // IMPORTANT: DB uses id=4 for request_conferance_pending, while id=7 is request_accepted
     public const NOTIF_TYPE_REQUEST_CONFERENCE = 4;
 
-    public function __construct(private PDO $pdo)
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
     }
 
     /**
@@ -78,7 +82,7 @@ final class NotificationService
         $errors = [];
 
         foreach ($recipients as $r) {
-            $uid = (int)($r['user_id'] ?? 0);
+            $uid = (int) ($r['user_id'] ?? 0);
             if ($uid <= 0) {
                 $skipped++;
                 continue;
@@ -106,7 +110,7 @@ final class NotificationService
 
             // LINE
             if (in_array('line', $enabledChannels, true)) {
-                $lineUserId = trim((string)($r['line_user_id'] ?? ''));
+                $lineUserId = trim((string) ($r['line_user_id'] ?? ''));
                 if ($line && $lineUserId !== '') {
                     try {
                         $resp = $line->pushMessage($lineUserId, [
@@ -154,8 +158,9 @@ final class NotificationService
 
         $clean = [];
         foreach ($userIds as $id) {
-            $id = (int)$id;
-            if ($id > 0) $clean[] = $id;
+            $id = (int) $id;
+            if ($id > 0)
+                $clean[] = $id;
         }
         $clean = array_values(array_unique($clean));
         if (empty($clean)) {
@@ -246,7 +251,7 @@ final class NotificationService
         $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
         $stmt->execute();
         $role = $stmt->fetchColumn();
-        return $role ? (int)$role : 1;
+        return $role ? (int) $role : 1;
     }
 
     private function getLineUserId(int $userId): string
@@ -254,7 +259,7 @@ final class NotificationService
         $stmt = $this->pdo->prepare('SELECT line_user_id FROM `user` WHERE user_id = :uid LIMIT 1');
         $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
         $stmt->execute();
-        return trim((string)($stmt->fetchColumn() ?? ''));
+        return trim((string) ($stmt->fetchColumn() ?? ''));
     }
 
     private function resolveRequestNotificationTypeId(int $requestTypeId): int
@@ -295,7 +300,7 @@ final class NotificationService
         foreach ($fallbackNames as $name) {
             $row = $typeModel->findByName($name);
             if ($row && isset($row['notification_type_id']) && is_numeric($row['notification_type_id'])) {
-                return (int)$row['notification_type_id'];
+                return (int) $row['notification_type_id'];
             }
         }
 
@@ -332,16 +337,20 @@ final class NotificationService
     private function buildCheckRequestUrl(int $requestId): string
     {
         $requestId = max(0, $requestId);
-        if ($requestId <= 0) return '';
+        if ($requestId <= 0)
+            return '';
 
         // ถ้ามี API_BASE ใน env (เช่น ngrok) ให้ derive base url จาก host ของ request ณ runtime จะดีกว่า
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = (string)($_SERVER['HTTP_HOST'] ?? '');
-        if ($host === '') return '';
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
+        if ($host === '')
+            return '';
 
         $basePath = env('BASE_PATH', '/ict8') ?: '/ict8';
-        if ($basePath === '') $basePath = '/ict8';
-        if ($basePath[0] !== '/') $basePath = '/' . $basePath;
+        if ($basePath === '')
+            $basePath = '/ict8';
+        if ($basePath[0] !== '/')
+            $basePath = '/' . $basePath;
 
         return $scheme . '://' . $host . rtrim($basePath, '/') . '/check_request.html?request_id=' . $requestId;
     }
