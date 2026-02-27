@@ -220,6 +220,7 @@
     hide($("#btn-add-related-document"));
     hide($("#btn-add-history-image"));
     hide($("#btn-add-diractor"));
+    hide($("#btn-add-structure"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -372,6 +373,14 @@
         loadHistoryImagePage();
         break;
 
+      case "structure":
+        show($("#section-structure"));
+        show($("#btn-add-structure"));
+        setTitle("โครงสร้างบุคลากร");
+        initStructureSection();
+        loadStructures();
+        break;
+
       case "directors":
         show($("#section-directors"));
         show($("#btn-add-diractor"));
@@ -397,6 +406,636 @@
         setTitle("การตั้งค่าข้อมูล");
         break;
     }
+  }
+
+
+  /* =========================
+   STRUCTURE (SITE STRUCTURE)
+   - Section: #section-structure
+   - Action: #btn-add-structure
+   - Modal: #structure-modal, #structure-form
+   - Inputs: #structure-id, #structure-prefix, #structure-fristname, #structure-lastname,
+             #structure-department, #structure-position
+   - File: #structure-file
+   - Remove: #structure-remove-photo
+   - Preview: #structure-preview, #structure-preview-img, #structure-preview-name, #structure-clear
+   - Toolbar: #structure-search, #structure-limit, #structure-refresh
+   - Table: #structure-tbody
+   - Footer: #structure-pagination, #structure-total
+  ========================= */
+
+  const strEls = {
+    section: $("#section-structure"),
+    tbody: $("#structure-tbody"),
+
+    search: $("#structure-search"),
+    limit: $("#structure-limit"),
+    refreshBtn: $("#structure-refresh"),
+    pagination: $("#structure-pagination"),
+    total: $("#structure-total"),
+
+    btnAdd: $("#btn-add-structure"),
+
+    modal: $("#structure-modal"),
+    form: $("#structure-form"),
+    modalTitle: $("#structure-modal-title"),
+    submitText: $("#structure-submit-text"),
+    modalStatus: $("#structure-modal-status"),
+    formError: $("#structure-form-error"),
+
+    inputId: $("#structure-id"),
+    inputPrefix: $("#structure-prefix"),
+    inputFirstname: $("#structure-fristname"),
+    inputLastname: $("#structure-lastname"),
+    inputDepartment: $("#structure-department"),
+    inputPosition: $("#structure-position"),
+
+    file: $("#structure-file"),
+    removePhoto: $("#structure-remove-photo"),
+
+    previewWrap: $("#structure-preview"),
+    previewImg: $("#structure-preview-img"),
+    previewName: $("#structure-preview-name"),
+    clearBtn: $("#structure-clear"),
+  };
+
+  const strState = {
+    q: "",
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 1,
+    inited: false,
+    loading: false,
+    refsLoaded: false,
+  };
+
+  const STRUCTURE_ORG_ID = 7;
+  const STR_PLACEHOLDER = "/ict8/assets/image/director-none.png";
+
+  // cache latest position dropdown items so we can infer department from position
+  const strPosById = new Map();
+
+  function strToPublicUrl(fp) {
+    const p = String(fp || "").trim();
+    if (!p) return "";
+    if (/^https?:\/\//i.test(p)) return p;
+    if (p.startsWith("/uploads/")) return `${API_BASE}${p}`;
+    if (p.startsWith("uploads/")) return `${API_BASE}/${p}`;
+    if (p.startsWith("/")) return p;
+    return `/${p}`;
+  }
+
+  function strSetSectionStatus(msg, { isError = false } = {}) {
+    if (!strEls.total) return;
+    strEls.total.textContent = msg ? String(msg) : "";
+    strEls.total.style.color = isError ? "#b42318" : "";
+  }
+
+  function strSetModalStatus(msg, { isError = false } = {}) {
+    if (!strEls.modalStatus) return;
+    strEls.modalStatus.textContent = msg ? String(msg) : "";
+    strEls.modalStatus.style.color = isError ? "#b42318" : "";
+  }
+
+  function strSetError(msg) {
+    if (!strEls.formError) return;
+    if (!msg) {
+      strEls.formError.hidden = true;
+      strEls.formError.textContent = "";
+      return;
+    }
+    strEls.formError.hidden = false;
+    strEls.formError.textContent = String(msg);
+  }
+
+  function strHidePreview() {
+    if (!strEls.previewWrap) return;
+    strEls.previewWrap.hidden = true;
+    if (strEls.previewImg) strEls.previewImg.removeAttribute("src");
+    if (strEls.previewName) strEls.previewName.textContent = "-";
+  }
+
+  function strShowPreviewFromFile(file) {
+    if (!strEls.previewWrap || !strEls.previewImg || !strEls.previewName) return;
+    const url = URL.createObjectURL(file);
+    strEls.previewImg.src = url;
+    strEls.previewName.textContent = `${file.name} (${Math.round((file.size || 0) / 1024)} KB)`;
+    strEls.previewWrap.hidden = false;
+    strEls.previewImg.onload = () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (_) {
+        // ignore
+      }
+    };
+  }
+
+  function strShowPreviewFromPath(path) {
+    if (!strEls.previewWrap || !strEls.previewImg || !strEls.previewName) return;
+    const url = path ? strToPublicUrl(path) : STR_PLACEHOLDER;
+    strEls.previewImg.src = url;
+    strEls.previewName.textContent = path ? String(path) : "(รูปเริ่มต้น)";
+    strEls.previewWrap.hidden = false;
+  }
+
+  function strResetModal() {
+    strSetError("");
+    strSetModalStatus("");
+
+    if (strEls.inputId) strEls.inputId.value = "";
+    if (strEls.inputPrefix) strEls.inputPrefix.value = "";
+    if (strEls.inputFirstname) strEls.inputFirstname.value = "";
+    if (strEls.inputLastname) strEls.inputLastname.value = "";
+    if (strEls.inputDepartment) strEls.inputDepartment.value = "";
+    if (strEls.inputPosition) strEls.inputPosition.value = "";
+    if (strEls.removePhoto) strEls.removePhoto.checked = false;
+
+    try {
+      if (strEls.file) strEls.file.value = "";
+    } catch (_) {
+      // ignore
+    }
+
+    strHidePreview();
+  }
+
+  function strRenderPagination() {
+    if (!strEls.pagination) return;
+    strState.totalPages = calcTotalPages({
+      total: strState.total,
+      limit: strState.limit,
+      totalPages: strState.totalPages,
+    });
+    renderPager(strEls.pagination, { page: strState.page, totalPages: strState.totalPages });
+  }
+
+  function strRenderRows(items = []) {
+    if (!strEls.tbody) return;
+    if (!Array.isArray(items) || items.length === 0) {
+      strEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    strEls.tbody.innerHTML = items
+      .map((r) => {
+        const id = r.structure_id ?? r.id ?? "";
+        const prefixTh = String(r.prefix_th ?? "").trim();
+        const firstname = String(r.fristname ?? "").trim();
+        const lastname = String(r.lastname ?? "").trim();
+        const deptTitle = String(r.department_title ?? "").trim();
+        const posTitle = String(r.position_title ?? "").trim();
+        const prefixId = r.prefix_person_id ?? "";
+        const deptId = r.department_id ?? "";
+        const posId = r.position_id ?? "";
+        const photoPath = String(r.pic_path ?? "").trim();
+
+        const full = `${prefixTh}${firstname}${lastname ? " " + lastname : ""}`.trim();
+        const imgUrl = photoPath ? strToPublicUrl(photoPath) : STR_PLACEHOLDER;
+
+        return `
+          <tr>
+            <td>${escapeHtml(id)}</td>
+            <td>
+              <img src="${escapeHtml(imgUrl)}" alt="person" style="width:56px; height:56px; object-fit:cover; border-radius:12px; border:1px solid #eee; background:#fafafa;" />
+            </td>
+            <td>
+              <div style="font-weight:600;">${escapeHtml(full || "-")}</div>
+              <div class="muted" style="margin-top:4px;">${escapeHtml(prefixTh)}${escapeHtml(firstname)} ${escapeHtml(lastname)}</div>
+            </td>
+            <td>${escapeHtml(deptTitle || "-")}</td>
+            <td>${escapeHtml(posTitle || "-")}</td>
+            <td>
+              <div class="table-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-outline btn-sm" type="button" data-action="edit"
+                  data-id="${escapeHtml(id)}"
+                  data-prefix_id="${escapeHtml(prefixId)}"
+                  data-firstname="${escapeHtml(firstname)}"
+                  data-lastname="${escapeHtml(lastname)}"
+                  data-department_id="${escapeHtml(deptId)}"
+                  data-position_id="${escapeHtml(posId)}"
+                  data-photo="${escapeHtml(photoPath)}">
+                  <i class="fa-solid fa-pen"></i> แก้ไข
+                </button>
+                <button class="btn btn-danger btn-sm" type="button" data-action="delete"
+                  data-id="${escapeHtml(id)}"
+                  data-title="${escapeHtml(full || id)}">
+                  <i class="fa-solid fa-trash"></i> ลบ
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  function strSetSelectOptions(selectEl, { placeholder = "-- เลือก --", items = [], valueKey, labelBuilder }) {
+    if (!selectEl) return;
+    const arr = Array.isArray(items) ? items : [];
+    selectEl.innerHTML =
+      `<option value="" selected>${escapeHtml(placeholder)}</option>` +
+      arr
+        .map((it) => {
+          const v = it?.[valueKey];
+          const label = typeof labelBuilder === "function" ? labelBuilder(it) : it?.label;
+          return `<option value="${escapeHtml(v)}">${escapeHtml(label ?? "")}</option>`;
+        })
+        .join("");
+  }
+
+  async function strLoadPrefixOptions(selectedPrefixId = "") {
+    if (!strEls.inputPrefix) return;
+    try {
+      const pj = await apiFetch(`/person-prefixes?page=1&limit=500`, { method: "GET" });
+      const items = pj?.data?.items || [];
+      strSetSelectOptions(strEls.inputPrefix, {
+        placeholder: "-- เลือกคำนำหน้า --",
+        items,
+        valueKey: "person_prefix_id",
+        labelBuilder: (it) => it?.prefix_th ?? "",
+      });
+      if (selectedPrefixId) strEls.inputPrefix.value = String(selectedPrefixId);
+    } catch (e) {
+      console.warn("[structure] load prefixes failed", e);
+      strEls.inputPrefix.innerHTML = `<option value="">โหลดคำนำหน้าไม่สำเร็จ</option>`;
+    }
+  }
+
+  async function strLoadDepartmentOptions(selectedDeptId = "") {
+    if (!strEls.inputDepartment) return;
+    try {
+      const dj = await apiFetch(`/departments/dropdown?organization_id=${STRUCTURE_ORG_ID}`, { method: "GET" });
+      const items = dj?.data || [];
+      strSetSelectOptions(strEls.inputDepartment, {
+        placeholder: "-- เลือกฝ่าย (ไม่บังคับ) --",
+        items,
+        valueKey: "department_id",
+        labelBuilder: (it) => {
+          const title = it?.department_title ?? "";
+          const code = it?.department_code ?? "";
+          return code ? `${title} (${code})` : title;
+        },
+      });
+      if (selectedDeptId) strEls.inputDepartment.value = String(selectedDeptId);
+      strEls.inputDepartment.disabled = false;
+    } catch (e) {
+      console.warn("[structure] load departments failed", e);
+      strEls.inputDepartment.innerHTML = `<option value="">โหลดฝ่ายไม่สำเร็จ</option>`;
+      strEls.inputDepartment.disabled = true;
+    }
+  }
+
+  async function strLoadPositionOptions({ deptId = "", selectedPosId = "" } = {}) {
+    if (!strEls.inputPosition) return;
+
+    // reset cache
+    strPosById.clear();
+
+    strEls.inputPosition.disabled = true;
+    strEls.inputPosition.innerHTML = `<option value="" selected>-- เลือกตำแหน่ง --</option>`;
+
+    try {
+      const qs = new URLSearchParams();
+      qs.set("organization_id", String(STRUCTURE_ORG_ID));
+      if (deptId) qs.set("department_id", String(deptId));
+
+      const pj = await apiFetch(`/position-titles/dropdown?${qs.toString()}`, { method: "GET" });
+      const items = pj?.data || [];
+
+      // fill cache for department inference
+      for (const it of items) {
+        const id = it?.position_title_id;
+        if (id == null) continue;
+        strPosById.set(String(id), it);
+      }
+
+      strSetSelectOptions(strEls.inputPosition, {
+        placeholder: "-- เลือกตำแหน่ง --",
+        items,
+        valueKey: "position_title_id",
+        labelBuilder: (it) => {
+          const title = it?.position_title ?? "";
+          const code = it?.position_code ?? "";
+          return code ? `${title} (${code})` : title;
+        },
+      });
+      strEls.inputPosition.disabled = false;
+      if (selectedPosId) strEls.inputPosition.value = String(selectedPosId);
+    } catch (e) {
+      console.warn("[structure] load positions failed", e);
+      strEls.inputPosition.innerHTML = `<option value="">โหลดตำแหน่งไม่สำเร็จ</option>`;
+      strEls.inputPosition.disabled = true;
+    }
+  }
+
+  async function strEnsureRefsLoaded({ selectedPrefixId = "", selectedDeptId = "", selectedPosId = "" } = {}) {
+    // load prefix + department once per session; positions depend on department
+    if (!strState.refsLoaded) {
+      strSetModalStatus("กำลังโหลดรายการ...", { isError: false });
+      await Promise.all([
+        strLoadPrefixOptions(selectedPrefixId),
+        strLoadDepartmentOptions(selectedDeptId),
+      ]);
+      strState.refsLoaded = true;
+    } else {
+      // ensure selected values are applied
+      if (selectedPrefixId && strEls.inputPrefix) strEls.inputPrefix.value = String(selectedPrefixId);
+      if (selectedDeptId && strEls.inputDepartment) strEls.inputDepartment.value = String(selectedDeptId);
+    }
+
+    // positions: if no dept selected -> show all positions in org
+    await strLoadPositionOptions({ deptId: selectedDeptId || strEls.inputDepartment?.value || "", selectedPosId });
+    strSetModalStatus("");
+  }
+
+  async function strOpenModal({ mode = "create", row } = {}) {
+    if (!strEls.modal) return;
+
+    if (mode === "edit" && row) {
+      if (strEls.modalTitle) strEls.modalTitle.textContent = "แก้ไขโครงสร้างบุคลากร";
+      if (strEls.submitText) strEls.submitText.textContent = "บันทึกการแก้ไข";
+      strResetModal();
+
+      const structureId = row.structure_id ?? row.id ?? "";
+      const prefixId = row.prefix_person_id ?? row.prefix_person_id ?? row.prefix_id ?? "";
+      const deptId = row.department_id ?? "";
+      const posId = row.position_id ?? "";
+      const photoPath = String(row.pic_path ?? row.photo_path ?? "").trim();
+
+      if (strEls.inputId) strEls.inputId.value = String(structureId);
+      if (strEls.inputFirstname) strEls.inputFirstname.value = String(row.fristname ?? row.firstname ?? "");
+      if (strEls.inputLastname) strEls.inputLastname.value = String(row.lastname ?? "");
+
+      openModal("structure-modal");
+      // load refs and set selected
+      await strEnsureRefsLoaded({
+        selectedPrefixId: String(prefixId || ""),
+        selectedDeptId: String(deptId || ""),
+        selectedPosId: String(posId || ""),
+      });
+
+      if (photoPath) strShowPreviewFromPath(photoPath);
+      else strShowPreviewFromPath("");
+    } else {
+      if (strEls.modalTitle) strEls.modalTitle.textContent = "เพิ่มโครงสร้างบุคลากร";
+      if (strEls.submitText) strEls.submitText.textContent = "บันทึก";
+      strResetModal();
+      openModal("structure-modal");
+      await strEnsureRefsLoaded({ selectedPrefixId: "", selectedDeptId: "", selectedPosId: "" });
+      // show placeholder by default
+      strShowPreviewFromPath("");
+    }
+
+    setTimeout(() => strEls.inputFirstname?.focus?.(), 0);
+  }
+
+  function strCloseModal() {
+    closeModal("structure-modal");
+  }
+
+  async function loadStructures() {
+    if (!strEls.section) return;
+    if (strState.loading) return;
+    strState.loading = true;
+
+    try {
+      strSetSectionStatus("กำลังโหลด...");
+      if (!window.SiteStructureAPI?.list) throw new Error("SiteStructureAPI.list not found");
+
+      strState.q = String(strEls.search?.value || "").trim();
+      strState.limit = toInt(strEls.limit?.value, strState.limit || 50) || 50;
+
+      const res = await window.SiteStructureAPI.list({
+        q: strState.q,
+        page: strState.page,
+        limit: strState.limit,
+      });
+
+      const data = res?.data || {};
+      const items = data.items || [];
+      const pag = data.pagination || {};
+
+      strState.total = Number(pag.total ?? items.length ?? 0);
+      strState.totalPages = Number(pag.total_pages ?? strState.totalPages ?? 1);
+      strState.page = Number(pag.page ?? strState.page ?? 1);
+      strState.limit = Number(pag.limit ?? strState.limit ?? 50);
+
+      strRenderRows(items);
+      strRenderPagination();
+      strSetSectionStatus(`ทั้งหมด ${strState.total} รายการ`);
+    } catch (err) {
+      strSetSectionStatus(err?.message || String(err), { isError: true });
+      if (strEls.tbody) strEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">โหลดไม่สำเร็จ</td></tr>`;
+    } finally {
+      strState.loading = false;
+    }
+  }
+
+  function initStructureSection() {
+    if (strState.inited) return;
+    strState.inited = true;
+
+    // default limit
+    if (strEls.limit && !strEls.limit.value) strEls.limit.value = String(strState.limit);
+
+    strEls.btnAdd?.addEventListener("click", () => {
+      strOpenModal({ mode: "create" });
+    });
+
+    strEls.refreshBtn?.addEventListener("click", () => {
+      loadStructures();
+    });
+
+    // search debounce
+    let t = null;
+    strEls.search?.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        strState.page = 1;
+        loadStructures();
+      }, 300);
+    });
+
+    strEls.limit?.addEventListener("change", () => {
+      strState.page = 1;
+      loadStructures();
+    });
+
+    strEls.pagination?.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-page]");
+      if (!btn || btn.disabled) return;
+      const next = toInt(btn.getAttribute("data-page"), 0);
+      if (!next || next < 1 || next > (strState.totalPages || 1)) return;
+      if (next === strState.page) return;
+      strState.page = next;
+      loadStructures();
+    });
+
+    // dependent dropdown: dept -> position
+    strEls.inputDepartment?.addEventListener("change", async () => {
+      const deptId = String(strEls.inputDepartment?.value || "").trim();
+      if (strEls.inputPosition) strEls.inputPosition.value = "";
+      await strLoadPositionOptions({ deptId, selectedPosId: "" });
+    });
+
+    // allow selecting position first; if department is empty and position belongs to a department, auto-set it
+    strEls.inputPosition?.addEventListener("change", async () => {
+      const posId = String(strEls.inputPosition?.value || "").trim();
+      if (!posId) return;
+
+      const deptId = String(strEls.inputDepartment?.value || "").trim();
+      if (deptId) return; // already chosen, nothing to infer
+
+      const it = strPosById.get(posId);
+      const inferredDeptId = it?.department_id != null ? String(it.department_id) : "";
+
+      // If the selected position has a department, set it and reload positions filtered by that department
+      if (inferredDeptId) {
+        if (strEls.inputDepartment) strEls.inputDepartment.value = inferredDeptId;
+        await strLoadPositionOptions({ deptId: inferredDeptId, selectedPosId: posId });
+      }
+    });
+
+    strEls.file?.addEventListener("change", () => {
+      const f = strEls.file?.files?.[0];
+      if (!f) {
+        const currentSrc = String(strEls.previewImg?.getAttribute("src") || "").trim();
+        if (!currentSrc) strShowPreviewFromPath("");
+        return;
+      }
+      if (!/^image\//i.test(String(f.type || ""))) {
+        strSetError("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+        try {
+          strEls.file.value = "";
+        } catch (_) {
+          // ignore
+        }
+        return;
+      }
+
+      // selecting a new photo should override remove-photo intent
+      if (strEls.removePhoto) strEls.removePhoto.checked = false;
+
+      strSetError("");
+      strSetModalStatus("");
+      strShowPreviewFromFile(f);
+    });
+
+    strEls.clearBtn?.addEventListener("click", () => {
+      try {
+        if (strEls.file) strEls.file.value = "";
+      } catch (_) {
+        // ignore
+      }
+      strSetError("");
+      strSetModalStatus("");
+      strShowPreviewFromPath("");
+    });
+
+    strEls.removePhoto?.addEventListener("change", () => {
+      if (strEls.removePhoto.checked) {
+        strShowPreviewFromPath("");
+      }
+    });
+
+    strEls.tbody?.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-action");
+      const id = btn.getAttribute("data-id");
+      if (!action || !id) return;
+
+      if (action === "edit") {
+        const row = {
+          structure_id: id,
+          prefix_person_id: btn.getAttribute("data-prefix_id") || "",
+          fristname: btn.getAttribute("data-firstname") || "",
+          lastname: btn.getAttribute("data-lastname") || "",
+          department_id: btn.getAttribute("data-department_id") || "",
+          position_id: btn.getAttribute("data-position_id") || "",
+          pic_path: btn.getAttribute("data-photo") || "",
+        };
+        await strOpenModal({ mode: "edit", row });
+        return;
+      }
+
+      if (action === "delete") {
+        const title = btn.getAttribute("data-title") || id;
+        const okDel = confirm(`ยืนยันลบโครงสร้างบุคลากร\n\n- ${title}`);
+        if (!okDel) return;
+
+        try {
+          strSetSectionStatus("กำลังลบ...");
+          await window.SiteStructureAPI.remove(id);
+          strSetSectionStatus("ลบเรียบร้อย");
+
+          const oldPage = strState.page;
+          await loadStructures();
+          if (strState.total === 0 && oldPage > 1) {
+            strState.page = oldPage - 1;
+            await loadStructures();
+          }
+        } catch (err) {
+          strSetSectionStatus(err?.message || String(err), { isError: true });
+        }
+      }
+    });
+
+    strEls.form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!window.SiteStructureAPI) return;
+
+      const idRaw = String(strEls.inputId?.value || "").trim();
+      const prefixId = String(strEls.inputPrefix?.value || "").trim();
+      const firstname = String(strEls.inputFirstname?.value || "").trim();
+      const lastname = String(strEls.inputLastname?.value || "").trim();
+      const deptId = String(strEls.inputDepartment?.value || "").trim();
+      const posId = String(strEls.inputPosition?.value || "").trim();
+      const file = strEls.file?.files?.[0];
+      const removePhoto = !!strEls.removePhoto?.checked;
+
+      if (!prefixId || !firstname || !lastname || !posId) {
+        strSetError("กรุณากรอกข้อมูลให้ครบ: คำนำหน้า ชื่อ นามสกุล และตำแหน่ง");
+        return;
+      }
+
+      const submitBtn = strEls.form?.querySelector?.("button[type='submit']");
+
+      try {
+        strSetError("");
+        strSetModalStatus("กำลังบันทึก...");
+        if (submitBtn) submitBtn.disabled = true;
+
+        const fd = new FormData();
+        fd.append("prefix_person_id", prefixId);
+        fd.append("fristname", firstname);
+        fd.append("lastname", lastname);
+        // department optional: send only when selected
+        if (deptId) fd.append("department_id", deptId);
+        fd.append("position_id", posId);
+
+        if (idRaw) {
+          fd.append("remove_photo", removePhoto ? "1" : "0");
+        }
+        if (file) fd.append("file", file);
+
+        if (idRaw) {
+          await window.SiteStructureAPI.update(idRaw, fd);
+        } else {
+          await window.SiteStructureAPI.create(fd);
+        }
+
+        strSetModalStatus("บันทึกสำเร็จ");
+        strCloseModal();
+        await loadStructures();
+      } catch (err) {
+        strSetError(err?.message || String(err));
+        strSetModalStatus("");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
   }
 
   /* =========================

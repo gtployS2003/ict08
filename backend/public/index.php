@@ -53,6 +53,7 @@ require_once __DIR__ . '/../routes/link_urls.routes.php';
 require_once __DIR__ . '/../routes/documents.routes.php';
 require_once __DIR__ . '/../routes/history_image_page.routes.php';
 require_once __DIR__ . '/../routes/site_diractor.routes.php';
+require_once __DIR__ . '/../routes/site_structure.routes.php';
 
 
 
@@ -61,6 +62,23 @@ cors_apply();
 cors_handle_preflight();
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+// Support method override for multipart/form-data.
+// PHP typically parses form-data into $_POST/$_FILES only for POST.
+// So the frontend can send POST with an override header/field, and we route it as PUT/PATCH/DELETE.
+if (strtoupper((string)$method) === 'POST') {
+    $override = (string)($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'] ?? '');
+    if ($override === '' && isset($_POST['_method'])) {
+        $override = (string)$_POST['_method'];
+    }
+    if ($override === '' && isset($_GET['_method'])) {
+        $override = (string)$_GET['_method'];
+    }
+    $override = strtoupper(trim($override));
+    if (in_array($override, ['PUT', 'PATCH', 'DELETE'], true)) {
+        $method = $override;
+    }
+}
 
 // path จาก rewrite หรือ query string
 $path = $_GET['path'] ?? '';
@@ -118,6 +136,7 @@ try {
     if (documents_routes($method, $segments, $pdo)) exit;
     if (history_image_page_routes($method, $segments, $pdo)) exit;
     if (site_diractor_routes($method, $segments, $pdo)) exit;
+    if (site_structure_routes($method, $segments, $pdo)) exit;
 
     fail("Route not found", 404, ["path" => $path, "method" => $method]);
 

@@ -1272,6 +1272,45 @@ select option {
   border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+/* =========================
+   Structure modal preview
+   Fix: ตัวอย่างรูปใหญ่/ล้น popup
+========================= */
+#structure-modal .modal__dialog {
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+}
+
+#structure-modal .modal__body {
+  overflow: auto;
+}
+
+#structure-modal .photo-preview {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+#structure-modal .photo-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 260px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+#structure-modal .photo-preview__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 /* scrollbar ให้เหมือน detail */
 #user-edit-modal .detail-form::-webkit-scrollbar {
   width: 8px;

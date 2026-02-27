@@ -5,8 +5,8 @@ declare(strict_types=1);
 function cors_apply(): void {
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Dev-Api-Key');
-    header('Access-Control-Expose-Headers: Content-Type, Authorization, X-Dev-Api-Key');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Dev-Api-Key, X-HTTP-Method-Override');
+    header('Access-Control-Expose-Headers: Content-Type, Authorization, X-Dev-Api-Key, X-HTTP-Method-Override');
     header('Access-Control-Max-Age: 86400');
 }
 
