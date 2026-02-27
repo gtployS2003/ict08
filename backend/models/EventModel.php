@@ -12,26 +12,33 @@ final class EventModel
         $this->pdo = $pdo;
     }
 
-    private function normalizeParticipantUserIds(mixed $v): string
+    private function normalizeParticipantUserIds($v): string
     {
-        if ($v === null) return '';
+        if ($v === null)
+            return '';
 
         if (is_array($v)) {
-            $ids = array_values(array_unique(array_filter(array_map('intval', $v), fn($x) => $x > 0)));
+            $ints = array_map('intval', $v);
+            $filtered = array_filter($ints, function ($x) {
+                return $x > 0;
+            });
+            $ids = array_values(array_unique($filtered));
             sort($ids);
             return implode(',', $ids);
         }
 
-        $s = trim((string)$v);
-        if ($s === '') return '';
+        $s = trim((string) $v);
+        if ($s === '')
+            return '';
 
-        // normalize: keep only numeric ids and sort
         $parts = preg_split('/\s*,\s*/', $s) ?: [];
         $ids = [];
         foreach ($parts as $p) {
-            if ($p === '' || !is_numeric($p)) continue;
-            $i = (int)$p;
-            if ($i > 0) $ids[] = $i;
+            if ($p === '' || !is_numeric($p))
+                continue;
+            $i = (int) $p;
+            if ($i > 0)
+                $ids[] = $i;
         }
         $ids = array_values(array_unique($ids));
         sort($ids);
@@ -142,9 +149,9 @@ final class EventModel
 
         foreach ($params as $k => $v) {
             if ($k === ':limit' || $k === ':offset') {
-                $stmt->bindValue($k, (int)$v, PDO::PARAM_INT);
+                $stmt->bindValue($k, (int) $v, PDO::PARAM_INT);
             } else {
-                $stmt->bindValue($k, (string)$v, PDO::PARAM_STR);
+                $stmt->bindValue($k, (string) $v, PDO::PARAM_STR);
             }
         }
 
@@ -197,11 +204,11 @@ final class EventModel
 
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) {
-            $stmt->bindValue($k, (string)$v, PDO::PARAM_STR);
+            $stmt->bindValue($k, (string) $v, PDO::PARAM_STR);
         }
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-        return (int)($row['cnt'] ?? 0);
+        return (int) ($row['cnt'] ?? 0);
     }
 
     /**
@@ -214,7 +221,7 @@ final class EventModel
     {
         $fromDatetime = trim($fromDatetime);
         $toDatetime = trim($toDatetime);
-        $limit = max(1, min(5000, (int)$limit));
+        $limit = max(1, min(5000, (int) $limit));
 
         // Intersection logic:
         // start <= to AND COALESCE(end, start) >= from
@@ -334,10 +341,11 @@ final class EventModel
      */
     public function create(array $data): int
     {
-        $roundNo = isset($data['round_no']) ? (int)$data['round_no'] : 0;
-        $eventYear = isset($data['event_year']) ? (int)$data['event_year'] : 0;
+        $roundNo = isset($data['round_no']) ? (int) $data['round_no'] : 0;
+        $eventYear = isset($data['event_year']) ? (int) $data['event_year'] : 0;
 
-        if ($roundNo < 0) $roundNo = 0;
+        if ($roundNo < 0)
+            $roundNo = 0;
         if ($eventYear <= 0) {
             throw new InvalidArgumentException('event_year is required');
         }
@@ -390,20 +398,21 @@ final class EventModel
             ':end_datetime' => $this->toNullableString($data['end_datetime'] ?? null),
         ]);
 
-        $eventId = (int)$this->pdo->lastInsertId();
+        $eventId = (int) $this->pdo->lastInsertId();
 
         // Insert initial log row for every event insert.
         // NOTE: event_log columns are NOT NULL, so we coerce nulls to empty strings.
-        $updatedBy = isset($data['updated_by']) ? (int)$data['updated_by'] : 0;
-        if ($updatedBy < 0) $updatedBy = 0;
+        $updatedBy = isset($data['updated_by']) ? (int) $data['updated_by'] : 0;
+        if ($updatedBy < 0)
+            $updatedBy = 0;
 
-        $titleLog = trim((string)($data['title'] ?? ''));
+        $titleLog = trim((string) ($data['title'] ?? ''));
         if (mb_strlen($titleLog) > 255) {
             $titleLog = mb_substr($titleLog, 0, 255);
         }
-        $detailLog = (string)($data['detail'] ?? '');
-        $locationLog = (string)($data['location'] ?? '');
-        $noteLog = (string)($data['note'] ?? '');
+        $detailLog = (string) ($data['detail'] ?? '');
+        $locationLog = (string) ($data['location'] ?? '');
+        $noteLog = (string) ($data['note'] ?? '');
         $participantUserIdsLog = $this->normalizeParticipantUserIds($data['participant_user_ids'] ?? null);
 
         $stmtLog = $this->pdo->prepare('
@@ -479,21 +488,22 @@ final class EventModel
         $changed = $stmt->rowCount() > 0;
         if ($changed) {
             // Write snapshot log (store final values from DB so the timeline matches what was actually saved)
-            $updatedBy = isset($data['updated_by']) ? (int)$data['updated_by'] : 0;
-            if ($updatedBy < 0) $updatedBy = 0;
+            $updatedBy = isset($data['updated_by']) ? (int) $data['updated_by'] : 0;
+            if ($updatedBy < 0)
+                $updatedBy = 0;
 
             $stmtCur = $this->pdo->prepare('SELECT title, detail, location, note FROM event WHERE event_id = :id LIMIT 1');
             $stmtCur->bindValue(':id', $id, PDO::PARAM_INT);
             $stmtCur->execute();
             $cur = $stmtCur->fetch(PDO::FETCH_ASSOC) ?: [];
 
-            $titleLog = trim((string)($cur['title'] ?? ''));
+            $titleLog = trim((string) ($cur['title'] ?? ''));
             if (mb_strlen($titleLog) > 255) {
                 $titleLog = mb_substr($titleLog, 0, 255);
             }
-            $detailLog = (string)($cur['detail'] ?? '');
-            $locationLog = (string)($cur['location'] ?? '');
-            $noteLog = (string)($cur['note'] ?? '');
+            $detailLog = (string) ($cur['detail'] ?? '');
+            $locationLog = (string) ($cur['location'] ?? '');
+            $noteLog = (string) ($cur['note'] ?? '');
 
             // Prefer explicit snapshot passed from controller, else compute from active participants.
             if (array_key_exists('participant_user_ids', $data)) {
@@ -506,7 +516,7 @@ final class EventModel
                       AND (is_active = 1 OR is_active IS NULL)
                 ');
                 $stmtP->execute([':eid' => $id]);
-                $participantUserIdsLog = $this->normalizeParticipantUserIds((string)($stmtP->fetchColumn() ?? ''));
+                $participantUserIdsLog = $this->normalizeParticipantUserIds((string) ($stmtP->fetchColumn() ?? ''));
             }
 
             $stmtLog = $this->pdo->prepare('
@@ -551,19 +561,23 @@ final class EventModel
         return $stmt->rowCount() > 0;
     }
 
-    private function toNullableInt(mixed $v): ?int
+    private function toNullableInt($v): ?int
     {
-        if ($v === null || $v === '') return null;
-        if (is_bool($v)) return $v ? 1 : 0;
-        if (!is_numeric($v)) return null;
-        $i = (int)$v;
+        if ($v === null || $v === '')
+            return null;
+        if (is_bool($v))
+            return $v ? 1 : 0;
+        if (!is_numeric($v))
+            return null;
+        $i = (int) $v;
         return $i > 0 ? $i : null;
     }
 
-    private function toNullableString(mixed $v): ?string
+    private function toNullableString($v): ?string
     {
-        if ($v === null) return null;
-        $s = trim((string)$v);
+        if ($v === null)
+            return null;
+        $s = trim((string) $v);
         return $s === '' ? null : $s;
     }
 }
