@@ -2,6 +2,7 @@
 // backend/config/env.php
 declare(strict_types=1);
 
+// ✅ รองรับ PHP < 8.0 (กัน 500)
 if (!function_exists('str_starts_with')) {
     function str_starts_with($haystack, $needle): bool {
         return $needle === '' || strpos((string)$haystack, (string)$needle) === 0;
@@ -53,11 +54,9 @@ function env_load(string $envFilePath): void
 
         if ($key === '') continue;
 
-        // ถ้ายังไม่ถูก set ค่อย set
-        if (getenv($key) === false) {
-            putenv("$key=$val");
-            $_ENV[$key] = $val;
-        }
+        // ✅ แนะนำให้ "ทับค่าเดิม" ได้เสมอ (กันกรณีค้างค่าเก่า)
+        putenv("$key=$val");
+        $_ENV[$key] = $val;
     }
 }
 
@@ -67,4 +66,3 @@ function env(string $key, ?string $default = null): ?string
     if ($v === false) return $default;
     return $v;
 }
-
