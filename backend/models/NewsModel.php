@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 class NewsModel
 {
-    /** @var PDO */
+   /** @var PDO */
     private $pdo;
 
     /** @var bool|null */
@@ -15,11 +15,8 @@ class NewsModel
         $this->pdo = ($pdo instanceof PDO) ? $pdo : db();
     }
 
-
-    private function tableHasColumn(string $table, string $column): bool
+    private function tableHasColumn($table, $column)
     {
-        // Use INFORMATION_SCHEMA instead of SHOW COLUMNS because some MariaDB/PDO setups
-        // fail to prepare SHOW statements with placeholders (error near '?').
         $sql = "
             SELECT 1
             FROM INFORMATION_SCHEMA.COLUMNS
@@ -33,15 +30,14 @@ class NewsModel
             ':table_name' => $table,
             ':column_name' => $column,
         ]);
-        return (bool) ($stmt->fetchColumn() ?: null);
+        return (bool)($stmt->fetchColumn() ?: null);
     }
 
-    public function supportsUpdateAt(): bool
+    public function supportsUpdateAt()
     {
-        if ($this->supportsUpdateAt !== null)
-            return $this->supportsUpdateAt;
+        if ($this->supportsUpdateAt !== null) return (bool)$this->supportsUpdateAt;
         $this->supportsUpdateAt = $this->tableHasColumn('news', 'update_at');
-        return $this->supportsUpdateAt;
+        return (bool)$this->supportsUpdateAt;
     }
 
     public function list(int $limit = 20): array
