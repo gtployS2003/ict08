@@ -2,7 +2,8 @@
 // backend/models/NewsModel.php
 declare(strict_types=1);
 
-class NewsModel {
+class NewsModel
+{
     /** @var PDO */
     private $pdo;
 
@@ -11,7 +12,8 @@ class NewsModel {
         $this->pdo = $pdo;
     }
 
-    private ?bool $supportsUpdateAt = null;
+    /** @var bool|null */
+    private $supportsUpdateAt = null;
 
     private function tableHasColumn(string $table, string $column): bool
     {
@@ -30,17 +32,19 @@ class NewsModel {
             ':table_name' => $table,
             ':column_name' => $column,
         ]);
-        return (bool)($stmt->fetchColumn() ?: null);
+        return (bool) ($stmt->fetchColumn() ?: null);
     }
 
     public function supportsUpdateAt(): bool
     {
-        if ($this->supportsUpdateAt !== null) return $this->supportsUpdateAt;
+        if ($this->supportsUpdateAt !== null)
+            return $this->supportsUpdateAt;
         $this->supportsUpdateAt = $this->tableHasColumn('news', 'update_at');
         return $this->supportsUpdateAt;
     }
 
-    public function list(int $limit = 20): array {
+    public function list(int $limit = 20): array
+    {
         $cols = "n.news_id, n.title, n.content, n.link_url, n.is_banner, n.writer, n.create_at";
         if ($this->supportsUpdateAt()) {
             $cols .= ", n.update_at";
@@ -61,7 +65,8 @@ class NewsModel {
         return $stmt->fetchAll();
     }
 
-    public function get(int $id): ?array {
+    public function get(int $id): ?array
+    {
         $cols = "n.news_id, n.title, n.content, n.link_url, n.is_banner, n.writer, n.create_at";
         if ($this->supportsUpdateAt()) {
             $cols .= ", n.update_at";
@@ -80,7 +85,8 @@ class NewsModel {
         return $row ?: null;
     }
 
-    public function create(array $data): int {
+    public function create(array $data): int
+    {
         $createAt = $data['create_at'] ?? date('Y-m-d H:i:s');
 
         $cols = ['title', 'content', 'link_url', 'is_banner', 'writer', 'create_at'];
@@ -99,7 +105,7 @@ class NewsModel {
             'title' => $data['title'],
             'content' => $data['content'],
             'link_url' => $data['link_url'] ?? null,
-            'is_banner' => isset($data['is_banner']) ? (int)$data['is_banner'] : 0,
+            'is_banner' => isset($data['is_banner']) ? (int) $data['is_banner'] : 0,
             'writer' => $data['writer'] ?? null,
             'create_at' => $createAt,
         ];
@@ -109,10 +115,11 @@ class NewsModel {
         }
 
         $stmt->execute($params);
-        return (int)$this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
-    public function update(int $id, array $data): bool {
+    public function update(int $id, array $data): bool
+    {
         $set = [
             'title = :title',
             'content = :content',
@@ -125,7 +132,7 @@ class NewsModel {
             'title' => $data['title'],
             'content' => $data['content'],
             'link_url' => $data['link_url'] ?? null,
-            'is_banner' => isset($data['is_banner']) ? (int)$data['is_banner'] : 0,
+            'is_banner' => isset($data['is_banner']) ? (int) $data['is_banner'] : 0,
         ];
 
         if ($this->supportsUpdateAt() && array_key_exists('update_at', $data)) {
@@ -138,7 +145,8 @@ class NewsModel {
         return $stmt->execute($params);
     }
 
-    public function delete(int $id): bool {
+    public function delete(int $id): bool
+    {
         $stmt = $this->pdo->prepare("DELETE FROM news WHERE news_id = :id");
         return $stmt->execute(['id' => $id]);
     }
