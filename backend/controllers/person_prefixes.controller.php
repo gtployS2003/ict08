@@ -7,10 +7,19 @@ require_once __DIR__ . '/../models/PersonPrefixModel.php';
 
 class PersonPrefixesController
 {
-    private PersonPrefixModel $model;
+    /**
+     * Summary of model
+     * @var PersonPrefixModel
+     */
+    private $model;
 
-    public function __construct(?PDO $pdo = null)
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
+
     {
+        $this->pdo = $pdo;
         $this->model = new PersonPrefixModel($pdo);
     }
 

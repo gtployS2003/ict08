@@ -6,10 +6,15 @@ require_once __DIR__ . '/../models/OrganizationTypeModel.php';
 
 class OrganizationTypesController
 {
-    private OrganizationTypeModel $model;
+/** @var OrganizationTypeModel */
+    private $model;
 
-    public function __construct()
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo; // จะต้อง set PDO จากภายนอกก่อนใช้งานจริง
         $this->model = new OrganizationTypeModel();
     }
 

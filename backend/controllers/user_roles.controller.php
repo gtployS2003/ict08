@@ -8,11 +8,16 @@ require_once __DIR__ . '/../helpers/validator.php';
 
 class UserRolesController
 {
-    private UserRoleModel $model;
+    /** @var UserRoleModel */
+    private $model;
 
-    public function __construct()
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
-        $this->model = new UserRoleModel();
+        $this->pdo = $pdo;
+        $this->model = new UserRoleModel($pdo);
     }
 
     /* =========================

@@ -6,8 +6,12 @@ require_once __DIR__ . '/../models/ContactInfoModel.php';
 
 final class ContactInfoController
 {
-    public function __construct(private PDO $pdo)
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
     }
 
     /* =========================

@@ -28,8 +28,12 @@ class RequestsController
     private const REQUEST_TYPE_REPAIR = 3; // แจ้งเสีย/ซ่อมอุปกรณ์
     private const REQUEST_TYPE_OTHER = 4; // ขอใช้บริการอื่น ๆ ของหน่วยงาน
 
-    public function __construct(private PDO $pdo)
+        /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
     }
 
     /**

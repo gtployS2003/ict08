@@ -16,21 +16,33 @@ require_once __DIR__ . '/../models/UserNotificationChannelModel.php';
 
 class UserApprovalsController
 {
-    private PersonModel $personModel;
-    private UserModel $userModel;
-    private UserRoleModel $userRoleModel;
-    private OrganizationModel $orgModel;
+    /** @var PDO */
+    private $pdo;
 
-    private UserNotificationChannelModel $userNotificationChannelModel;
+    /** @var PersonModel */
+    private $personModel;
 
-    public function __construct(private PDO $pdo)
+    /** @var UserModel */
+    private $userModel;
+
+    /** @var UserRoleModel */
+    private $userRoleModel;
+
+    /** @var OrganizationModel */
+    private $orgModel;
+
+    /** @var UserNotificationChannelModel */
+    private $userNotificationChannelModel;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
+
         $this->personModel = new PersonModel($pdo);
         $this->userModel = new UserModel($pdo);
         $this->userRoleModel = new UserRoleModel($pdo);
         $this->orgModel = new OrganizationModel($pdo);
         $this->userNotificationChannelModel = new UserNotificationChannelModel($pdo);
-
     }
 
     /**

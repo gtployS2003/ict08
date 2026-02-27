@@ -8,11 +8,16 @@ require_once __DIR__ . '/../helpers/validator.php';
 
 class OrganizationsController
 {
-    private OrganizationModel $model;
+    /** @var OrganizationModel */
+    private $model;
 
-    public function __construct()
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
-        $this->model = new OrganizationModel();
+        $this->pdo = $pdo;
+        $this->model = new OrganizationModel($pdo);
     }
 
     /* =========================

@@ -7,10 +7,15 @@ require_once __DIR__ . '/../models/DepartmentModel.php';
 
 class DepartmentsController
 {
-    private DepartmentModel $model;
+    /** @var DepartmentModel */
+    private $model;
 
-    public function __construct(?PDO $pdo = null)
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
         $this->model = new DepartmentModel($pdo);
     }
 

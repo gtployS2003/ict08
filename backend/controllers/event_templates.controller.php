@@ -21,7 +21,13 @@ if (file_exists($devAuthPath)) {
 
 final class EventTemplatesController
 {
-    public function __construct(private PDO $pdo) {}
+        /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
+    }
 
     /**
      * GET /event-templates/by-publicity-post/{publicityPostId}

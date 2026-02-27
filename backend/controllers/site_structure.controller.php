@@ -10,8 +10,12 @@ final class SiteStructureController
 {
     private const ORG_ID = 7;
 
-    public function __construct(private PDO $pdo)
+        /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
     }
 
     /**

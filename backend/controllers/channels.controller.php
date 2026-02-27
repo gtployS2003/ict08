@@ -7,8 +7,12 @@ require_once __DIR__ . '/../models/ChannelModel.php';
 
 final class ChannelsController
 {
-    public function __construct(private PDO $pdo)
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
     }
 
     /**

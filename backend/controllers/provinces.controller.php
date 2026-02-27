@@ -8,11 +8,16 @@ require_once __DIR__ . '/../helpers/validator.php';
 
 class ProvincesController
 {
-    private ProvinceModel $model;
+    /** @var ProvinceModel */
+    private $model;
 
-    public function __construct()
+    /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
     {
-        $this->model = new ProvinceModel();
+        $this->pdo = $pdo;
+        $this->model = new ProvinceModel($pdo);
     }
 
     /* =========================

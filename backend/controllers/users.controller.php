@@ -22,10 +22,17 @@ if (file_exists($devAuthPath)) {
 
 class UsersController
 {
-    private UsersModel $model;
+    /** @var UsersModel */
+    private $model;
 
-    public function __construct(private PDO $pdo)
+    /** @var PDO */
+    private $pdo;
+
+
+
+    public function __construct(PDO $pdo)
     {
+        $this->pdo = $pdo;
         $this->model = new UsersModel($pdo);
     }
 
@@ -98,7 +105,7 @@ class UsersController
         if (function_exists('get_bearer_token')) {
             $hasToken = (get_bearer_token() !== null);
         } else {
-            $auth = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+            $auth = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
             $hasToken = stripos($auth, 'Bearer ') !== false;
         }
 
@@ -353,23 +360,23 @@ class UsersController
             if (array_key_exists('end_date', $body))
                 $payload['end_date'] = $body['end_date'];
 
-                    // ✅ ล้างรูป (จาก flag)
-        $wantClear = isset($body['photo_clear']) && (string)$body['photo_clear'] === '1';
-        if ($wantClear) {
-            $this->deleteOldProfileIfLocal($old['photo_path'] ?? null);
-            $payload['photo_path'] = '';
-        }
-
-        // ✅ อัปโหลดรูปใหม่ (field name: photo_file)
-        if ($isMultipart && isset($_FILES['photo_file']) && ($_FILES['photo_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
-            // ลบรูปเก่าก่อน (ถ้ามี)
-            $this->deleteOldProfileIfLocal($old['photo_path'] ?? null);
-
-            $newPath = $this->saveProfileUpload($personId, $_FILES['photo_file']);
-            if ($newPath) {
-                $payload['photo_path'] = $newPath;
+            // ✅ ล้างรูป (จาก flag)
+            $wantClear = isset($body['photo_clear']) && (string) $body['photo_clear'] === '1';
+            if ($wantClear) {
+                $this->deleteOldProfileIfLocal($old['photo_path'] ?? null);
+                $payload['photo_path'] = '';
             }
-        }
+
+            // ✅ อัปโหลดรูปใหม่ (field name: photo_file)
+            if ($isMultipart && isset($_FILES['photo_file']) && ($_FILES['photo_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                // ลบรูปเก่าก่อน (ถ้ามี)
+                $this->deleteOldProfileIfLocal($old['photo_path'] ?? null);
+
+                $newPath = $this->saveProfileUpload($personId, $_FILES['photo_file']);
+                if ($newPath) {
+                    $payload['photo_path'] = $newPath;
+                }
+            }
 
             $ok = $this->model->update($personId, $payload);
             if (!$ok) {
@@ -378,7 +385,7 @@ class UsersController
             }
 
             $fresh = $this->model->findDetail($personId);
-            
+
             json_response(['ok' => true], 200);
         } catch (Throwable $e) {
             json_response([

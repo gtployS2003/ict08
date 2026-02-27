@@ -8,7 +8,13 @@ require_once __DIR__ . '/../models/RequestStatusModel.php';
 
 class RequestStatusController
 {
-    public function __construct(private PDO $pdo) {}
+        /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
+    }
 
     // GET /request-status?q=&request_type_id=&page=&limit=
     public function index(): void

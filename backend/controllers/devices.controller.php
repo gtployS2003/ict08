@@ -8,7 +8,13 @@ require_once __DIR__ . '/../models/DeviceModel.php';
 
 final class DevicesController
 {
-    public function __construct(private PDO $pdo) {}
+        /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
+    }
 
     // GET /devices/map?q=&province_id=&organization_id=&main_type_of_device_id=&type_of_device_id=&status=
     // ใช้สำหรับหน้าแผนที่: คืนข้อมูลพร้อม lat/lng และ path icon

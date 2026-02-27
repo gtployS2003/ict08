@@ -8,7 +8,13 @@ require_once __DIR__ . '/../models/EventStatusModel.php';
 
 class EventStatusController
 {
-    public function __construct(private PDO $pdo) {}
+        /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
+    }
 
     // GET /event-status?q=&request_type_id=&page=&limit=
     public function index(): void

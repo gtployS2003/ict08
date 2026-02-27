@@ -19,7 +19,13 @@ if (file_exists($devAuthPath)) {
 
 final class EventTemplateExportsController
 {
-    public function __construct(private PDO $pdo) {}
+        /** @var PDO */
+    private $pdo;
+
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
+    }
 
     /**
      * POST /event-template-exports/by-event-template/{eventTemplateId}
