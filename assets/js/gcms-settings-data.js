@@ -222,6 +222,7 @@
     hide($("#btn-add-diractor"));
     hide($("#btn-add-mission"));
     hide($("#btn-add-structure"));
+    hide($("#btn-add-banner"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -374,6 +375,14 @@
         loadHistoryImagePage();
         break;
 
+      case "mission-image":
+        show($("#section-mission-image"));
+        show($("#btn-add-mission-image"));
+        setTitle("ตั้งค่าภาพภารกิจหน้าหลัก");
+        initHomeMissionImgSection();
+        loadHomeMissionImgs();
+        break;
+
       case "structure":
         show($("#section-structure"));
         show($("#btn-add-structure"));
@@ -396,6 +405,12 @@
         setTitle("รายชื่อผู้อำนวยการ");
         initDiractorSection();
         loadDiractors();
+        break;
+
+      case "banner":
+        show($("#section-banner"));
+        show($("#btn-add-banner"));
+        setTitle("การตั้งค่า banner");
         break;
 
       case "link-url":
@@ -2135,6 +2150,370 @@
           await loadHistoryImagePage();
         } catch (err) {
           hipSetSectionStatus(err?.message || String(err), { isError: true });
+        }
+      }
+    });
+  }
+
+
+  /* =========================
+   HOME MISSION IMAGES (SITE HOME)
+   - Section: #section-mission-image
+   - Action: #btn-add-mission-image
+   - Modal: #mission-image-modal, #mission-image-form
+   - Upload: #mission-image-modal-file
+   - Preview: #mission-image-modal-preview, #mission-image-modal-preview-img, #mission-image-modal-preview-name, #mission-image-modal-clear
+   - Toolbar: #mission-image-search, #mission-image-limit, #mission-image-refresh
+   - Table: #mission-image-tbody
+   - Footer: #mission-image-pagination, #mission-image-total
+  ========================= */
+
+  const hmiEls = {
+    section: $("#section-mission-image"),
+    tbody: $("#mission-image-tbody"),
+
+    search: $("#mission-image-search"),
+    limit: $("#mission-image-limit"),
+    refreshBtn: $("#mission-image-refresh"),
+    pagination: $("#mission-image-pagination"),
+    total: $("#mission-image-total"),
+
+    btnAdd: $("#btn-add-mission-image"),
+
+    modal: $("#mission-image-modal"),
+    form: $("#mission-image-form"),
+    file: $("#mission-image-modal-file"),
+    modalStatus: $("#mission-image-modal-status"),
+    modalError: $("#mission-image-modal-error"),
+    submitText: $("#mission-image-modal-submit-text"),
+
+    previewWrap: $("#mission-image-modal-preview"),
+    previewImg: $("#mission-image-modal-preview-img"),
+    previewName: $("#mission-image-modal-preview-name"),
+    clearBtn: $("#mission-image-modal-clear"),
+  };
+
+  const hmiState = {
+    q: "",
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 1,
+    inited: false,
+    loading: false,
+  };
+
+  function hmiToPublicUrl(fp) {
+    const p = String(fp || "").trim();
+    if (!p) return "";
+    if (/^https?:\/\//i.test(p)) return p;
+    if (p.startsWith("/uploads/")) return `${API_BASE}${p}`;
+    if (p.startsWith("uploads/")) return `${API_BASE}/${p}`;
+    if (p.startsWith("/")) return p;
+    return `/${p}`;
+  }
+
+  function hmiSetSectionStatus(msg, { isError = false } = {}) {
+    if (!hmiEls.total) return;
+    hmiEls.total.textContent = msg ? String(msg) : "";
+    hmiEls.total.style.color = isError ? "#b42318" : "";
+  }
+
+  function hmiSetModalStatus(msg, { isError = false } = {}) {
+    if (!hmiEls.modalStatus) return;
+    hmiEls.modalStatus.textContent = msg ? String(msg) : "";
+    hmiEls.modalStatus.style.color = isError ? "#b42318" : "";
+  }
+
+  function hmiSetModalError(msg) {
+    if (!hmiEls.modalError) return;
+    if (!msg) {
+      hmiEls.modalError.hidden = true;
+      hmiEls.modalError.textContent = "";
+      return;
+    }
+    hmiEls.modalError.hidden = false;
+    hmiEls.modalError.textContent = String(msg);
+  }
+
+  function hmiHidePreview() {
+    if (!hmiEls.previewWrap) return;
+    hmiEls.previewWrap.hidden = true;
+    if (hmiEls.previewImg) hmiEls.previewImg.removeAttribute("src");
+    if (hmiEls.previewName) hmiEls.previewName.textContent = "-";
+  }
+
+  function hmiShowPreview(file) {
+    if (!hmiEls.previewWrap || !hmiEls.previewImg || !hmiEls.previewName) return;
+
+    const url = URL.createObjectURL(file);
+    hmiEls.previewImg.src = url;
+    hmiEls.previewName.textContent = `${file.name} (${Math.round((file.size || 0) / 1024)} KB)`;
+    hmiEls.previewWrap.hidden = false;
+
+    hmiEls.previewImg.onload = () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (_) {
+        // ignore
+      }
+    };
+  }
+
+  function hmiResetModal() {
+    hmiSetModalError("");
+    hmiSetModalStatus("");
+
+    try {
+      if (hmiEls.file) hmiEls.file.value = "";
+    } catch (_) {
+      // ignore
+    }
+
+    hmiHidePreview();
+
+    if (hmiEls.submitText) hmiEls.submitText.textContent = "อัปโหลด";
+    if (hmiEls.file) hmiEls.file.disabled = false;
+
+    const submitBtn = hmiEls.form?.querySelector?.("button[type='submit']");
+    if (submitBtn) submitBtn.disabled = false;
+  }
+
+  function hmiOpenModal() {
+    hmiResetModal();
+    openModal("mission-image-modal");
+    setTimeout(() => hmiEls.file?.focus?.(), 0);
+  }
+
+  function hmiCloseModal() {
+    closeModal("mission-image-modal");
+  }
+
+  function hmiRenderRows(items = []) {
+    if (!hmiEls.tbody) return;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      hmiEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    hmiEls.tbody.innerHTML = items
+      .map((r, idx) => {
+        const id = r.home_mission_img_id ?? r.id ?? "";
+        const path = String(r.path || "").trim();
+
+        const imgUrl = path ? hmiToPublicUrl(path) : "";
+        const imgCell = imgUrl
+          ? `<img src="${escapeHtml(imgUrl)}" alt="mission" style="width:120px; height:auto; border-radius:10px; border:1px solid #eee; background:#fafafa;" />`
+          : `<span class="muted">-</span>`;
+
+        const orderLabel = idx === 0 ? "รูปที่ 1 (ใหญ่)" : idx === 1 ? "รูปที่ 2 (เล็กบน)" : "รูปที่ 3 (เล็กล่าง)";
+
+        return `
+          <tr>
+            <td>${escapeHtml(id)}</td>
+            <td>${imgCell}</td>
+            <td style="word-break:break-all;">${path ? escapeHtml(path) : "-"}</td>
+            <td>${escapeHtml(orderLabel)}</td>
+            <td>
+              <div class="table-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-danger btn-sm" type="button" data-action="delete" data-id="${escapeHtml(id)}" data-path="${escapeHtml(path)}">
+                  <i class="fa-solid fa-trash"></i> ลบ
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  function hmiRenderPagination() {
+    if (!hmiEls.pagination) return;
+    hmiState.totalPages = calcTotalPages({
+      total: hmiState.total,
+      limit: hmiState.limit,
+      totalPages: hmiState.totalPages,
+    });
+
+    renderPager(hmiEls.pagination, {
+      page: hmiState.page,
+      totalPages: hmiState.totalPages,
+    });
+  }
+
+  function hmiExtractErrorMessage(err) {
+    const payload = err?.payload;
+    const errors = payload?.errors;
+    if (Array.isArray(errors) && errors.length) return errors.join("\n");
+    if (typeof errors === "string" && errors.trim()) return errors;
+    return err?.message || String(err);
+  }
+
+  async function loadHomeMissionImgs() {
+    if (!hmiEls.section) return;
+    if (hmiState.loading) return;
+    hmiState.loading = true;
+
+    try {
+      hmiSetSectionStatus("กำลังโหลด...");
+      if (!window.HomeMissionImgAPI?.list) {
+        throw new Error("HomeMissionImgAPI.list not found");
+      }
+
+      hmiState.q = String(hmiEls.search?.value || "").trim();
+      hmiState.limit = toInt(hmiEls.limit?.value, hmiState.limit || 50) || 50;
+
+      const res = await window.HomeMissionImgAPI.list({
+        q: hmiState.q,
+        page: hmiState.page,
+        limit: hmiState.limit,
+      });
+
+      const data = res?.data || {};
+      const items = data.items || [];
+      const pag = data.pagination || {};
+
+      hmiState.total = Number(pag.total ?? items.length ?? 0);
+      hmiState.totalPages = Number(pag.total_pages ?? hmiState.totalPages ?? 1);
+      hmiState.page = Number(pag.page ?? hmiState.page ?? 1);
+      hmiState.limit = Number(pag.limit ?? hmiState.limit ?? 50);
+
+      hmiRenderRows(items);
+      hmiRenderPagination();
+      hmiSetSectionStatus(`ทั้งหมด ${hmiState.total} รายการ (แสดงได้สูงสุด 3 รูปบนหน้าแรก)`);
+    } catch (err) {
+      hmiSetSectionStatus(hmiExtractErrorMessage(err), { isError: true });
+      if (hmiEls.tbody) hmiEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">โหลดไม่สำเร็จ</td></tr>`;
+    } finally {
+      hmiState.loading = false;
+    }
+  }
+
+  function initHomeMissionImgSection() {
+    if (hmiState.inited) return;
+    hmiState.inited = true;
+
+    hmiHidePreview();
+
+    hmiEls.btnAdd?.addEventListener("click", () => {
+      hmiOpenModal();
+    });
+
+    hmiEls.file?.addEventListener("change", () => {
+      const f = hmiEls.file?.files?.[0];
+      if (!f) {
+        hmiHidePreview();
+        return;
+      }
+      if (!/^image\//i.test(String(f.type || ""))) {
+        hmiSetModalError("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+        try {
+          hmiEls.file.value = "";
+        } catch (_) {
+          // ignore
+        }
+        hmiHidePreview();
+        return;
+      }
+      hmiSetModalError("");
+      hmiSetModalStatus("");
+      hmiShowPreview(f);
+    });
+
+    hmiEls.clearBtn?.addEventListener("click", () => {
+      hmiSetModalError("");
+      hmiSetModalStatus("");
+      try {
+        if (hmiEls.file) hmiEls.file.value = "";
+      } catch (_) {
+        // ignore
+      }
+      hmiHidePreview();
+    });
+
+    hmiEls.refreshBtn?.addEventListener("click", () => {
+      loadHomeMissionImgs();
+    });
+
+    let t = null;
+    hmiEls.search?.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        hmiState.page = 1;
+        loadHomeMissionImgs();
+      }, 300);
+    });
+
+    hmiEls.limit?.addEventListener("change", () => {
+      hmiState.page = 1;
+      loadHomeMissionImgs();
+    });
+
+    hmiEls.pagination?.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-page]");
+      if (!btn || btn.disabled) return;
+      const next = toInt(btn.getAttribute("data-page"), 0);
+      if (!next || next < 1 || next > (hmiState.totalPages || 1)) return;
+      if (next === hmiState.page) return;
+      hmiState.page = next;
+      loadHomeMissionImgs();
+    });
+
+    hmiEls.form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = hmiEls.file?.files?.[0];
+      if (!f) {
+        hmiSetModalError("กรุณาแนบไฟล์ก่อนอัปโหลด");
+        return;
+      }
+
+      const submitBtn = hmiEls.form?.querySelector?.("button[type='submit']");
+
+      try {
+        hmiSetModalError("");
+        hmiSetModalStatus("กำลังอัปโหลด...");
+        if (hmiEls.submitText) hmiEls.submitText.textContent = "กำลังอัปโหลด...";
+        if (submitBtn) submitBtn.disabled = true;
+        if (hmiEls.file) hmiEls.file.disabled = true;
+
+        if (!window.HomeMissionImgAPI?.upload) {
+          throw new Error("HomeMissionImgAPI.upload not found");
+        }
+
+        await window.HomeMissionImgAPI.upload(f);
+        hmiSetModalStatus("อัปโหลดสำเร็จ");
+        hmiCloseModal();
+        await loadHomeMissionImgs();
+      } catch (err) {
+        hmiSetModalError(hmiExtractErrorMessage(err));
+        hmiSetModalStatus("");
+      } finally {
+        if (hmiEls.submitText) hmiEls.submitText.textContent = "อัปโหลด";
+        if (submitBtn) submitBtn.disabled = false;
+        if (hmiEls.file) hmiEls.file.disabled = false;
+      }
+    });
+
+    hmiEls.tbody?.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-action");
+      const id = btn.getAttribute("data-id");
+      if (!action || !id) return;
+
+      if (action === "delete") {
+        const path = btn.getAttribute("data-path") || "";
+        const okDel = confirm(`ยืนยันลบรูปนี้?\n\n- ID: ${id}\n- ${path}`);
+        if (!okDel) return;
+
+        try {
+          hmiSetSectionStatus("กำลังลบ...");
+          await window.HomeMissionImgAPI.remove(id);
+          hmiSetSectionStatus("ลบเรียบร้อย");
+          await loadHomeMissionImgs();
+        } catch (err) {
+          hmiSetSectionStatus(hmiExtractErrorMessage(err), { isError: true });
         }
       }
     });
@@ -8837,6 +9216,534 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
 
 
   /* =========================
+    BANNER (SITE HERO)
+    - Section: #section-banner
+    - Action: #btn-add-banner
+    - Modal: #banner-modal, #banner-form
+  ========================= */
+
+  const bannerEls = {
+    section: $("#section-banner"),
+    tbody: $("#banner-tbody"),
+    search: $("#banner-search"),
+    limit: $("#banner-limit"),
+    refresh: $("#banner-refresh"),
+    pagination: $("#banner-pagination"),
+    total: $("#banner-total"),
+
+    btnAdd: $("#btn-add-banner"),
+
+    modalId: "banner-modal",
+    modalTitle: $("#banner-modal-title"),
+    submitText: $("#banner-submit-text"),
+    modalStatus: $("#banner-modal-status"),
+    form: $("#banner-form"),
+    formError: $("#banner-form-error"),
+
+    inputId: $("#banner-id"),
+    inputTitle: $("#banner-title"),
+    inputDiscription: $("#banner-discription"),
+    inputActivity: $("#banner-activity"),
+    inputNews: $("#banner-news"),
+    inputUrl: $("#banner-url"),
+    inputStartAt: $("#banner-start-at"),
+    inputEndAt: $("#banner-end-at"),
+    file: $("#banner-file"),
+
+    inputIsActive: $("#banner-is-active"),
+    isActiveText: $("#banner-is-active-text"),
+
+    previewWrap: $("#banner-preview"),
+    previewImg: $("#banner-preview-img"),
+    previewName: $("#banner-preview-name"),
+    clearBtn: $("#banner-clear"),
+  };
+
+  const bannerState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    total: 0,
+    totalPages: 1,
+    loading: false,
+    inited: false,
+    refsLoaded: false,
+    refsLoading: false,
+    activities: [],
+    news: [],
+    byId: new Map(),
+  };
+
+  const BANNER_PLACEHOLDER = "/ict8/assets/image/hero1.jpg";
+
+  function bannerToPublicUrl(fp) {
+    const p = String(fp || "").trim();
+    if (!p) return "";
+    if (/^https?:\/\//i.test(p)) return p;
+    if (p.startsWith("/uploads/")) return `${API_BASE}${p}`;
+    if (p.startsWith("uploads/")) return `${API_BASE}/${p}`;
+    if (p.startsWith("./uploads/")) return `${API_BASE}/${p.replace(/^\.\//, "")}`;
+    if (p.startsWith("/")) return p;
+    return `/${p}`;
+  }
+
+  function bannerToDatetimeLocal(v) {
+    const s = String(v || "").trim();
+    if (!s) return "";
+    // Accept "YYYY-MM-DD HH:MM:SS" -> "YYYY-MM-DDTHH:MM"
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::\d{2})?/);
+    if (m) return `${m[1]}T${m[2]}`;
+    // Already datetime-local
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return s.slice(0, 16);
+    return s;
+  }
+
+  function bannerSetError(msg) {
+    if (!bannerEls.formError) return;
+    if (!msg) {
+      bannerEls.formError.hidden = true;
+      bannerEls.formError.textContent = "";
+      return;
+    }
+    bannerEls.formError.hidden = false;
+    bannerEls.formError.textContent = String(msg);
+  }
+
+  function bannerSetModalStatus(msg, { isError = false } = {}) {
+    if (!bannerEls.modalStatus) return;
+    bannerEls.modalStatus.textContent = msg ? String(msg) : "";
+    bannerEls.modalStatus.style.color = isError ? "#b42318" : "";
+  }
+
+  function bannerSyncActiveText() {
+    if (!bannerEls.inputIsActive || !bannerEls.isActiveText) return;
+    bannerEls.isActiveText.textContent = bannerEls.inputIsActive.checked ? "ใช้งาน" : "ไม่ใช้งาน";
+  }
+
+  function bannerHidePreview() {
+    if (!bannerEls.previewWrap) return;
+    bannerEls.previewWrap.hidden = true;
+    if (bannerEls.previewImg) bannerEls.previewImg.removeAttribute("src");
+    if (bannerEls.previewName) bannerEls.previewName.textContent = "-";
+  }
+
+  function bannerShowPreviewFromFile(file) {
+    if (!bannerEls.previewWrap || !bannerEls.previewImg || !bannerEls.previewName) return;
+    const url = URL.createObjectURL(file);
+    bannerEls.previewImg.src = url;
+    bannerEls.previewName.textContent = `${file.name} (${Math.round((file.size || 0) / 1024)} KB)`;
+    bannerEls.previewWrap.hidden = false;
+    bannerEls.previewImg.onload = () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (_) {
+        // ignore
+      }
+    };
+  }
+
+  function bannerShowPreviewFromPath(path) {
+    if (!bannerEls.previewWrap || !bannerEls.previewImg || !bannerEls.previewName) return;
+    const url = path ? bannerToPublicUrl(path) : BANNER_PLACEHOLDER;
+    bannerEls.previewImg.src = url;
+    bannerEls.previewName.textContent = path ? String(path) : "(ไม่มีรูป)";
+    bannerEls.previewWrap.hidden = false;
+  }
+
+  function bannerSetSelectOptions(selectEl, { placeholder = "-- ไม่ระบุ --", items = [], valueKey, labelKey = "title" } = {}) {
+    if (!selectEl) return;
+    const current = String(selectEl.value || "");
+    selectEl.innerHTML = [
+      `<option value="" selected>${escapeHtml(placeholder)}</option>`,
+      ...items.map((it) => {
+        const val = String(it?.[valueKey] ?? "");
+        const label0 = String(it?.[labelKey] ?? "").trim();
+        const label = label0 ? `#${val} ${label0}` : `#${val}`;
+        return `<option value="${escapeHtml(val)}">${escapeHtml(label)}</option>`;
+      }),
+    ].join("");
+    // restore if possible
+    if (current) selectEl.value = current;
+  }
+
+  async function bannerEnsureRefsLoaded() {
+    if (bannerState.refsLoaded || bannerState.refsLoading) return;
+    if (!window.BannerAPI) throw new Error("BannerAPI is not loaded");
+
+    bannerState.refsLoading = true;
+    try {
+      const res = await window.BannerAPI.refs();
+      const data = res?.data || {};
+      bannerState.activities = Array.isArray(data.activities) ? data.activities : [];
+      bannerState.news = Array.isArray(data.news) ? data.news : [];
+      bannerState.refsLoaded = true;
+
+      bannerSetSelectOptions(bannerEls.inputActivity, {
+        items: bannerState.activities,
+        valueKey: "activity_id",
+        labelKey: "title",
+      });
+      bannerSetSelectOptions(bannerEls.inputNews, {
+        items: bannerState.news,
+        valueKey: "news_id",
+        labelKey: "title",
+      });
+    } finally {
+      bannerState.refsLoading = false;
+    }
+  }
+
+  function bannerResetForm() {
+    bannerSetError("");
+    bannerSetModalStatus("");
+
+    if (bannerEls.inputId) bannerEls.inputId.value = "";
+    if (bannerEls.inputTitle) bannerEls.inputTitle.value = "";
+    if (bannerEls.inputDiscription) bannerEls.inputDiscription.value = "";
+    if (bannerEls.inputActivity) bannerEls.inputActivity.value = "";
+    if (bannerEls.inputNews) bannerEls.inputNews.value = "";
+    if (bannerEls.inputUrl) bannerEls.inputUrl.value = "";
+    if (bannerEls.inputStartAt) bannerEls.inputStartAt.value = "";
+    if (bannerEls.inputEndAt) bannerEls.inputEndAt.value = "";
+    if (bannerEls.inputIsActive) bannerEls.inputIsActive.checked = true;
+
+    try {
+      if (bannerEls.file) bannerEls.file.value = "";
+    } catch (_) {
+      // ignore
+    }
+
+    bannerSyncActiveText();
+    bannerHidePreview();
+  }
+
+  async function bannerOpenModal({ mode = "create", row } = {}) {
+    if (!bannerEls.form) return;
+    bannerSetError("");
+    bannerSetModalStatus("");
+
+    await bannerEnsureRefsLoaded();
+
+    if (mode === "edit" && row) {
+      if (bannerEls.modalTitle) bannerEls.modalTitle.textContent = "แก้ไข Banner";
+      if (bannerEls.submitText) bannerEls.submitText.textContent = "บันทึกการแก้ไข";
+
+      if (bannerEls.inputId) bannerEls.inputId.value = String(row.banner_id ?? "");
+      if (bannerEls.inputTitle) bannerEls.inputTitle.value = String(row.title ?? "");
+      if (bannerEls.inputDiscription) bannerEls.inputDiscription.value = String(row.discription ?? "");
+      if (bannerEls.inputActivity) bannerEls.inputActivity.value = String(row.source_activity_id ?? "");
+      if (bannerEls.inputNews) bannerEls.inputNews.value = String(row.source_news_id ?? "");
+      if (bannerEls.inputUrl) bannerEls.inputUrl.value = String(row.source_link_url ?? "");
+      if (bannerEls.inputStartAt) bannerEls.inputStartAt.value = bannerToDatetimeLocal(row.start_at);
+      if (bannerEls.inputEndAt) bannerEls.inputEndAt.value = bannerToDatetimeLocal(row.end_at);
+      if (bannerEls.inputIsActive) bannerEls.inputIsActive.checked = Number(row.is_active ?? 0) === 1;
+
+      try {
+        if (bannerEls.file) bannerEls.file.value = "";
+      } catch (_) {
+        // ignore
+      }
+
+      bannerSyncActiveText();
+      bannerShowPreviewFromPath(String(row.image_path || ""));
+    } else {
+      if (bannerEls.modalTitle) bannerEls.modalTitle.textContent = "เพิ่ม Banner";
+      if (bannerEls.submitText) bannerEls.submitText.textContent = "บันทึก";
+      bannerResetForm();
+    }
+
+    openModal(bannerEls.modalId);
+    setTimeout(() => bannerEls.inputTitle?.focus(), 0);
+  }
+
+  function bannerRenderPagination() {
+    if (!bannerEls.pagination) return;
+    bannerState.totalPages = calcTotalPages({
+      total: bannerState.total,
+      limit: bannerState.limit,
+      totalPages: bannerState.totalPages,
+    });
+    renderPager(bannerEls.pagination, {
+      page: bannerState.page,
+      totalPages: bannerState.totalPages,
+    });
+  }
+
+  function bannerRenderRows(items = []) {
+    if (!bannerEls.tbody) return;
+    if (!Array.isArray(items) || items.length === 0) {
+      bannerEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    bannerEls.tbody.innerHTML = items
+      .map((r) => {
+        const id = r.banner_id ?? "";
+        const title = String(r.title ?? "");
+        const imgPath = String(r.image_path ?? "");
+        const imgUrl = imgPath ? bannerToPublicUrl(imgPath) : BANNER_PLACEHOLDER;
+        const isActive = Number(r.is_active ?? 0) === 1;
+
+        return `
+          <tr>
+            <td>${escapeHtml(id)}</td>
+            <td>
+              <div style="font-weight:600;">${escapeHtml(title || "-")}</div>
+              <div class="muted" style="margin-top:4px;">
+                ${escapeHtml(String(r.discription ?? "") || "-")}
+              </div>
+            </td>
+            <td>
+              <img src="${escapeHtml(imgUrl)}" alt="banner" style="width:96px; height:54px; object-fit:cover; border-radius:12px; border:1px solid #eee; background:#fafafa;" />
+            </td>
+            <td>
+              <label class="toggle-inline" style="justify-content:flex-start;">
+                <span class="toggle toggle--gcms">
+                  <input type="checkbox" data-action="toggle" data-id="${escapeHtml(id)}" ${isActive ? "checked" : ""} />
+                  <span class="toggle__track"><span class="toggle__thumb"></span></span>
+                </span>
+                <span class="toggle-inline__text">${isActive ? "ใช้งาน" : "ไม่ใช้งาน"}</span>
+              </label>
+            </td>
+            <td>
+              <div class="table-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-outline btn-sm" type="button" data-action="edit" data-id="${escapeHtml(id)}">
+                  <i class="fa-solid fa-pen"></i> แก้ไข
+                </button>
+                <button class="btn btn-danger btn-sm" type="button" data-action="delete" data-id="${escapeHtml(id)}" data-title="${escapeHtml(title)}">
+                  <i class="fa-solid fa-trash"></i> ลบ
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  async function loadBanners() {
+    if (bannerState.loading) return;
+    if (!bannerEls.section) return;
+    if (!window.BannerAPI) {
+      if (bannerEls.tbody) bannerEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบ BannerAPI</td></tr>`;
+      return;
+    }
+
+    bannerState.loading = true;
+    try {
+      if (bannerEls.tbody) bannerEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">กำลังโหลด...</td></tr>`;
+
+      bannerState.q = String(bannerEls.search?.value || "").trim();
+      bannerState.limit = Number(bannerEls.limit?.value || 50) || 50;
+
+      const res = await window.BannerAPI.list({
+        q: bannerState.q,
+        page: bannerState.page,
+        limit: bannerState.limit,
+      });
+
+      const data = res?.data || {};
+      const items = Array.isArray(data.items) ? data.items : [];
+      const pg = data.pagination || {};
+
+      bannerState.total = Number(pg.total || items.length || 0);
+      bannerState.totalPages = Number(pg.total_pages || 1);
+      bannerState.page = Number(pg.page || bannerState.page);
+      bannerState.limit = Number(pg.limit || bannerState.limit);
+
+      bannerState.byId = new Map(items.map((it) => [String(it.banner_id ?? ""), it]));
+
+      bannerRenderRows(items);
+      bannerRenderPagination();
+      if (bannerEls.total) bannerEls.total.textContent = `ทั้งหมด ${bannerState.total} รายการ`;
+    } catch (err) {
+      if (bannerEls.tbody) {
+        bannerEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err?.message || String(err))}</td></tr>`;
+      }
+    } finally {
+      bannerState.loading = false;
+    }
+  }
+
+  function initBannerSection() {
+    if (!bannerEls.section) return;
+    if (bannerState.inited) return;
+    bannerState.inited = true;
+
+    let t = null;
+    bannerEls.search?.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        bannerState.page = 1;
+        loadBanners();
+      }, 300);
+    });
+
+    bannerEls.limit?.addEventListener("change", () => {
+      bannerState.page = 1;
+      loadBanners();
+    });
+
+    bannerEls.refresh?.addEventListener("click", () => {
+      loadBanners();
+    });
+
+    bannerEls.pagination?.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-page]");
+      if (!btn || btn.disabled) return;
+      const next = toInt(btn.getAttribute("data-page"), 0);
+      if (!next || next < 1 || next > (bannerState.totalPages || 1)) return;
+      if (next === bannerState.page) return;
+      bannerState.page = next;
+      loadBanners();
+    });
+
+    bannerEls.btnAdd?.addEventListener("click", async () => {
+      try {
+        await bannerOpenModal({ mode: "create" });
+      } catch (err) {
+        alert(err?.message || String(err));
+      }
+    });
+
+    bannerEls.inputIsActive?.addEventListener("change", () => {
+      bannerSyncActiveText();
+    });
+
+    bannerEls.file?.addEventListener("change", () => {
+      const file = bannerEls.file?.files?.[0];
+      if (file) bannerShowPreviewFromFile(file);
+    });
+
+    bannerEls.clearBtn?.addEventListener("click", () => {
+      try {
+        if (bannerEls.file) bannerEls.file.value = "";
+      } catch (_) {
+        // ignore
+      }
+      bannerHidePreview();
+    });
+
+    // table actions + toggle
+    bannerEls.tbody?.addEventListener("click", async (e) => {
+      const toggle = e.target.closest("input[type=checkbox][data-action=toggle]");
+      if (toggle) {
+        const id = String(toggle.getAttribute("data-id") || "");
+        if (!id) return;
+        const newVal = toggle.checked ? 1 : 0;
+        const oldVal = newVal ? 0 : 1;
+        toggle.disabled = true;
+
+        try {
+          const fd = new FormData();
+          fd.append("is_active", String(newVal));
+          await window.BannerAPI.update(Number(id), fd);
+          loadBanners();
+        } catch (err) {
+          // revert
+          toggle.checked = oldVal === 1;
+          alert(err?.message || String(err));
+        } finally {
+          toggle.disabled = false;
+        }
+        return;
+      }
+
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-action");
+      const id = btn.getAttribute("data-id");
+      if (!id) return;
+
+      if (action === "edit") {
+        const row = bannerState.byId.get(String(id));
+        if (!row) {
+          alert("ไม่พบข้อมูลรายการนี้");
+          return;
+        }
+        try {
+          await bannerOpenModal({ mode: "edit", row });
+        } catch (err) {
+          alert(err?.message || String(err));
+        }
+        return;
+      }
+
+      if (action === "delete") {
+        const title = btn.getAttribute("data-title") || id;
+        const okDel = confirm(`ยืนยันลบ banner\n\n- ${title}`);
+        if (!okDel) return;
+
+        try {
+          await window.BannerAPI.remove(Number(id));
+          loadBanners();
+        } catch (err) {
+          alert(err?.message || String(err));
+        }
+      }
+    });
+
+    // submit
+    bannerEls.form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!window.BannerAPI) return;
+
+      const id = String(bannerEls.inputId?.value || "").trim();
+      const title = String(bannerEls.inputTitle?.value || "").trim();
+      const discription = String(bannerEls.inputDiscription?.value || "");
+      const source_activity_id = String(bannerEls.inputActivity?.value || "").trim();
+      const source_news_id = String(bannerEls.inputNews?.value || "").trim();
+      const source_link_url = String(bannerEls.inputUrl?.value || "").trim();
+      const start_at = String(bannerEls.inputStartAt?.value || "").trim();
+      const end_at = String(bannerEls.inputEndAt?.value || "").trim();
+      const is_active = bannerEls.inputIsActive?.checked ? 1 : 0;
+      const file = bannerEls.file?.files?.[0] || null;
+
+      if (!title) {
+        bannerSetError("กรุณากรอกชื่อ banner");
+        return;
+      }
+      if (!id && !file) {
+        bannerSetError("กรุณาแนบรูปภาพสำหรับ banner");
+        return;
+      }
+
+      try {
+        bannerSetError("");
+        bannerSetModalStatus("กำลังบันทึก...");
+
+        const fd = new FormData();
+        fd.append("title", title);
+        fd.append("discription", discription);
+        if (source_activity_id) fd.append("source_activity_id", source_activity_id);
+        else fd.append("source_activity_id", "");
+        if (source_news_id) fd.append("source_news_id", source_news_id);
+        else fd.append("source_news_id", "");
+        fd.append("source_link_url", source_link_url);
+        // start/end are optional
+        if (start_at) fd.append("start_at", start_at);
+        if (end_at) fd.append("end_at", end_at);
+        fd.append("is_active", String(is_active));
+        if (file) fd.append("file", file);
+
+        if (id) {
+          await window.BannerAPI.update(Number(id), fd);
+        } else {
+          await window.BannerAPI.create(fd);
+        }
+
+        closeModal(bannerEls.modalId);
+        bannerSetModalStatus("");
+        loadBanners();
+      } catch (err) {
+        bannerSetModalStatus("");
+        bannerSetError(err?.message || String(err));
+      }
+    });
+  }
+
+
+  /* =========================
     LINK URL (RELATED WEBSITES)
   ========================= */
   const linkUrlEls = {
@@ -9510,6 +10417,7 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
   }
 
   // init new sections (safe even if sections not present)
+  initBannerSection();
   initLinkUrlSection();
   initDocumentsSection();
 
@@ -9529,6 +10437,13 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
       linkUrlState.q = (linkUrlEls.search?.value || "").trim();
       linkUrlState.limit = Number(linkUrlEls.limit?.value || 50);
       loadLinkUrls();
+    }
+
+    if (sectionKey === "banner") {
+      bannerState.page = 1;
+      bannerState.q = (bannerEls.search?.value || "").trim();
+      bannerState.limit = Number(bannerEls.limit?.value || 50);
+      loadBanners();
     }
 
     if (sectionKey === "related-documents") {

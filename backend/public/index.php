@@ -52,9 +52,11 @@ require_once __DIR__ . '/../routes/event_template_exports.routes.php';
 require_once __DIR__ . '/../routes/link_urls.routes.php';
 require_once __DIR__ . '/../routes/documents.routes.php';
 require_once __DIR__ . '/../routes/history_image_page.routes.php';
+require_once __DIR__ . '/../routes/home_mission_img.routes.php';
 require_once __DIR__ . '/../routes/site_diractor.routes.php';
 require_once __DIR__ . '/../routes/site_structure.routes.php';
 require_once __DIR__ . '/../routes/site_mission.routes.php';
+require_once __DIR__ . '/../routes/banners.routes.php';
 
 
 
@@ -136,9 +138,11 @@ try {
     if (link_urls_routes($method, $segments, $pdo)) exit;
     if (documents_routes($method, $segments, $pdo)) exit;
     if (history_image_page_routes($method, $segments, $pdo)) exit;
+    if (home_mission_img_routes($method, $segments, $pdo)) exit;
     if (site_diractor_routes($method, $segments, $pdo)) exit;
     if (site_structure_routes($method, $segments, $pdo)) exit;
     if (site_mission_routes($method, $segments, $pdo)) exit;
+    if (banners_routes($method, $segments, $pdo)) exit;
 
     fail("Route not found", 404, ["path" => $path, "method" => $method]);
 

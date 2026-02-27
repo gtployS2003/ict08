@@ -951,6 +951,62 @@ tr.is-dragging {
   box-sizing: border-box;
 }
 
+/* =========================
+   FIX: BANNER modal ไม่ให้เกินขนาด popup/หน้าจอ
+   - จำกัดความสูงของ dialog
+   - ให้ body (form) scroll ภายใน
+   - footer ติดท้าย (sticky) เพื่อกดบันทึกได้เสมอ
+========================= */
+#banner-modal .modal__dialog {
+  max-height: min(86vh, 820px);
+  display: flex;
+  flex-direction: column;
+  /* กว้างขึ้นนิด เพราะมี 2 column */
+  width: min(920px, calc(100% - 24px));
+}
+
+#banner-modal .modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#banner-modal .modal__footer {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 14px 0 0;
+  margin-top: 14px;
+}
+
+#banner-modal .photo-preview {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+#banner-modal .photo-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+#banner-modal .photo-preview__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 [hidden] {
   display: none !important;
 }
@@ -1255,6 +1311,54 @@ tr.is-dragging {
 }
 
 #history-image-modal #history-image-modal-preview-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =========================
+   Home mission image modal preview
+   Fix: ตัวอย่างรูปใหญ่/ล้น popup
+========================= */
+#mission-image-modal .modal__dialog {
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+}
+
+#mission-image-modal .modal__body {
+  overflow: auto;
+}
+
+#mission-image-modal .photo-preview {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+#mission-image-modal .photo-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 260px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+#mission-image-modal .photo-preview__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+#mission-image-modal #mission-image-modal-preview-name {
   font-size: 12px;
   font-weight: 600;
   color: rgba(0, 0, 0, 0.75);
