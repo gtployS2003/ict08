@@ -2,6 +2,22 @@
 // backend/config/env.php
 declare(strict_types=1);
 
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($haystack, $needle): bool {
+        return $needle === '' || strpos((string)$haystack, (string)$needle) === 0;
+    }
+}
+
+if (!function_exists('str_ends_with')) {
+    function str_ends_with($haystack, $needle): bool {
+        $haystack = (string)$haystack;
+        $needle   = (string)$needle;
+        if ($needle === '') return true;
+        $len = strlen($needle);
+        return substr($haystack, -$len) === $needle;
+    }
+}
+
 function env_load(string $envFilePath): void
 {
     if (!file_exists($envFilePath)) return;
