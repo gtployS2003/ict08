@@ -88,7 +88,9 @@ final class HeadOfRequestModel
 	 */
 	public function listAssignmentsBySubTypeIds(array $subTypeIds): array
 	{
-		$ids = array_values(array_unique(array_filter(array_map('intval', $subTypeIds), fn($v) => $v > 0)));
+		$ids = array_values(array_unique(array_filter(array_map('intval', $subTypeIds), function ($v) {
+			return $v > 0;
+		})));
 		if (empty($ids))
 			return [];
 
@@ -182,8 +184,12 @@ final class HeadOfRequestModel
 		$stmt->execute();
 
 		$rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-		$allowed = array_map(fn($r) => (int) ($r['user_id'] ?? 0), $rows);
-		$allowed = array_values(array_unique(array_filter($allowed, fn($v) => $v > 0)));
+		$allowed = array_map(function ($r) {
+			return (int) ($r['user_id'] ?? 0);
+		}, $rows);
+		$allowed = array_values(array_unique(array_filter($allowed, function ($v) {
+			return $v > 0;
+		})));
 		sort($allowed);
 		return $allowed;
 	}

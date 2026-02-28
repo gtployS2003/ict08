@@ -181,7 +181,9 @@ final class SiteMissionModel
      */
     public function reorder(array $ids): void
     {
-        $ids = array_values(array_filter(array_map('intval', $ids), fn($x) => $x > 0));
+        $ids = array_values(array_filter(array_map('intval', $ids), function ($x) {
+            return $x > 0;
+        }));
         if (!$ids) {
             return;
         }
