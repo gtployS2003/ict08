@@ -31,8 +31,9 @@ final class HeadOfRequestModel
 		$limit = max(1, min(200, $limit));
 		$offset = ($page - 1) * $limit;
 
-		[$whereSql, $params] = $this->buildSubTypeWhere($q, $subtypeOf);
-
+		$tmp = $this->buildSubTypeWhere($q, $subtypeOf);
+		$whereSql = $tmp[0];
+		$params = $tmp[1];
 		$sql = "
 			SELECT
 				rst.request_sub_type_id,
@@ -62,7 +63,9 @@ final class HeadOfRequestModel
 
 	public function countSubTypes(string $q = '', int $subtypeOf = 0): int
 	{
-		[$whereSql, $params] = $this->buildSubTypeWhere($q, $subtypeOf);
+		$tmp = $this->buildSubTypeWhere($q, $subtypeOf);
+		$whereSql = $tmp[0];
+		$params = $tmp[1];
 
 		$sql = "
 			SELECT COUNT(*) AS c
