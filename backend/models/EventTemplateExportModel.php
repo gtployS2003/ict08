@@ -36,10 +36,10 @@ final class EventTemplateExportModel
     public function upsertByEventTemplateId(
         int $eventTemplateId,
         string $filepath,
-        ?string $originalFilename,
-        ?string $storedFilename,
-        ?int $fileSize,
-        int $exportedBy
+        $originalFilename = null,
+        $storedFilename = null,
+        $fileSize = null,
+        int $exportedBy = 0
     ): int {
         $eventTemplateId = max(1, (int) $eventTemplateId);
         $exportedBy = max(0, (int) $exportedBy);

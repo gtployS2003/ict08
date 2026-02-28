@@ -22,8 +22,8 @@ final class DocumentModel
         string $q = '',
         int $page = 1,
         int $limit = 50,
-        ?int $isPrivate = null,
-        ?int $isActive = null
+        $isPrivate = null,
+        $isActive = null
     ): array {
         $page = max(1, $page);
         $limit = max(1, min(200, $limit));
@@ -81,7 +81,7 @@ final class DocumentModel
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function count(string $q = '', ?int $isPrivate = null, ?int $isActive = null): int
+    public function count(string $q = '', $isPrivate = null, $isActive = null): int
     {
         $q = trim($q);
         $where = [];

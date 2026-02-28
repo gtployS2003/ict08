@@ -106,7 +106,7 @@ foreach ($data['events'] as $event) {
     }
 
     // ===== Handler กลาง: external menu actions =====
-    $handleExternal = function (string $action) use ($line, $event, $requestTypeModel): void {
+    $handleExternal = function ($action) use ($line, $event, $requestTypeModel) {
 
         if (!isset($event['replyToken']))
             return;

@@ -69,13 +69,13 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 // Support method override for multipart/form-data.
 // PHP typically parses form-data into $_POST/$_FILES only for POST.
 // So the frontend can send POST with an override header/field, and we route it as PUT/PATCH/DELETE.
-if (strtoupper((string)$method) === 'POST') {
-    $override = (string)($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'] ?? '');
+if (strtoupper((string) $method) === 'POST') {
+    $override = (string) ($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'] ?? '');
     if ($override === '' && isset($_POST['_method'])) {
-        $override = (string)$_POST['_method'];
+        $override = (string) $_POST['_method'];
     }
     if ($override === '' && isset($_GET['_method'])) {
-        $override = (string)$_GET['_method'];
+        $override = (string) $_GET['_method'];
     }
     $override = strtoupper(trim($override));
     if (in_array($override, ['PUT', 'PATCH', 'DELETE'], true)) {
@@ -90,7 +90,7 @@ if ($path === '') {
     $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
     // ตัดส่วนก่อน /backend/public/
     $base = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/'); // .../backend/public
-    if (str_starts_with($uri, $base)) {
+    if (substr($uri, 0, strlen($base)) === $base) {
         $path = ltrim(substr($uri, strlen($base)), '/');
     }
 }
@@ -101,48 +101,89 @@ try {
     $pdo = db();
 
     // route matching
-    if (auth_routes($method, $segments, $pdo)) exit;
-    if (news_routes($method, $segments, $pdo)) exit;
-    if (activities_routes($method, $segments, $pdo)) exit;
-    if (provinces_routes($method, $segments, $pdo)) exit;
-    if (organization_types_routes($method, $segments, $pdo)) exit;
-    if (organization_routes($method, $segments, $pdo)) exit;
-    if (person_prefixes_routes($method, $segments, $pdo)) exit;
-    if (departments_routes($method, $segments, $pdo)) exit;
-    if (position_titles_routes($method, $segments, $pdo)) exit;
-    if (user_roles_routes($method, $segments, $pdo)) exit;
-    if (user_approvals_routes($method, $segments, $pdo)) exit;
-    if (users_routes($method, $segments, $pdo)) exit;
-    if (request_types_routes($method, $segments, $pdo)) exit;
-    if (request_sub_types_routes($method, $segments, $pdo)) exit;
-    if (requests_routes($method, $segments, $pdo)) exit;
-    if (request_status_routes($method, $segments, $pdo)) exit;
-    if (event_status_routes($method, $segments, $pdo)) exit;
-    if (events_routes($method, $segments, $pdo)) exit;
-    if (urgency_routes($method, $segments, $pdo)) exit;
-    if (notifications_routes($method, $segments, $pdo)) exit;
-    if (notification_types_routes($method, $segments, $pdo)) exit;
-    if (notification_type_staff_routes($method, $segments, $pdo)) exit;
-    if (channels_routes($method, $segments, $pdo)) exit;
-    if (user_notification_channel_routes($method, $segments, $pdo)) exit;
-    if (type_of_device_routes($method, $segments, $pdo)) exit;
-    if (main_type_of_device_routes($pdo, $method, $segments)) exit;
-    if (contact_info_routes($method, $segments, $pdo)) exit;
-    if (devices_routes($method, $segments, $pdo)) exit;
-    if (head_of_request_routes($method, $segments, $pdo)) exit;
-    if (template_types_routes($method, $segments, $pdo)) exit;
-    if (publicity_posts_routes($method, $segments, $pdo)) exit;
-    if (event_templates_routes($method, $segments, $pdo)) exit;
-    if (event_template_exports_routes($method, $segments, $pdo)) exit;
+    if (auth_routes($method, $segments, $pdo))
+        exit;
+    if (news_routes($method, $segments, $pdo))
+        exit;
+    if (activities_routes($method, $segments, $pdo))
+        exit;
+    if (provinces_routes($method, $segments, $pdo))
+        exit;
+    if (organization_types_routes($method, $segments, $pdo))
+        exit;
+    if (organization_routes($method, $segments, $pdo))
+        exit;
+    if (person_prefixes_routes($method, $segments, $pdo))
+        exit;
+    if (departments_routes($method, $segments, $pdo))
+        exit;
+    if (position_titles_routes($method, $segments, $pdo))
+        exit;
+    if (user_roles_routes($method, $segments, $pdo))
+        exit;
+    if (user_approvals_routes($method, $segments, $pdo))
+        exit;
+    if (users_routes($method, $segments, $pdo))
+        exit;
+    if (request_types_routes($method, $segments, $pdo))
+        exit;
+    if (request_sub_types_routes($method, $segments, $pdo))
+        exit;
+    if (requests_routes($method, $segments, $pdo))
+        exit;
+    if (request_status_routes($method, $segments, $pdo))
+        exit;
+    if (event_status_routes($method, $segments, $pdo))
+        exit;
+    if (events_routes($method, $segments, $pdo))
+        exit;
+    if (urgency_routes($method, $segments, $pdo))
+        exit;
+    if (notifications_routes($method, $segments, $pdo))
+        exit;
+    if (notification_types_routes($method, $segments, $pdo))
+        exit;
+    if (notification_type_staff_routes($method, $segments, $pdo))
+        exit;
+    if (channels_routes($method, $segments, $pdo))
+        exit;
+    if (user_notification_channel_routes($method, $segments, $pdo))
+        exit;
+    if (type_of_device_routes($method, $segments, $pdo))
+        exit;
+    if (main_type_of_device_routes($pdo, $method, $segments))
+        exit;
+    if (contact_info_routes($method, $segments, $pdo))
+        exit;
+    if (devices_routes($method, $segments, $pdo))
+        exit;
+    if (head_of_request_routes($method, $segments, $pdo))
+        exit;
+    if (template_types_routes($method, $segments, $pdo))
+        exit;
+    if (publicity_posts_routes($method, $segments, $pdo))
+        exit;
+    if (event_templates_routes($method, $segments, $pdo))
+        exit;
+    if (event_template_exports_routes($method, $segments, $pdo))
+        exit;
 
-    if (link_urls_routes($method, $segments, $pdo)) exit;
-    if (documents_routes($method, $segments, $pdo)) exit;
-    if (history_image_page_routes($method, $segments, $pdo)) exit;
-    if (home_mission_img_routes($method, $segments, $pdo)) exit;
-    if (site_diractor_routes($method, $segments, $pdo)) exit;
-    if (site_structure_routes($method, $segments, $pdo)) exit;
-    if (site_mission_routes($method, $segments, $pdo)) exit;
-    if (banners_routes($method, $segments, $pdo)) exit;
+    if (link_urls_routes($method, $segments, $pdo))
+        exit;
+    if (documents_routes($method, $segments, $pdo))
+        exit;
+    if (history_image_page_routes($method, $segments, $pdo))
+        exit;
+    if (home_mission_img_routes($method, $segments, $pdo))
+        exit;
+    if (site_diractor_routes($method, $segments, $pdo))
+        exit;
+    if (site_structure_routes($method, $segments, $pdo))
+        exit;
+    if (site_mission_routes($method, $segments, $pdo))
+        exit;
+    if (banners_routes($method, $segments, $pdo))
+        exit;
 
     fail("Route not found", 404, ["path" => $path, "method" => $method]);
 

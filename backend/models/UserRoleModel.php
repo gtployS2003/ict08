@@ -55,14 +55,21 @@ class UserRoleModel
 
         // items
         $sql = "
-            SELECT `user_role_id`, `code`, `role`
-            FROM `{$this->table}`
-            {$where}
-            ORDER BY `user_role_id` ASC
-            LIMIT {$limit} OFFSET {$offset}
-        ";
+    SELECT `user_role_id`, `code`, `role`
+    FROM `{$this->table}`
+    {$where}
+    ORDER BY `user_role_id` ASC
+    LIMIT :limit OFFSET :offset
+";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
+
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v, PDO::PARAM_STR);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+
+        $stmt->execute();
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         return [

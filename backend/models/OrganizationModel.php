@@ -7,7 +7,7 @@ class OrganizationModel
 {
     private $db;
 
-    public function __construct(?PDO $pdo = null)
+    public function __construct($pdo = null)
     {
         $this->db = $pdo ?: db();
     }
@@ -260,7 +260,7 @@ class OrganizationModel
      * เช็ค code ซ้ำ (แนะนำใช้ตอน create/update)
      * - excludeId ใช้ตอน update เพื่อกันชนกับตัวเอง
      */
-    public function existsByCode(string $code, ?int $excludeId = null): bool
+    public function existsByCode(string $code, $excludeId = null): bool
     {
         $code = trim($code);
 
@@ -287,7 +287,7 @@ class OrganizationModel
         string $name,
         int $provinceId,
         int $organizationTypeId,
-        ?int $excludeId = null
+        $excludeId = null
     ): bool {
         $name = trim($name);
         $provinceId = (int) $provinceId;

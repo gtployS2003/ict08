@@ -32,11 +32,11 @@ final class TypeOfDeviceModel
         if ($q !== '') {
             $where = "WHERE (
                 t.type_of_device_title LIKE :q1
-                OR CAST(t.type_of_device_id AS CHAR) LIKE :q2
+                OR t.type_of_device_id = :q2
             )";
             $like = '%' . $q . '%';
             $params[':q1'] = $like;
-            $params[':q2'] = $like;
+            $params[':q2'] = ctype_digit($q) ? (int)$q : 0;
         }
 
         $sql = "
@@ -60,6 +60,7 @@ final class TypeOfDeviceModel
         }
 
         // bind pagination params (must be int)
+        $stmt->bindValue(':q2', $params[':q2'], PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 

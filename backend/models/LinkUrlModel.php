@@ -18,7 +18,7 @@ final class LinkUrlModel
     /**
      * @return array<int, array<string,mixed>>
      */
-    public function list(string $q = '', int $page = 1, int $limit = 50, ?int $isBanner = null): array
+    public function list(string $q = '', int $page = 1, int $limit = 50, $isBanner = null): array
     {
         $page = max(1, $page);
         $limit = max(1, min(200, $limit));
@@ -71,7 +71,7 @@ final class LinkUrlModel
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function count(string $q = '', ?int $isBanner = null): int
+    public function count(string $q = '', $isBanner = null): int
     {
         $q = trim($q);
         $where = [];

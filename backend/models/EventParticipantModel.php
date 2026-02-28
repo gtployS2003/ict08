@@ -26,7 +26,7 @@ final class EventParticipantModel
     public function syncByEventId(int $eventId, array $userIds, int $isNotificationRecipient = 1): array
     {
         $eventId = max(1, (int)$eventId);
-        $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), fn($v) => $v > 0)));
+        $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), function ($v) { return $v > 0; })));
 
         if ($eventId <= 0) {
             throw new InvalidArgumentException('event_id is required');
@@ -36,7 +36,7 @@ final class EventParticipantModel
         $stmt = $this->pdo->prepare('SELECT DISTINCT user_id FROM event_participant WHERE event_id = :eid');
         $stmt->execute([':eid' => $eventId]);
         $existing = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
-        $existingIds = array_values(array_unique(array_filter(array_map('intval', $existing), fn($v) => $v > 0)));
+        $existingIds = array_values(array_unique(array_filter(array_map('intval', $existing), function ($v) { return $v > 0; })));
 
         $want = $userIds;
         $haveSet = array_fill_keys($existingIds, true);
@@ -121,7 +121,7 @@ final class EventParticipantModel
     public function insertMany(int $eventId, array $userIds, int $isNotificationRecipient = 1, int $isActive = 1): int
     {
         $eventId = max(1, (int)$eventId);
-        $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), fn($v) => $v > 0)));
+        $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), function ($v) { return $v > 0; })));
 
         if ($eventId <= 0) {
             throw new InvalidArgumentException('event_id is required');

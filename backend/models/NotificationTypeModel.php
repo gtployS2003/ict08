@@ -153,7 +153,7 @@ final class NotificationTypeModel
         return (bool)$stmt->fetchColumn();
     }
 
-    public function existsByName(string $notificationType, ?int $excludeId = null): bool
+    public function existsByName(string $notificationType, $excludeId = null): bool
     {
         $notificationType = trim($notificationType);
 

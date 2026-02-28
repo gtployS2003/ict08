@@ -12,12 +12,12 @@ declare(strict_types=1);
 final class HeadOfRequestModel
 {
 	/** @var PDO */
-    private $pdo;
+	private $pdo;
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+	public function __construct(PDO $pdo)
+	{
+		$this->pdo = $pdo;
+	}
 
 	/**
 	 * List request_sub_type (for settings page) with optional filters.
@@ -77,7 +77,7 @@ final class HeadOfRequestModel
 		$stmt->execute();
 
 		$row = $stmt->fetch(PDO::FETCH_ASSOC);
-		return (int)($row['c'] ?? 0);
+		return (int) ($row['c'] ?? 0);
 	}
 
 	/**
@@ -89,7 +89,8 @@ final class HeadOfRequestModel
 	public function listAssignmentsBySubTypeIds(array $subTypeIds): array
 	{
 		$ids = array_values(array_unique(array_filter(array_map('intval', $subTypeIds), fn($v) => $v > 0)));
-		if (empty($ids)) return [];
+		if (empty($ids))
+			return [];
 
 		$in = implode(',', array_fill(0, count($ids), '?'));
 
@@ -126,7 +127,9 @@ final class HeadOfRequestModel
 	public function replaceAssignments(int $requestSubTypeId, array $staffIds): int
 	{
 		$requestSubTypeId = max(1, $requestSubTypeId);
-		$ids = array_values(array_unique(array_filter(array_map('intval', $staffIds), fn($v) => $v > 0)));
+		$ids = array_values(array_unique(array_filter(array_map('intval', $staffIds), function ($v) {
+			return $v > 0;
+		})));
 
 		$this->pdo->beginTransaction();
 		try {
@@ -145,7 +148,7 @@ final class HeadOfRequestModel
 				$ins->bindValue(':uid', $uid, PDO::PARAM_INT);
 				$ins->bindValue(':sid', $requestSubTypeId, PDO::PARAM_INT);
 				$ins->execute();
-				$count += (int)$ins->rowCount();
+				$count += (int) $ins->rowCount();
 			}
 
 			$this->pdo->commit();
@@ -163,8 +166,11 @@ final class HeadOfRequestModel
 	 */
 	public function filterEligibleStaffIds(array $staffIds): array
 	{
-		$ids = array_values(array_unique(array_filter(array_map('intval', $staffIds), fn($v) => $v > 0)));
-		if (empty($ids)) return [];
+		$ids = array_values(array_unique(array_filter(array_map('intval', $staffIds), function ($v) {
+			return $v > 0;
+		})));
+		if (empty($ids))
+			return [];
 
 		$in = implode(',', array_fill(0, count($ids), '?'));
 		$sql = "SELECT user_id FROM `user` WHERE user_id IN ({$in}) AND user_role_id IN (2,3)";
@@ -176,7 +182,7 @@ final class HeadOfRequestModel
 		$stmt->execute();
 
 		$rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-		$allowed = array_map(fn($r) => (int)($r['user_id'] ?? 0), $rows);
+		$allowed = array_map(fn($r) => (int) ($r['user_id'] ?? 0), $rows);
 		$allowed = array_values(array_unique(array_filter($allowed, fn($v) => $v > 0)));
 		sort($allowed);
 		return $allowed;
@@ -262,7 +268,7 @@ final class HeadOfRequestModel
 		}
 		$stmt->execute();
 		$row = $stmt->fetch(PDO::FETCH_ASSOC);
-		return (int)($row['c'] ?? 0);
+		return (int) ($row['c'] ?? 0);
 	}
 
 	/**

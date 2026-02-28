@@ -116,7 +116,14 @@ class UsersModel
             $where
         ";
         $stmt = $this->pdo->prepare($countSql);
-        $stmt->execute($bind);
+        foreach ($bind as $k => $v) {
+            if (is_int($v)) {
+                $stmt->bindValue($k, $v, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue($k, $v, PDO::PARAM_STR);
+            }
+        }
+        $stmt->execute();
         $total = (int) ($stmt->fetchColumn() ?: 0);
 
         // ===== list items =====
@@ -259,7 +266,7 @@ class UsersModel
         return $row ?: null;
     }
 
-        public function findDetail(int $personId): ?array
+    public function findDetail(int $personId): ?array
     {
         $sql = "
         SELECT

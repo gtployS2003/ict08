@@ -20,14 +20,13 @@ final class DeviceModel
      */
     public function listDevicesForMap(
         string $q = '',
-        ?int $provinceId = null,
-        ?int $organizationId = null,
-        ?int $mainTypeId = null,
-        ?int $typeId = null,
-        ?int $isOnline = null,
+        $provinceId = null,
+        $organizationId = null,
+        $mainTypeId = null,
+        $typeId = null,
+        $isOnline = null,
         int $limit = 5000
-    ): array
-    {
+    ): array {
         $q = trim($q);
         $limit = max(1, min(5000, $limit));
 
@@ -113,7 +112,8 @@ final class DeviceModel
         ";
 
         $stmt = $this->pdo->prepare($sql);
-        foreach ($params as $k => $v) $stmt->bindValue($k, $v);
+        foreach ($params as $k => $v)
+            $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -137,12 +137,11 @@ final class DeviceModel
         string $q = '',
         int $page = 1,
         int $limit = 50,
-        ?int $provinceId = null,
-        ?int $organizationId = null,
-        ?int $mainTypeId = null,
-        ?int $typeId = null
-    ): array
-    {
+        $provinceId = null,
+        $organizationId = null,
+        $mainTypeId = null,
+        $typeId = null
+    ): array {
         $page = max(1, $page);
         $limit = max(1, min(200, $limit));
         $offset = ($page - 1) * $limit;
@@ -205,9 +204,10 @@ final class DeviceModel
             $whereSql
         ";
         $stmt = $this->pdo->prepare($countSql);
-        foreach ($params as $k => $v) $stmt->bindValue($k, $v);
+        foreach ($params as $k => $v)
+            $stmt->bindValue($k, $v);
         $stmt->execute();
-        $total = (int)($stmt->fetch(PDO::FETCH_ASSOC)['c'] ?? 0);
+        $total = (int) ($stmt->fetch(PDO::FETCH_ASSOC)['c'] ?? 0);
 
         // list items
         $sql = "
@@ -238,7 +238,8 @@ final class DeviceModel
             LIMIT :limit OFFSET :offset
         ";
         $stmt = $this->pdo->prepare($sql);
-        foreach ($params as $k => $v) $stmt->bindValue($k, $v);
+        foreach ($params as $k => $v)
+            $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
@@ -284,23 +285,23 @@ final class DeviceModel
                 (:device_name, :main_type_of_device_id, :type_of_device_id, :ip, :contact_info_id, :detail, :is_online)
         ";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':device_name', (string)($data['device_name'] ?? ''));
-        $stmt->bindValue(':main_type_of_device_id', (int)($data['main_type_of_device_id'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':type_of_device_id', (int)($data['type_of_device_id'] ?? 0), PDO::PARAM_INT);
+        $stmt->bindValue(':device_name', (string) ($data['device_name'] ?? ''));
+        $stmt->bindValue(':main_type_of_device_id', (int) ($data['main_type_of_device_id'] ?? 0), PDO::PARAM_INT);
+        $stmt->bindValue(':type_of_device_id', (int) ($data['type_of_device_id'] ?? 0), PDO::PARAM_INT);
 
-        $ip = trim((string)($data['ip'] ?? ''));
+        $ip = trim((string) ($data['ip'] ?? ''));
         $stmt->bindValue(':ip', $ip === '' ? null : $ip, $ip === '' ? PDO::PARAM_NULL : PDO::PARAM_STR);
 
-        $stmt->bindValue(':contact_info_id', (int)($data['contact_info_id'] ?? 0), PDO::PARAM_INT);
+        $stmt->bindValue(':contact_info_id', (int) ($data['contact_info_id'] ?? 0), PDO::PARAM_INT);
 
-        $detail = (string)($data['detail'] ?? '');
+        $detail = (string) ($data['detail'] ?? '');
         $stmt->bindValue(':detail', $detail === '' ? null : $detail, $detail === '' ? PDO::PARAM_NULL : PDO::PARAM_STR);
 
-        $isOnline = isset($data['is_online']) ? (int)$data['is_online'] : 0;
+        $isOnline = isset($data['is_online']) ? (int) $data['is_online'] : 0;
         $stmt->bindValue(':is_online', $isOnline, PDO::PARAM_INT);
 
         $stmt->execute();
-        return (int)$this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function update(int $id, array $data): bool
@@ -319,16 +320,16 @@ final class DeviceModel
         ";
         $stmt = $this->pdo->prepare($sql);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-        $stmt->bindValue(':device_name', (string)($data['device_name'] ?? ''));
-        $stmt->bindValue(':main_type_of_device_id', (int)($data['main_type_of_device_id'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':type_of_device_id', (int)($data['type_of_device_id'] ?? 0), PDO::PARAM_INT);
+        $stmt->bindValue(':device_name', (string) ($data['device_name'] ?? ''));
+        $stmt->bindValue(':main_type_of_device_id', (int) ($data['main_type_of_device_id'] ?? 0), PDO::PARAM_INT);
+        $stmt->bindValue(':type_of_device_id', (int) ($data['type_of_device_id'] ?? 0), PDO::PARAM_INT);
 
-        $ip = trim((string)($data['ip'] ?? ''));
+        $ip = trim((string) ($data['ip'] ?? ''));
         $stmt->bindValue(':ip', $ip === '' ? null : $ip, $ip === '' ? PDO::PARAM_NULL : PDO::PARAM_STR);
 
-        $stmt->bindValue(':contact_info_id', (int)($data['contact_info_id'] ?? 0), PDO::PARAM_INT);
+        $stmt->bindValue(':contact_info_id', (int) ($data['contact_info_id'] ?? 0), PDO::PARAM_INT);
 
-        $detail = (string)($data['detail'] ?? '');
+        $detail = (string) ($data['detail'] ?? '');
         $stmt->bindValue(':detail', $detail === '' ? null : $detail, $detail === '' ? PDO::PARAM_NULL : PDO::PARAM_STR);
 
         $stmt->execute();

@@ -188,7 +188,9 @@ final class PublicityPostModel
         ');
         $ins->execute([
             ':event_id' => $eventId,
-            ':title' => mb_substr($title, 0, 255),
+            ':title' => function_exists('mb_substr')
+                ? mb_substr($title, 0, 255)
+                : substr($title, 0, 255),
             ':content' => $content,
             ':create_by' => $createBy,
         ]);
@@ -219,7 +221,9 @@ final class PublicityPostModel
 
             if ($k === 'title') {
                 $set[] = 'title = :title';
-                $params[':title'] = mb_substr((string) $fields['title'], 0, 255);
+                $params[':title'] = function_exists('mb_substr')
+                    ? mb_substr((string) $fields['title'], 0, 255)
+                    : substr((string) $fields['title'], 0, 255);
                 $touchUpdateAt = true;
                 continue;
             }

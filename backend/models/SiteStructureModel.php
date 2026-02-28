@@ -82,7 +82,7 @@ final class SiteStructureModel
                  OR (s.department_id IS NOT NULL AND pt.department_id = s.department_id)
                )
             $where
-            ORDER BY (pt.position_title LIKE '%ผู้อำนวยการ%') ASC,
+            ORDER BY (CASE WHEN pt.position_title LIKE :dirKeyword THEN 1 ELSE 0 END) ASC,
                      d.department_title DESC,
                      pt.position_title DESC,
                      s.fristname ASC,
@@ -93,6 +93,7 @@ final class SiteStructureModel
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->bindValue(':orgIdDept', (int)$organizationId, PDO::PARAM_INT);
+        $stmt->bindValue(':dirKeyword', '%ผู้อำนวยการ%', PDO::PARAM_STR);
         $stmt->bindValue(':orgIdPos', (int)$organizationId, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);

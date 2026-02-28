@@ -131,7 +131,7 @@ class RequestModel
         return $row ?: null;
     }
 
-    private function toNullableInt(mixed $v): ?int
+    private function toNullableInt($v): ?int
     {
         if ($v === null) return null;
         if ($v === '') return null;
@@ -140,7 +140,7 @@ class RequestModel
         return (int)$v;
     }
 
-    private function toNullableString(mixed $v): ?string
+    private function toNullableString($v): ?string
     {
         if ($v === null) return null;
         $s = trim((string)$v);

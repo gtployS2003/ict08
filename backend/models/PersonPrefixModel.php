@@ -50,7 +50,7 @@ class PersonPrefixModel
         $where = '';
         $params = [];
 
-        $q = trim($q);
+        $q = trim((string) $q);
         if ($q !== '') {
             $where = " WHERE prefix_en LIKE :q1 OR prefix_th LIKE :q2 ";
             $like = "%{$q}%";

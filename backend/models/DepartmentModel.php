@@ -9,7 +9,8 @@ class DepartmentModel
     /** @var PDO */
     private $pdo;
 
-    public function __construct(?PDO $pdo = null)
+    /** @param PDO|null $pdo */
+    public function __construct($pdo = null)
     {
         $this->pdo = $pdo ?: db();
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -43,7 +44,7 @@ class DepartmentModel
         OR o.name LIKE :q3
         OR o.code LIKE :q4
     )";
-            $like = '%' . $q . '%'; 
+            $like = '%' . $q . '%';
             $params[':q1'] = $like;
             $params[':q2'] = $like;
             $params[':q3'] = $like;
@@ -123,7 +124,7 @@ class DepartmentModel
         ];
     }
 
-        /**
+    /**
      * Lightweight list for dropdown
      * GET /departments/dropdown?organization_id=
      */

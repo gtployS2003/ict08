@@ -22,7 +22,7 @@ class OrganizationTypeModel
      * @param int $limit
      * @return array ['items'=>[], 'pagination'=>[]]
      */
-    public function list(?string $q = null, int $page = 1, int $limit = 50): array
+   public function list($q = null, int $page = 1, int $limit = 50): array
     {
         $page = max(1, (int) $page);
         $limit = max(1, min(200, (int) $limit));
@@ -161,7 +161,7 @@ class OrganizationTypeModel
      * - ใช้เช็คทั้ง EN/TH ว่ามีอยู่แล้วไหม
      * - excludeId ใช้ตอน update เพื่อกันชนกับตัวเอง
      */
-    public function existsByName(string $typeName, string $typeNameTh, ?int $excludeId = null): bool
+    public function existsByName(string $typeName, string $typeNameTh, $excludeId = null): bool
     {
         $typeName = trim($typeName);
         $typeNameTh = trim($typeNameTh);

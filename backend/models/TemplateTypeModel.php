@@ -29,11 +29,11 @@ final class TemplateTypeModel
         $params = [];
 
         if ($q !== '') {
-            $where = "WHERE (t.template_name LIKE :q1 OR t.detail LIKE :q2 OR CAST(t.template_type_id AS CHAR) LIKE :q3)";
+            $where = "WHERE (t.template_name LIKE :q1 OR t.detail LIKE :q2 OR t.template_type_id = :q3)";
             $like = '%' . $q . '%';
             $params[':q1'] = $like;
             $params[':q2'] = $like;
-            $params[':q3'] = $like;
+            $params[':q3'] = ctype_digit($q) ? (int)$q : 0;
         }
 
         $sql = "
@@ -60,6 +60,7 @@ final class TemplateTypeModel
         foreach ($params as $k => $v) {
             $stmt->bindValue($k, $v, PDO::PARAM_STR);
         }
+        $stmt->bindValue(':q3', $params[':q3'], PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();

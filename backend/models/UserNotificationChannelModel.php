@@ -71,7 +71,7 @@ final class UserNotificationChannelModel
         $stmt->execute();
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return (int)($row['cnt'] ?? 0);
+        return (int) ($row['cnt'] ?? 0);
     }
 
     /* =========================================================
@@ -101,13 +101,18 @@ final class UserNotificationChannelModel
 
         if ($q !== '') {
             $where[] = "(
-                p.display_name LIKE :q
-                OR p.first_name_th LIKE :q
-                OR p.last_name_th LIKE :q
-                OR u.line_user_name LIKE :q
-                OR c.channel LIKE :q
+                p.display_name LIKE :q1
+OR p.first_name_th LIKE :q2
+OR p.last_name_th LIKE :q3
+OR u.line_user_name LIKE :q4
+OR c.channel LIKE :q5
             )";
-            $params[':q'] = '%' . $q . '%';
+            $like = '%' . $q . '%';
+            $params[':q1'] = $like;
+            $params[':q2'] = $like;
+            $params[':q3'] = $like;
+            $params[':q4'] = $like;
+            $params[':q5'] = $like;
         }
 
         if ($channelId > 0) {
@@ -140,9 +145,17 @@ final class UserNotificationChannelModel
 
         $stmt = $this->pdo->prepare($sql);
 
+        foreach ([':q1', ':q2', ':q3', ':q4', ':q5'] as $k) {
+            if (isset($params[$k])) {
+                $stmt->bindValue($k, (string) $params[$k], PDO::PARAM_STR);
+            }
+        }
+
         foreach ($params as $k => $v) {
-            if ($k === ':channel_id') $stmt->bindValue($k, (int)$v, PDO::PARAM_INT);
-            else $stmt->bindValue($k, (string)$v, PDO::PARAM_STR);
+            if ($k === ':channel_id')
+                $stmt->bindValue($k, (int) $v, PDO::PARAM_INT);
+            else
+                $stmt->bindValue($k, (string) $v, PDO::PARAM_STR);
         }
 
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
@@ -190,13 +203,15 @@ final class UserNotificationChannelModel
         $stmt = $this->pdo->prepare($sql);
 
         foreach ($params as $k => $v) {
-            if ($k === ':channel_id') $stmt->bindValue($k, (int)$v, PDO::PARAM_INT);
-            else $stmt->bindValue($k, (string)$v, PDO::PARAM_STR);
+            if ($k === ':channel_id')
+                $stmt->bindValue($k, (int) $v, PDO::PARAM_INT);
+            else
+                $stmt->bindValue($k, (string) $v, PDO::PARAM_STR);
         }
 
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return (int)($row['cnt'] ?? 0);
+        return (int) ($row['cnt'] ?? 0);
     }
 
     /* =========================================================
@@ -317,7 +332,7 @@ final class UserNotificationChannelModel
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($row && isset($row['user_notification_channel_id'])) {
-            $id = (int)$row['user_notification_channel_id'];
+            $id = (int) $row['user_notification_channel_id'];
             $this->updateEnable($id, $enable);
             return $id;
         }
@@ -332,7 +347,7 @@ final class UserNotificationChannelModel
         $ins->bindValue(':enable', $enable, PDO::PARAM_INT);
         $ins->execute();
 
-        return (int)$this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     /* =========================================================
@@ -371,19 +386,19 @@ final class UserNotificationChannelModel
 
         $map = [];
         foreach ($rows as $r) {
-            $name = strtolower((string)($r['channel'] ?? ''));
-            $map[$name] = (int)($r['channel_id'] ?? 0);
+            $name = strtolower((string) ($r['channel'] ?? ''));
+            $map[$name] = (int) ($r['channel_id'] ?? 0);
         }
 
         $lineId = $map['line'] ?? 0;
-        $webId  = $map['web'] ?? 0;
+        $webId = $map['web'] ?? 0;
 
         if ($lineId <= 0 || $webId <= 0) {
             throw new RuntimeException("Missing channel master: line/web");
         }
 
         $enableLine = 1;
-        $enableWeb  = (in_array($roleId, [2, 3], true)) ? 1 : 0;
+        $enableWeb = (in_array($roleId, [2, 3], true)) ? 1 : 0;
 
         $startedTx = false;
         if (!$this->pdo->inTransaction()) {
@@ -393,9 +408,10 @@ final class UserNotificationChannelModel
 
         try {
             $idLine = $this->upsert($userId, $lineId, $enableLine);
-            $idWeb  = $this->upsert($userId, $webId, $enableWeb);
+            $idWeb = $this->upsert($userId, $webId, $enableWeb);
 
-            if ($startedTx) $this->pdo->commit();
+            if ($startedTx)
+                $this->pdo->commit();
 
             return [
                 'user_id' => $userId,
@@ -412,7 +428,8 @@ final class UserNotificationChannelModel
                 ],
             ];
         } catch (Throwable $e) {
-            if ($startedTx && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            if ($startedTx && $this->pdo->inTransaction())
+                $this->pdo->rollBack();
             throw $e;
         }
     }
@@ -425,7 +442,8 @@ final class UserNotificationChannelModel
     public function listEnabledChannelNamesByUser(int $userId): array
     {
         $userId = max(0, $userId);
-        if ($userId <= 0) return [];
+        if ($userId <= 0)
+            return [];
 
         $sql = "
             SELECT LOWER(c.channel) AS channel
@@ -443,8 +461,9 @@ final class UserNotificationChannelModel
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         $out = [];
         foreach ($rows as $r) {
-            $name = strtolower((string)($r['channel'] ?? ''));
-            if ($name !== '') $out[] = $name;
+            $name = strtolower((string) ($r['channel'] ?? ''));
+            if ($name !== '')
+                $out[] = $name;
         }
         return array_values(array_unique($out));
     }

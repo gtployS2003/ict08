@@ -195,7 +195,7 @@ final class SiteMissionModel
                 $i++;
             }
             $this->pdo->commit();
-        } catch (Throwable $e) {
+        } catch (\Exception $e) {
             $this->pdo->rollBack();
             throw $e;
         }

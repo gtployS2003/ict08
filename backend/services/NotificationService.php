@@ -11,7 +11,7 @@ require_once __DIR__ . '/LineService.php';
 
 final class NotificationService
 {
-        /** @var PDO */
+    /** @var PDO */
     private $pdo;
 
     public function __construct(PDO $pdo)
@@ -20,10 +20,9 @@ final class NotificationService
     }
 
     // notification_type_id ที่คุณต้องการใช้ (ปรับได้)
-    public const NOTIF_TYPE_REQUEST_REPAIR = 5;
-    public const NOTIF_TYPE_REQUEST_OTHER = 6;
-    // IMPORTANT: DB uses id=4 for request_conferance_pending, while id=7 is request_accepted
-    public const NOTIF_TYPE_REQUEST_CONFERENCE = 4;
+    const NOTIF_TYPE_REQUEST_REPAIR = 5;
+    const NOTIF_TYPE_REQUEST_OTHER = 6;
+    const NOTIF_TYPE_REQUEST_CONFERENCE = 4;
 
 
     /**

@@ -21,7 +21,7 @@ final class ContactInfoModel
      */
     public function list(string $q = '', int $page = 1, int $limit = 50): array
     {
-        $page  = max(1, $page);
+        $page = max(1, $page);
         $limit = max(1, min(200, $limit));
         $offset = ($page - 1) * $limit;
 
@@ -64,7 +64,7 @@ final class ContactInfoModel
         ";
         $stmtT = $this->pdo->prepare($sqlTotal);
         $stmtT->execute($params);
-        $total = (int)($stmtT->fetch(PDO::FETCH_ASSOC)['cnt'] ?? 0);
+        $total = (int) ($stmtT->fetch(PDO::FETCH_ASSOC)['cnt'] ?? 0);
 
         // items
         $sql = "
@@ -114,7 +114,7 @@ final class ContactInfoModel
         return [
             'items' => $items,
             'total' => $total,
-            'page'  => $page,
+            'page' => $page,
             'limit' => $limit,
         ];
     }
@@ -176,7 +176,7 @@ final class ContactInfoModel
      */
     public function create(array $data): int
     {
-        $orgId = (int)($data['organization_id'] ?? 0);
+        $orgId = (int) ($data['organization_id'] ?? 0);
         if ($orgId <= 0) {
             throw new InvalidArgumentException('organization_id is required');
         }
@@ -207,20 +207,20 @@ final class ContactInfoModel
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
             ':organization_id' => $orgId,
-            ':phone_number'    => $this->nullableStr($data['phone_number'] ?? null),
-            ':fax'             => $this->nullableStr($data['fax'] ?? null),
-            ':fax_extension'   => $this->nullableStr($data['fax_extension'] ?? null),
-            ':email'           => $this->nullableStr($data['email'] ?? null),
-            ':facebook_name'   => $this->nullableStr($data['facebook_name'] ?? null),
-            ':facebook_url'    => $this->nullableStr($data['facebook_url'] ?? null),
-            ':line_id'         => $this->nullableStr($data['line_id'] ?? null),
-            ':line_url'        => $this->nullableStr($data['line_url'] ?? null),
-            ':map_embed_url'   => $this->nullableStr($data['map_embed_url'] ?? null),
-            ':map_lat'         => $this->nullableStr($data['map_lat'] ?? null),
-            ':map_lng'         => $this->nullableStr($data['map_lng'] ?? null),
+            ':phone_number' => $this->nullableStr($data['phone_number'] ?? null),
+            ':fax' => $this->nullableStr($data['fax'] ?? null),
+            ':fax_extension' => $this->nullableStr($data['fax_extension'] ?? null),
+            ':email' => $this->nullableStr($data['email'] ?? null),
+            ':facebook_name' => $this->nullableStr($data['facebook_name'] ?? null),
+            ':facebook_url' => $this->nullableStr($data['facebook_url'] ?? null),
+            ':line_id' => $this->nullableStr($data['line_id'] ?? null),
+            ':line_url' => $this->nullableStr($data['line_url'] ?? null),
+            ':map_embed_url' => $this->nullableStr($data['map_embed_url'] ?? null),
+            ':map_lat' => $this->nullableStr($data['map_lat'] ?? null),
+            ':map_lng' => $this->nullableStr($data['map_lng'] ?? null),
         ]);
 
-        return (int)$this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     /* =========================
@@ -258,18 +258,18 @@ final class ContactInfoModel
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
-            ':id'             => $id,
-            ':phone_number'   => $this->nullableStr($data['phone_number'] ?? null),
-            ':fax'            => $this->nullableStr($data['fax'] ?? null),
-            ':fax_extension'  => $this->nullableStr($data['fax_extension'] ?? null),
-            ':email'          => $this->nullableStr($data['email'] ?? null),
-            ':facebook_name'  => $this->nullableStr($data['facebook_name'] ?? null),
-            ':facebook_url'   => $this->nullableStr($data['facebook_url'] ?? null),
-            ':line_id'        => $this->nullableStr($data['line_id'] ?? null),
-            ':line_url'       => $this->nullableStr($data['line_url'] ?? null),
-            ':map_embed_url'  => $this->nullableStr($data['map_embed_url'] ?? null),
-            ':map_lat'        => $this->nullableStr($data['map_lat'] ?? null),
-            ':map_lng'        => $this->nullableStr($data['map_lng'] ?? null),
+            ':id' => $id,
+            ':phone_number' => $this->nullableStr($data['phone_number'] ?? null),
+            ':fax' => $this->nullableStr($data['fax'] ?? null),
+            ':fax_extension' => $this->nullableStr($data['fax_extension'] ?? null),
+            ':email' => $this->nullableStr($data['email'] ?? null),
+            ':facebook_name' => $this->nullableStr($data['facebook_name'] ?? null),
+            ':facebook_url' => $this->nullableStr($data['facebook_url'] ?? null),
+            ':line_id' => $this->nullableStr($data['line_id'] ?? null),
+            ':line_url' => $this->nullableStr($data['line_url'] ?? null),
+            ':map_embed_url' => $this->nullableStr($data['map_embed_url'] ?? null),
+            ':map_lat' => $this->nullableStr($data['map_lat'] ?? null),
+            ':map_lng' => $this->nullableStr($data['map_lng'] ?? null),
         ]);
 
         return $stmt->rowCount() > 0;
@@ -299,25 +299,27 @@ final class ContactInfoModel
             LIMIT 1
         ");
         $stmt->execute([':orgId' => $organizationId]);
-        return (bool)$stmt->fetchColumn();
+        return (bool) $stmt->fetchColumn();
     }
 
-    private function nullableStr(mixed $v): ?string
+    /** @param mixed $v */
+    private function nullableStr($v): ?string
     {
-        if ($v === null) return null;
-        $s = trim((string)$v);
+        if ($v === null)
+            return null;
+        $s = trim((string) $v);
         return $s === '' ? null : $s;
     }
 
-        /* =========================
-           DROPDOWN (JOIN organization + province)
-           - คืน: contact_info_id, organization_id, organization_name, province_id, province_name
-           ========================= */
+    /* =========================
+       DROPDOWN (JOIN organization + province)
+       - คืน: contact_info_id, organization_id, organization_name, province_id, province_name
+       ========================= */
 
     /**
      * @return array<int, array{
-    *   contact_info_id:int,
-    *   organization_id:int,
+     *   contact_info_id:int,
+     *   organization_id:int,
      *   organization_name:string,
      *   province_id:int,
      *   province_name:string

@@ -561,7 +561,7 @@ final class EventModel
         return $stmt->rowCount() > 0;
     }
 
-    private function toNullableInt($v): ?int
+    private function toNullableInt($v)
     {
         if ($v === null || $v === '')
             return null;
@@ -573,7 +573,7 @@ final class EventModel
         return $i > 0 ? $i : null;
     }
 
-    private function toNullableString($v): ?string
+    private function toNullableString($v)
     {
         if ($v === null)
             return null;

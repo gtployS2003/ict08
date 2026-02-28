@@ -23,7 +23,7 @@ final class NewsDocumentModel
      *
      * @return array<int, array<string,mixed>>
      */
-    public function listDocumentsByNewsId(int $newsId, bool $publicOnly = false): array
+    public function listDocumentsByNewsId(int $newsId, $publicOnly = false): array
     {
         $where = "nd.news_id = :news_id";
         if ($publicOnly) {

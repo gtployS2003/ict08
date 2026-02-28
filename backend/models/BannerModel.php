@@ -336,7 +336,7 @@ final class BannerModel
         $stmt->execute();
 
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        return array_map(static function ($r) {
+        return array_map(function ($r) {
             return [
                 'activity_id' => (int)($r['activity_id'] ?? 0),
                 'title' => (string)($r['title'] ?? ''),
@@ -369,7 +369,7 @@ final class BannerModel
         $stmt->execute();
 
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        return array_map(static function ($r) {
+        return array_map(function ($r) {
             return [
                 'news_id' => (int)($r['news_id'] ?? 0),
                 'title' => (string)($r['title'] ?? ''),

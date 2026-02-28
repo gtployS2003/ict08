@@ -78,7 +78,7 @@ final class PublicityPostMediaModel
             }
 
             $this->pdo->commit();
-        } catch (Throwable $e) {
+        } catch (\Exception $e) {
             $this->pdo->rollBack();
             throw $e;
         }
