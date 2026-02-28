@@ -9,13 +9,13 @@ require_once __DIR__ . '/../models/HeadOfRequestModel.php';
 
 final class HeadOfRequestController
 {
-	    /** @var PDO */
-    private $pdo;
+	/** @var PDO */
+	private $pdo;
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+	public function __construct(PDO $pdo)
+	{
+		$this->pdo = $pdo;
+	}
 
 	/**
 	 * GET /head-of-request?q=&subtype_of=&page=&limit=
@@ -24,40 +24,45 @@ final class HeadOfRequestController
 	public function index(): void
 	{
 		try {
-			$q = trim((string)($_GET['q'] ?? ''));
-			$subtypeOf = (int)($_GET['subtype_of'] ?? 0);
-			$page = (int)($_GET['page'] ?? 1);
-			$limit = (int)($_GET['limit'] ?? 50);
+			$q = trim((string) ($_GET['q'] ?? ''));
+			$subtypeOf = (int) ($_GET['subtype_of'] ?? 0);
+			$page = (int) ($_GET['page'] ?? 1);
+			$limit = (int) ($_GET['limit'] ?? 50);
 
 			$model = new HeadOfRequestModel($this->pdo);
 			$items = $model->listSubTypes($q, $subtypeOf, $page, $limit);
 			$total = $model->countSubTypes($q, $subtypeOf);
 
-			$subTypeIds = array_map(fn($r) => (int)($r['request_sub_type_id'] ?? 0), $items);
+			$subTypeIds = array_map(function ($r) {
+				return (int) ($r['request_sub_type_id'] ?? 0);
+			}, $items);
 			$assignments = $model->listAssignmentsBySubTypeIds($subTypeIds);
 
 			// group assignments by request_sub_type_id
 			$grouped = [];
 			foreach ($assignments as $a) {
-				$sid = (int)($a['request_sub_type_id'] ?? 0);
-				if ($sid <= 0) continue;
-				if (!isset($grouped[$sid])) $grouped[$sid] = [];
+				$sid = (int) ($a['request_sub_type_id'] ?? 0);
+				if ($sid <= 0)
+					continue;
+				if (!isset($grouped[$sid]))
+					$grouped[$sid] = [];
 
-				$display = (string)($a['display_name'] ?? '');
-				if ($display === '') $display = (string)($a['line_user_name'] ?? '');
+				$display = (string) ($a['display_name'] ?? '');
+				if ($display === '')
+					$display = (string) ($a['line_user_name'] ?? '');
 
 				$grouped[$sid][] = [
-					'id' => (int)($a['id'] ?? 0),
-					'user_id' => (int)($a['user_id'] ?? 0),
+					'id' => (int) ($a['id'] ?? 0),
+					'user_id' => (int) ($a['user_id'] ?? 0),
 					'display_name' => $display,
-					'line_user_name' => (string)($a['line_user_name'] ?? ''),
-					'user_role_id' => (int)($a['user_role_id'] ?? 0),
+					'line_user_name' => (string) ($a['line_user_name'] ?? ''),
+					'user_role_id' => (int) ($a['user_role_id'] ?? 0),
 				];
 			}
 
 			$out = [];
 			foreach ($items as $row) {
-				$sid = (int)($row['request_sub_type_id'] ?? 0);
+				$sid = (int) ($row['request_sub_type_id'] ?? 0);
 				$row['staff'] = $grouped[$sid] ?? [];
 				$out[] = $row;
 			}
@@ -69,7 +74,7 @@ final class HeadOfRequestController
 					'page' => max(1, $page),
 					'limit' => max(1, min(200, $limit)),
 					'total' => $total,
-					'totalPages' => (int)ceil($total / max(1, min(200, $limit))),
+					'totalPages' => (int) ceil($total / max(1, min(200, $limit))),
 				],
 			]);
 		} catch (Throwable $e) {
@@ -87,9 +92,9 @@ final class HeadOfRequestController
 	public function eligibleUsers(): void
 	{
 		try {
-			$q = trim((string)($_GET['q'] ?? ''));
-			$page = (int)($_GET['page'] ?? 1);
-			$limit = (int)($_GET['limit'] ?? 50);
+			$q = trim((string) ($_GET['q'] ?? ''));
+			$page = (int) ($_GET['page'] ?? 1);
+			$limit = (int) ($_GET['limit'] ?? 50);
 
 			$model = new HeadOfRequestModel($this->pdo);
 			$items = $model->listEligibleUsers($q, $page, $limit);
@@ -102,7 +107,7 @@ final class HeadOfRequestController
 					'page' => max(1, $page),
 					'limit' => max(1, min(200, $limit)),
 					'total' => $total,
-					'totalPages' => (int)ceil($total / max(1, min(200, $limit))),
+					'totalPages' => (int) ceil($total / max(1, min(200, $limit))),
 				],
 			]);
 		} catch (Throwable $e) {
@@ -121,34 +126,38 @@ final class HeadOfRequestController
 	public function staffBySubType(int $requestSubTypeId): void
 	{
 		try {
-			$requestSubTypeId = max(1, (int)$requestSubTypeId);
+			$requestSubTypeId = max(1, (int) $requestSubTypeId);
 			$model = new HeadOfRequestModel($this->pdo);
 			$rows = $model->listAssignmentsBySubTypeIds([$requestSubTypeId]);
 
 			$out = [];
 			$seen = [];
 			foreach ($rows as $a) {
-				$hid = (int)($a['id'] ?? 0); // head_of_request.id
-				$uid = (int)($a['user_id'] ?? 0); // staff user_id
-				if ($hid <= 0) continue;
-				if (isset($seen[$hid])) continue;
+				$hid = (int) ($a['id'] ?? 0); // head_of_request.id
+				$uid = (int) ($a['user_id'] ?? 0); // staff user_id
+				if ($hid <= 0)
+					continue;
+				if (isset($seen[$hid]))
+					continue;
 				$seen[$hid] = true;
 
-				$display = (string)($a['display_name'] ?? '');
-				if ($display === '') $display = (string)($a['line_user_name'] ?? '');
-				if ($display === '') $display = 'user#' . $uid;
+				$display = (string) ($a['display_name'] ?? '');
+				if ($display === '')
+					$display = (string) ($a['line_user_name'] ?? '');
+				if ($display === '')
+					$display = 'user#' . $uid;
 
 				$out[] = [
 					'id' => $hid,
 					'staff_id' => $uid,
 					'display_name' => $display,
-					'line_user_name' => (string)($a['line_user_name'] ?? ''),
-					'user_role_id' => (int)($a['user_role_id'] ?? 0),
+					'line_user_name' => (string) ($a['line_user_name'] ?? ''),
+					'user_role_id' => (int) ($a['user_role_id'] ?? 0),
 				];
 			}
 
 			usort($out, function ($x, $y) {
-				return strcmp((string)($x['display_name'] ?? ''), (string)($y['display_name'] ?? ''));
+				return strcmp((string) ($x['display_name'] ?? ''), (string) ($y['display_name'] ?? ''));
 			});
 
 			json_response([
@@ -174,9 +183,10 @@ final class HeadOfRequestController
 		try {
 			$body = read_json_body();
 
-			$requestSubTypeId = (int)($body['request_sub_type_id'] ?? 0);
+			$requestSubTypeId = (int) ($body['request_sub_type_id'] ?? 0);
 			$staffIds = $body['staff_ids'] ?? [];
-			if (!is_array($staffIds)) $staffIds = [];
+			if (!is_array($staffIds))
+				$staffIds = [];
 
 			if ($requestSubTypeId <= 0) {
 				json_response([
@@ -186,7 +196,9 @@ final class HeadOfRequestController
 				return;
 			}
 
-			$ids = array_values(array_unique(array_filter(array_map('intval', $staffIds), fn($v) => $v > 0)));
+			$ids = array_values(array_unique(array_filter(array_map('intval', $staffIds), function ($v) {
+				return $v > 0;
+			})));
 
 			$model = new HeadOfRequestModel($this->pdo);
 			$allowed = $model->filterEligibleStaffIds($ids);

@@ -212,7 +212,9 @@ final class SiteMissionController
             fail('Invalid payload', 422, ['expected' => ['ids' => 'array<int>']]);
         }
 
-        $ids = array_values(array_filter(array_map('intval', $ids), fn($x) => $x > 0));
+        $ids = array_values(array_filter(array_map('intval', $ids), function ($x) {
+            return $x > 0;
+        }));
         if (!$ids) {
             fail('Missing ids', 422);
         }

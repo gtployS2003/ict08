@@ -1,16 +1,21 @@
+Parse error: syntax error, unexpected '=>' (T_DOUBLE_ARROW), expecting ')' in
+/home/ict8/domains/ict8.moi.go.th/public_html/ict8/backend/controllers/events.controller.php on line 463
+
 <?php
 // backend/controllers/events.controller.php
 declare(strict_types=1);
 
 if (!function_exists('str_contains')) {
-    function str_contains($haystack, $needle): bool {
-        return $needle === '' || strpos((string)$haystack, (string)$needle) !== false;
+    function str_contains($haystack, $needle): bool
+    {
+        return $needle === '' || strpos((string) $haystack, (string) $needle) !== false;
     }
 }
 
 if (!function_exists('str_starts_with')) {
-    function str_starts_with($haystack, $needle): bool {
-        return $needle === '' || strpos((string)$haystack, (string)$needle) === 0;
+    function str_starts_with($haystack, $needle): bool
+    {
+        return $needle === '' || strpos((string) $haystack, (string) $needle) === 0;
     }
 }
 
@@ -39,7 +44,7 @@ if (file_exists($devAuthPath)) {
 
 final class EventsController
 {
-        /** @var PDO */
+    /** @var PDO */
     private $pdo;
 
     public function __construct(PDO $pdo)
@@ -56,7 +61,7 @@ final class EventsController
         try {
             $me = $this->requireStaffAccess(true);
 
-            $id = max(1, (int)$id);
+            $id = max(1, (int) $id);
             $m = new EventModel($this->pdo);
             $existing = $m->findById($id);
             if (!$existing) {
@@ -64,8 +69,9 @@ final class EventsController
                 return;
             }
 
-            $uid = (int)($me['user_id'] ?? 0);
-            if ($uid <= 0) $uid = 0;
+            $uid = (int) ($me['user_id'] ?? 0);
+            if ($uid <= 0)
+                $uid = 0;
 
             $reportId = $this->ensureEventReport($id, $uid);
 
@@ -112,7 +118,7 @@ final class EventsController
         try {
             $me = $this->requireStaffAccess(true);
 
-            $id = max(1, (int)$id);
+            $id = max(1, (int) $id);
             $m = new EventModel($this->pdo);
             $existing = $m->findById($id);
             if (!$existing) {
@@ -120,12 +126,13 @@ final class EventsController
                 return;
             }
 
-            $uid = (int)($me['user_id'] ?? 0);
-            if ($uid <= 0) $uid = 0;
+            $uid = (int) ($me['user_id'] ?? 0);
+            if ($uid <= 0)
+                $uid = 0;
 
             $reportId = $this->ensureEventReport($id, $uid);
 
-            $contentType = (string)($_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '');
+            $contentType = (string) ($_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '');
             $isMultipart = stripos($contentType, 'multipart/form-data') !== false;
             if (!$isMultipart) {
                 json_response(['error' => true, 'message' => 'Expected multipart/form-data'], 415);
@@ -146,7 +153,8 @@ final class EventsController
 
             foreach ($flat as $f) {
                 $meta = $this->saveEventReportPictureFile($reportId, $uid, $f);
-                if (!$meta) continue;
+                if (!$meta)
+                    continue;
 
                 $ins = $this->pdo->prepare('
                     INSERT INTO event_report_picture (
@@ -172,7 +180,7 @@ final class EventsController
                     ':fp' => $meta['filepath'],
                     ':orig' => $meta['original_filename'],
                     ':stored' => $meta['stored_filename'],
-                    ':sz' => (int)$meta['file_size'],
+                    ':sz' => (int) $meta['file_size'],
                     ':uby' => $uid,
                 ]);
             }
@@ -218,8 +226,8 @@ final class EventsController
         try {
             $this->requireStaffAccess();
 
-            $id = max(1, (int)$id);
-            $pictureId = max(1, (int)$pictureId);
+            $id = max(1, (int) $id);
+            $pictureId = max(1, (int) $pictureId);
 
             $stmt = $this->pdo->prepare('
                 SELECT
@@ -239,7 +247,7 @@ final class EventsController
             }
 
             // best-effort unlink file
-            $fp = (string)($row['filepath'] ?? '');
+            $fp = (string) ($row['filepath'] ?? '');
             $abs = $this->toPublicUploadAbsPath($fp);
             if ($abs && file_exists($abs)) {
                 @unlink($abs);
@@ -263,7 +271,7 @@ final class EventsController
         try {
             $this->requireStaffAccess();
 
-            $id = max(1, (int)$id);
+            $id = max(1, (int) $id);
 
             // ensure event exists
             $m = new EventModel($this->pdo);
@@ -293,7 +301,7 @@ final class EventsController
         try {
             $this->requireStaffAccess();
 
-            $id = max(1, (int)$id);
+            $id = max(1, (int) $id);
 
             // ensure event exists
             $m = new EventModel($this->pdo);
@@ -346,9 +354,9 @@ final class EventsController
         try {
             $this->requireStaffAccess();
 
-            $page = max(1, (int)($_GET['page'] ?? 1));
-            $limit = max(1, min(500, (int)($_GET['limit'] ?? 200)));
-            $q = trim((string)($_GET['q'] ?? ''));
+            $page = max(1, (int) ($_GET['page'] ?? 1));
+            $limit = max(1, min(500, (int) ($_GET['limit'] ?? 200)));
+            $q = trim((string) ($_GET['q'] ?? ''));
 
             $m = new EventModel($this->pdo);
             $rows = $m->listForTable($q, $page, $limit);
@@ -361,7 +369,7 @@ final class EventsController
                     'page' => $page,
                     'limit' => $limit,
                     'total' => $total,
-                    'totalPages' => (int)ceil($total / max(1, $limit)),
+                    'totalPages' => (int) ceil($total / max(1, $limit)),
                 ],
             ]);
         } catch (Throwable $e) {
@@ -382,8 +390,8 @@ final class EventsController
         try {
             $this->requireStaffAccess();
 
-            $from = trim((string)($_GET['from'] ?? ''));
-            $to = trim((string)($_GET['to'] ?? ''));
+            $from = trim((string) ($_GET['from'] ?? ''));
+            $to = trim((string) ($_GET['to'] ?? ''));
 
             if ($from === '' || $to === '') {
                 json_response(['error' => true, 'message' => 'from and to are required (YYYY-MM-DD)'], 422);
@@ -418,7 +426,7 @@ final class EventsController
 
             $body = read_json_body();
 
-            $title = trim((string)($body['title'] ?? ''));
+            $title = trim((string) ($body['title'] ?? ''));
             if ($title === '') {
                 json_response(['error' => true, 'message' => 'title is required'], 422);
                 return;
@@ -428,16 +436,17 @@ final class EventsController
                 return;
             }
 
-            $detail = (string)($body['detail'] ?? '');
-            $location = (string)($body['location'] ?? '');
-            $meetingLink = (string)($body['meeting_link'] ?? '');
-            $note = (string)($body['note'] ?? '');
+            $detail = (string) ($body['detail'] ?? '');
+            $location = (string) ($body['location'] ?? '');
+            $meetingLink = (string) ($body['meeting_link'] ?? '');
+            $note = (string) ($body['note'] ?? '');
 
-            $provinceId = (int)($body['province_id'] ?? 0);
-            if ($provinceId <= 0) $provinceId = 0;
+            $provinceId = (int) ($body['province_id'] ?? 0);
+            if ($provinceId <= 0)
+                $provinceId = 0;
 
-            $startRaw = trim((string)($body['start_datetime'] ?? $body['start_date'] ?? ''));
-            $endRaw = trim((string)($body['end_datetime'] ?? $body['end_date'] ?? ''));
+            $startRaw = trim((string) ($body['start_datetime'] ?? $body['start_date'] ?? ''));
+            $endRaw = trim((string) ($body['end_datetime'] ?? $body['end_date'] ?? ''));
 
             if ($startRaw === '' || $endRaw === '') {
                 json_response(['error' => true, 'message' => 'start_datetime and end_datetime are required'], 422);
@@ -472,7 +481,9 @@ final class EventsController
                 json_response(['error' => true, 'message' => 'participant_user_ids must be an array'], 422);
                 return;
             }
-            $participantIds = array_values(array_unique(array_filter(array_map('intval', $participantIds), fn($v) => $v > 0)));
+            $participantIds = array_values(array_unique(array_filter(array_map('intval', $participantIds), function ($v) {
+                return $v > 0;
+            })));
 
             // Validate participant roles (if any)
             if (!empty($participantIds)) {
@@ -493,21 +504,22 @@ final class EventsController
                 }
             }
 
-            $updatedBy = (int)($me['user_id'] ?? 0);
+            $updatedBy = (int) ($me['user_id'] ?? 0);
             if ($updatedBy <= 0 && function_exists('get_auth_user')) {
                 $u = get_auth_user($this->pdo);
                 if (is_array($u) && isset($u['user_id']) && is_numeric($u['user_id'])) {
-                    $updatedBy = (int)$u['user_id'];
+                    $updatedBy = (int) $u['user_id'];
                 }
             }
             // fallback dev: Bearer 123
             if ($updatedBy <= 0) {
-                $auth = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+                $auth = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
                 if (preg_match('/Bearer\s+(\d+)/i', $auth, $m)) {
-                    $updatedBy = (int)$m[1];
+                    $updatedBy = (int) $m[1];
                 }
             }
-            if ($updatedBy <= 0) $updatedBy = 0;
+            if ($updatedBy <= 0)
+                $updatedBy = 0;
 
             $this->pdo->beginTransaction();
 
@@ -554,7 +566,7 @@ final class EventsController
                     // Ensure notification_type_id=8 exists (best effort)
                     $chkNt = $this->pdo->prepare('SELECT 1 FROM notification_type WHERE notification_type_id = 8 LIMIT 1');
                     $chkNt->execute();
-                    $hasNt8 = (bool)$chkNt->fetchColumn();
+                    $hasNt8 = (bool) $chkNt->fetchColumn();
                     if (!$hasNt8) {
                         $insNt = $this->pdo->prepare('
                             INSERT INTO notification_type (notification_type_id, notification_type, meaning)
@@ -570,7 +582,7 @@ final class EventsController
                     error_log('[EVENTS] ensure notification_type 8 failed: ' . $e->getMessage());
                 }
 
-                $basePathRaw = (string)env('BASE_PATH', '/ict8');
+                $basePathRaw = (string) env('BASE_PATH', '/ict8');
                 $basePathTrim = trim($basePathRaw);
                 $basePath = ($basePathTrim !== '' ? $basePathTrim : '/ict8');
                 if (!str_starts_with($basePath, '/')) {
@@ -605,10 +617,10 @@ final class EventsController
                     $svc = new NotificationService($this->pdo);
                     $resp = $svc->dispatchToUsers($dispatchUserIds, $dispatchMessage);
                     $dispatchMeta = [
-                        'ok' => (bool)($resp['ok'] ?? false),
-                        'recipients' => (int)($resp['recipients'] ?? 0),
-                        'sent_line' => (int)($resp['sent_line'] ?? 0),
-                        'skipped' => (int)($resp['skipped'] ?? 0),
+                        'ok' => (bool) ($resp['ok'] ?? false),
+                        'recipients' => (int) ($resp['recipients'] ?? 0),
+                        'sent_line' => (int) ($resp['sent_line'] ?? 0),
+                        'skipped' => (int) ($resp['skipped'] ?? 0),
                         'errors_count' => is_array($resp['errors'] ?? null) ? count($resp['errors']) : 0,
                     ];
 
@@ -646,15 +658,18 @@ final class EventsController
 
     private function buildEventEditUrl(int $eventId): string
     {
-        $eventId = max(0, (int)$eventId);
-        if ($eventId <= 0) return '';
+        $eventId = max(0, (int) $eventId);
+        if ($eventId <= 0)
+            return '';
 
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
 
         $basePath = env('BASE_PATH', '/ict8') ?: '/ict8';
-        if ($basePath === '') $basePath = '/ict8';
-        if ($basePath[0] !== '/') $basePath = '/' . $basePath;
+        if ($basePath === '')
+            $basePath = '/ict8';
+        if ($basePath[0] !== '/')
+            $basePath = '/' . $basePath;
         $basePath = rtrim($basePath, '/');
 
         // If host is missing (CLI etc.), return relative link
@@ -673,7 +688,7 @@ final class EventsController
         try {
             $this->requireStaffAccess();
 
-            $id = max(1, (int)$id);
+            $id = max(1, (int) $id);
             $m = new EventModel($this->pdo);
             $row = $m->findById($id);
             if (!$row) {
@@ -686,7 +701,9 @@ final class EventsController
             $participants = $ep->listByEventId($id);
             $participantUserIds = array_values(array_map(
                 'intval',
-                array_filter(array_column($participants, 'user_id'), fn($v) => is_numeric($v))
+                array_filter(array_column($participants, 'user_id'), function ($v) {
+                    return is_numeric($v);
+                })
             ));
             $row['participants'] = $participants;
             $row['participant_user_ids'] = $participantUserIds;
@@ -705,7 +722,7 @@ final class EventsController
         try {
             $this->requireStaffAccess();
 
-            $requestId = max(1, (int)$requestId);
+            $requestId = max(1, (int) $requestId);
             $m = new EventModel($this->pdo);
             $row = $m->findByRequestId($requestId);
             if (!$row) {
@@ -727,7 +744,7 @@ final class EventsController
         try {
             $me = $this->requireStaffAccess(true);
 
-            $id = max(1, (int)$id);
+            $id = max(1, (int) $id);
             $body = read_json_body();
 
             $m = new EventModel($this->pdo);
@@ -737,7 +754,7 @@ final class EventsController
                 return;
             }
 
-            $title = array_key_exists('title', $body) ? trim((string)($body['title'] ?? '')) : trim((string)($existing['title'] ?? ''));
+            $title = array_key_exists('title', $body) ? trim((string) ($body['title'] ?? '')) : trim((string) ($existing['title'] ?? ''));
             if ($title === '') {
                 json_response(['error' => true, 'message' => 'title is required'], 422);
                 return;
@@ -747,8 +764,8 @@ final class EventsController
                 return;
             }
 
-            $start = array_key_exists('start_datetime', $body) ? trim((string)($body['start_datetime'] ?? '')) : (string)($existing['start_datetime'] ?? '');
-            $end = array_key_exists('end_datetime', $body) ? trim((string)($body['end_datetime'] ?? '')) : (string)($existing['end_datetime'] ?? '');
+            $start = array_key_exists('start_datetime', $body) ? trim((string) ($body['start_datetime'] ?? '')) : (string) ($existing['start_datetime'] ?? '');
+            $end = array_key_exists('end_datetime', $body) ? trim((string) ($body['end_datetime'] ?? '')) : (string) ($existing['end_datetime'] ?? '');
 
             $startVal = ($start === '' ? null : $start);
             $endVal = ($end === '' ? null : $end);
@@ -768,8 +785,9 @@ final class EventsController
                 }
             }
 
-            $provinceId = array_key_exists('province_id', $body) ? (int)($body['province_id'] ?? 0) : (int)($existing['province_id'] ?? 0);
-            if ($provinceId <= 0) $provinceId = null;
+            $provinceId = array_key_exists('province_id', $body) ? (int) ($body['province_id'] ?? 0) : (int) ($existing['province_id'] ?? 0);
+            if ($provinceId <= 0)
+                $provinceId = null;
 
             if ($provinceId !== null) {
                 $chk = $this->pdo->prepare('SELECT 1 FROM province WHERE province_id = :id LIMIT 1');
@@ -780,11 +798,12 @@ final class EventsController
                 }
             }
 
-            $eventStatusId = array_key_exists('event_status_id', $body) ? (int)($body['event_status_id'] ?? 0) : (int)($existing['event_status_id'] ?? 0);
-            if ($eventStatusId <= 0) $eventStatusId = null;
+            $eventStatusId = array_key_exists('event_status_id', $body) ? (int) ($body['event_status_id'] ?? 0) : (int) ($existing['event_status_id'] ?? 0);
+            if ($eventStatusId <= 0)
+                $eventStatusId = null;
 
             // Validate event_status_id belongs to request_type (if the event is tied to a request)
-            $reqId = (int)($existing['request_id'] ?? 0);
+            $reqId = (int) ($existing['request_id'] ?? 0);
             if ($eventStatusId !== null && $reqId > 0) {
                 $chk = $this->pdo->prepare('
                     SELECT 1
@@ -808,16 +827,16 @@ final class EventsController
                     $q = $this->pdo->prepare('SELECT request_type FROM request WHERE request_id = :rid LIMIT 1');
                     $q->execute([':rid' => $reqId]);
                     $rt = $q->fetchColumn();
-                    $requestTypeId = ($rt !== false && $rt !== null && is_numeric($rt)) ? (int)$rt : null;
+                    $requestTypeId = ($rt !== false && $rt !== null && is_numeric($rt)) ? (int) $rt : null;
                 } catch (Throwable $e) {
                     // best effort
                 }
             }
 
             $meetingLinkPayload = array_key_exists('meeting_link', $body);
-            $prevMeetingLink = trim((string)($existing['meeting_link'] ?? ''));
-            $newMeetingLink = $meetingLinkPayload ? trim((string)($body['meeting_link'] ?? '')) : '';
-            $isConferenceRequest = ($reqId > 0 && (int)($requestTypeId ?? 0) === 2);
+            $prevMeetingLink = trim((string) ($existing['meeting_link'] ?? ''));
+            $newMeetingLink = $meetingLinkPayload ? trim((string) ($body['meeting_link'] ?? '')) : '';
+            $isConferenceRequest = ($reqId > 0 && (int) ($requestTypeId ?? 0) === 2);
             $meetingLinkJustAdded = ($isConferenceRequest && $meetingLinkPayload && $prevMeetingLink === '' && $newMeetingLink !== '');
 
             // If the only change is adding meeting_link, avoid sending duplicate "event_edit" notifications.
@@ -838,32 +857,33 @@ final class EventsController
 
             $data = [
                 'title' => $title,
-                'detail' => array_key_exists('detail', $body) ? (string)($body['detail'] ?? '') : (string)($existing['detail'] ?? ''),
-                'location' => array_key_exists('location', $body) ? (string)($body['location'] ?? '') : (string)($existing['location'] ?? ''),
+                'detail' => array_key_exists('detail', $body) ? (string) ($body['detail'] ?? '') : (string) ($existing['detail'] ?? ''),
+                'location' => array_key_exists('location', $body) ? (string) ($body['location'] ?? '') : (string) ($existing['location'] ?? ''),
                 'province_id' => $provinceId,
-                'meeting_link' => array_key_exists('meeting_link', $body) ? (string)($body['meeting_link'] ?? '') : (string)($existing['meeting_link'] ?? ''),
-                'note' => array_key_exists('note', $body) ? (string)($body['note'] ?? '') : (string)($existing['note'] ?? ''),
+                'meeting_link' => array_key_exists('meeting_link', $body) ? (string) ($body['meeting_link'] ?? '') : (string) ($existing['meeting_link'] ?? ''),
+                'note' => array_key_exists('note', $body) ? (string) ($body['note'] ?? '') : (string) ($existing['note'] ?? ''),
                 'event_status_id' => $eventStatusId,
                 'start_datetime' => $startVal,
                 'end_datetime' => $endVal,
             ];
 
             // For event_log snapshot on update
-            $updatedBy = (int)($me['user_id'] ?? 0);
+            $updatedBy = (int) ($me['user_id'] ?? 0);
             if ($updatedBy <= 0 && function_exists('get_auth_user')) {
                 $u = get_auth_user($this->pdo);
                 if (is_array($u) && isset($u['user_id']) && is_numeric($u['user_id'])) {
-                    $updatedBy = (int)$u['user_id'];
+                    $updatedBy = (int) $u['user_id'];
                 }
             }
             // fallback dev: Bearer 123
             if ($updatedBy <= 0) {
-                $auth = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+                $auth = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
                 if (preg_match('/Bearer\s+(\d+)/i', $auth, $m)) {
-                    $updatedBy = (int)$m[1];
+                    $updatedBy = (int) $m[1];
                 }
             }
-            if ($updatedBy <= 0) $updatedBy = 0;
+            if ($updatedBy <= 0)
+                $updatedBy = 0;
             $data['updated_by'] = $updatedBy;
 
             // participants (optional): replace existing rows
@@ -877,14 +897,18 @@ final class EventsController
                     json_response(['error' => true, 'message' => 'participant_user_ids must be an array'], 422);
                     return;
                 }
-                $participantIds = array_values(array_unique(array_filter(array_map('intval', $raw), fn($v) => $v > 0)));
+                $participantIds = array_values(array_unique(array_filter(array_map('intval', $raw), function ($v) {
+                    return $v > 0;
+                })));
 
                 // Snapshot current active participants for diff (added/removed)
                 $epPrev = new EventParticipantModel($this->pdo);
                 $prevRows = $epPrev->listByEventId($id);
                 $prevActiveParticipantIds = array_values(array_unique(array_map(
                     'intval',
-                    array_filter(array_column($prevRows, 'user_id'), fn($v) => is_numeric($v))
+                    array_filter(array_column($prevRows, 'user_id'), function ($v) {
+                        return is_numeric($v);
+                    })
                 )));
 
                 $addedParticipantIds = array_values(array_diff($participantIds, $prevActiveParticipantIds));
@@ -904,11 +928,11 @@ final class EventsController
             // - assign round_no (starting at 1) if not assigned yet
             // - ensure event_report exists and mark submitted_by/submitted_at
             $finalizeMeta = null;
-            $prevStatusId = isset($existing['event_status_id']) && is_numeric($existing['event_status_id']) ? (int)$existing['event_status_id'] : 0;
+            $prevStatusId = isset($existing['event_status_id']) && is_numeric($existing['event_status_id']) ? (int) $existing['event_status_id'] : 0;
             $prevIsFinished = $this->isFinishedStatusId($prevStatusId > 0 ? $prevStatusId : null);
             $newIsFinished = $this->isFinishedStatusId($eventStatusId);
-            $existingRoundNo = isset($existing['round_no']) && is_numeric($existing['round_no']) ? (int)$existing['round_no'] : 0;
-            $existingEventYear = isset($existing['event_year']) && is_numeric($existing['event_year']) ? (int)$existing['event_year'] : 0;
+            $existingRoundNo = isset($existing['round_no']) && is_numeric($existing['round_no']) ? (int) $existing['round_no'] : 0;
+            $existingEventYear = isset($existing['event_year']) && is_numeric($existing['event_year']) ? (int) $existing['event_year'] : 0;
 
             // Assign/refresh round_no when status becomes finished.
             // - If transitioning to finished: always (re)assign round_no even if it already exists.
@@ -920,7 +944,7 @@ final class EventsController
                 // compute event_year if missing
                 $eventYearBE = $existingEventYear;
                 if ($eventYearBE <= 0) {
-                    $eventYearBE = $this->computeEventYearBE($startVal ?? (string)($existing['start_datetime'] ?? ''));
+                    $eventYearBE = $this->computeEventYearBE($startVal ?? (string) ($existing['start_datetime'] ?? ''));
                 }
 
                 // Always assign a new round number when finishing (or if missing while finished).
@@ -964,7 +988,7 @@ final class EventsController
                 if (!empty($participantIds)) {
                     $in = implode(',', array_fill(0, count($participantIds), '?'));
 
-                    $reqId = (int)($existing['request_id'] ?? 0);
+                    $reqId = (int) ($existing['request_id'] ?? 0);
                     $isInternal = ($reqId <= 0);
 
                     $sql = $isInternal
@@ -1000,7 +1024,7 @@ final class EventsController
                     $stmtCur->execute();
                     $cur = $stmtCur->fetch(PDO::FETCH_ASSOC) ?: [];
 
-                    $titleLog = trim((string)($cur['title'] ?? ''));
+                    $titleLog = trim((string) ($cur['title'] ?? ''));
                     if (mb_strlen($titleLog) > 255) {
                         $titleLog = mb_substr($titleLog, 0, 255);
                     }
@@ -1027,10 +1051,10 @@ final class EventsController
                     $stmtLog->execute([
                         ':event_id' => $id,
                         ':title' => $titleLog,
-                        ':detail' => (string)($cur['detail'] ?? ''),
-                        ':location' => (string)($cur['location'] ?? ''),
-                        ':note' => (string)($cur['note'] ?? ''),
-                        ':participant_user_ids' => (string)($data['participant_user_ids'] ?? ''),
+                        ':detail' => (string) ($cur['detail'] ?? ''),
+                        ':location' => (string) ($cur['location'] ?? ''),
+                        ':note' => (string) ($cur['note'] ?? ''),
+                        ':participant_user_ids' => (string) ($data['participant_user_ids'] ?? ''),
                         ':updated_by' => $updatedBy,
                     ]);
                 }
@@ -1041,7 +1065,7 @@ final class EventsController
                     try {
                         $chkNt = $this->pdo->prepare('SELECT 1 FROM notification_type WHERE notification_type_id = 8 LIMIT 1');
                         $chkNt->execute();
-                        $hasNt8 = (bool)$chkNt->fetchColumn();
+                        $hasNt8 = (bool) $chkNt->fetchColumn();
                         if (!$hasNt8) {
                             $insNt = $this->pdo->prepare('
                                 INSERT INTO notification_type (notification_type_id, notification_type, meaning)
@@ -1078,11 +1102,14 @@ final class EventsController
                         $stmtRole->execute($addedParticipantIds);
                         $rows = $stmtRole->fetchAll(PDO::FETCH_ASSOC) ?: [];
                         foreach ($rows as $r) {
-                            $uid = (int)($r['user_id'] ?? 0);
-                            $rid = (int)($r['user_role_id'] ?? 1);
-                            if ($uid <= 0) continue;
-                            if (in_array($rid, [2, 3], true)) $addedStaffIds[] = $uid;
-                            else $addedRole1Ids[] = $uid;
+                            $uid = (int) ($r['user_id'] ?? 0);
+                            $rid = (int) ($r['user_role_id'] ?? 1);
+                            if ($uid <= 0)
+                                continue;
+                            if (in_array($rid, [2, 3], true))
+                                $addedStaffIds[] = $uid;
+                            else
+                                $addedRole1Ids[] = $uid;
                         }
                     } catch (Throwable $e) {
                         // fallback: treat all as staff-like
@@ -1118,18 +1145,22 @@ final class EventsController
                     $nowRows = $epNow->listByEventId($id);
                     $recipients = array_values(array_unique(array_map(
                         'intval',
-                        array_filter(array_column($nowRows, 'user_id'), fn($v) => is_numeric($v))
+                        array_filter(array_column($nowRows, 'user_id'), function ($v) {
+                            return is_numeric($v);
+                        })
                     )));
                 }
 
                 // Exclude editor
-                $recipients = array_values(array_filter($recipients, fn($uid) => (int)$uid > 0 && (int)$uid !== (int)$updatedBy));
+                $recipients = array_values(array_filter($recipients, function ($uid) use ($updatedBy) {
+                    return (int) $uid > 0 && (int) $uid !== (int) $updatedBy;
+                }));
 
                 // Ensure notification_type_id=10 exists (best effort)
                 try {
                     $chkNt = $this->pdo->prepare('SELECT 1 FROM notification_type WHERE notification_type_id = 10 LIMIT 1');
                     $chkNt->execute();
-                    $hasNt10 = (bool)$chkNt->fetchColumn();
+                    $hasNt10 = (bool) $chkNt->fetchColumn();
                     if (!$hasNt10) {
                         $insNt = $this->pdo->prepare('
                             INSERT INTO notification_type (notification_type_id, notification_type, meaning)
@@ -1174,18 +1205,22 @@ final class EventsController
                     $nowRows = $epNow->listByEventId($id);
                     $recipients = array_values(array_unique(array_map(
                         'intval',
-                        array_filter(array_column($nowRows, 'user_id'), fn($v) => is_numeric($v))
+                        array_filter(array_column($nowRows, 'user_id'), function ($v) {
+                            return is_numeric($v);
+                        })
                     )));
                 }
 
                 // Exclude editor (optional, but reduces noise)
-                $recipients = array_values(array_filter($recipients, fn($uid) => (int)$uid > 0 && (int)$uid !== (int)$updatedBy));
+                $recipients = array_values(array_filter($recipients, function ($uid) use ($updatedBy) {
+                    return (int) $uid > 0 && (int) $uid !== (int) $updatedBy;
+                }));
 
                 // Ensure notification_type_id=9 exists (best effort)
                 try {
                     $chkNt = $this->pdo->prepare('SELECT 1 FROM notification_type WHERE notification_type_id = 9 LIMIT 1');
                     $chkNt->execute();
-                    $hasNt9 = (bool)$chkNt->fetchColumn();
+                    $hasNt9 = (bool) $chkNt->fetchColumn();
                     if (!$hasNt9) {
                         $insNt = $this->pdo->prepare('
                             INSERT INTO notification_type (notification_type_id, notification_type, meaning)
@@ -1226,15 +1261,16 @@ final class EventsController
                     $svc = new NotificationService($this->pdo);
                     foreach ($dispatchJobs as $job) {
                         $uids = $job['user_ids'] ?? [];
-                        $msg = (string)($job['message'] ?? '');
-                        if (!is_array($uids) || trim($msg) === '') continue;
+                        $msg = (string) ($job['message'] ?? '');
+                        if (!is_array($uids) || trim($msg) === '')
+                            continue;
                         $resp = $svc->dispatchToUsers($uids, $msg);
 
                         // Keep lightweight debug info for API response when APP_DEBUG=1
                         $dispatchResults[] = [
-                            'recipients' => (int)($resp['recipients'] ?? 0),
-                            'sent_line' => (int)($resp['sent_line'] ?? 0),
-                            'skipped' => (int)($resp['skipped'] ?? 0),
+                            'recipients' => (int) ($resp['recipients'] ?? 0),
+                            'sent_line' => (int) ($resp['sent_line'] ?? 0),
+                            'skipped' => (int) ($resp['skipped'] ?? 0),
                             'errors' => $resp['errors'] ?? [],
                         ];
 
@@ -1257,7 +1293,9 @@ final class EventsController
                 $participants = $ep->listByEventId($id);
                 $participantUserIds = array_values(array_map(
                     'intval',
-                    array_filter(array_column($participants, 'user_id'), fn($v) => is_numeric($v))
+                    array_filter(array_column($participants, 'user_id'), function ($v) {
+                        return is_numeric($v);
+                    })
                 ));
                 $fresh['participants'] = $participants;
                 $fresh['participant_user_ids'] = $participantUserIds;
@@ -1286,7 +1324,7 @@ final class EventsController
         try {
             $this->requireStaffAccess();
 
-            $id = max(1, (int)$id);
+            $id = max(1, (int) $id);
             $m = new EventModel($this->pdo);
             $existing = $m->findById($id);
             if (!$existing) {
@@ -1309,15 +1347,16 @@ final class EventsController
                 $stmt->execute([':eid' => $id]);
                 $repIds = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
                 foreach ($repIds as $rid) {
-                    $rid = (int)$rid;
-                    if ($rid <= 0) continue;
+                    $rid = (int) $rid;
+                    if ($rid <= 0)
+                        continue;
 
                     try {
                         $q = $this->pdo->prepare('SELECT filepath FROM event_report_picture WHERE event_report_id = :rid');
                         $q->execute([':rid' => $rid]);
                         $fps = $q->fetchAll(PDO::FETCH_COLUMN) ?: [];
                         foreach ($fps as $fp) {
-                            $abs = $this->toPublicUploadAbsPath((string)$fp);
+                            $abs = $this->toPublicUploadAbsPath((string) $fp);
                             if ($abs && file_exists($abs)) {
                                 @unlink($abs);
                             }
@@ -1374,12 +1413,12 @@ final class EventsController
 
     private function isDateTime(string $v): bool
     {
-        return (bool)preg_match('/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/', $v);
+        return (bool) preg_match('/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/', $v);
     }
 
     private function isDate(string $v): bool
     {
-        return (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/', $v);
+        return (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $v);
     }
 
     /**
@@ -1389,7 +1428,8 @@ final class EventsController
     private function normalizeToDateTime(string $v, bool $isEnd): ?string
     {
         $v = trim($v);
-        if ($v === '') return null;
+        if ($v === '')
+            return null;
 
         if ($this->isDateTime($v)) {
             return $v;
@@ -1413,14 +1453,14 @@ final class EventsController
         if ($startDatetime !== '') {
             try {
                 $dt = new DateTimeImmutable($startDatetime);
-                $y = (int)$dt->format('Y');
+                $y = (int) $dt->format('Y');
             } catch (Throwable $e) {
                 $y = 0;
             }
         }
 
         if ($y <= 0) {
-            $y = (int)date('Y');
+            $y = (int) date('Y');
         }
 
         return $y + 543;
@@ -1432,7 +1472,7 @@ final class EventsController
      */
     private function getNextEventRoundNo(int $eventYearBE): int
     {
-        $eventYearBE = (int)$eventYearBE;
+        $eventYearBE = (int) $eventYearBE;
         if ($eventYearBE <= 0) {
             $eventYearBE = $this->computeEventYearBE(null);
         }
@@ -1446,23 +1486,25 @@ final class EventsController
         ');
         $stmt->execute([':y' => $eventYearBE]);
         $max = $stmt->fetchColumn();
-        $maxNo = (is_numeric($max) ? (int)$max : 0);
+        $maxNo = (is_numeric($max) ? (int) $max : 0);
         return max(0, $maxNo) + 1;
     }
 
     private function isFinishedStatusId(?int $eventStatusId): bool
     {
-        $eventStatusId = $eventStatusId !== null ? (int)$eventStatusId : 0;
-        if ($eventStatusId <= 0) return false;
+        $eventStatusId = $eventStatusId !== null ? (int) $eventStatusId : 0;
+        if ($eventStatusId <= 0)
+            return false;
 
         try {
             $stmt = $this->pdo->prepare('SELECT status_code, status_name FROM event_status WHERE event_status_id = :id LIMIT 1');
             $stmt->execute([':id' => $eventStatusId]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-            $code = strtoupper(trim((string)($row['status_code'] ?? '')));
-            $name = trim((string)($row['status_name'] ?? ''));
+            $code = strtoupper(trim((string) ($row['status_code'] ?? '')));
+            $name = trim((string) ($row['status_name'] ?? ''));
 
-            if ($name !== '' && mb_strpos($name, 'เสร็จสิ้น') !== false) return true;
+            if ($name !== '' && mb_strpos($name, 'เสร็จสิ้น') !== false)
+                return true;
             if ($code !== '') {
                 if (str_contains($code, 'DONE') || str_contains($code, 'FINISH') || str_contains($code, 'FINISHED') || str_contains($code, 'COMPLETE')) {
                     return true;
@@ -1480,19 +1522,19 @@ final class EventsController
      */
     private function ensureEventReport(int $eventId, int $userId): int
     {
-        $eventId = max(1, (int)$eventId);
-        $userId = max(0, (int)$userId);
+        $eventId = max(1, (int) $eventId);
+        $userId = max(0, (int) $userId);
 
         $stmt = $this->pdo->prepare('SELECT event_report_id, submitted_by_id, submitted_at FROM event_report WHERE event_id = :eid LIMIT 1');
         $stmt->execute([':eid' => $eventId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        if ($row && is_numeric($row['event_report_id'] ?? null) && (int)$row['event_report_id'] > 0) {
-            $rid = (int)$row['event_report_id'];
+        if ($row && is_numeric($row['event_report_id'] ?? null) && (int) $row['event_report_id'] > 0) {
+            $rid = (int) $row['event_report_id'];
 
             // If report already exists (e.g. created for internal picture uploads),
             // but submission fields are missing, set them when finishing.
-            $submittedBy = isset($row['submitted_by_id']) && is_numeric($row['submitted_by_id']) ? (int)$row['submitted_by_id'] : 0;
-            $submittedAt = trim((string)($row['submitted_at'] ?? ''));
+            $submittedBy = isset($row['submitted_by_id']) && is_numeric($row['submitted_by_id']) ? (int) $row['submitted_by_id'] : 0;
+            $submittedAt = trim((string) ($row['submitted_at'] ?? ''));
 
             if ($userId > 0 && ($submittedBy <= 0 || $submittedAt === '')) {
                 try {
@@ -1535,7 +1577,7 @@ final class EventsController
             ':sid' => $userId,
         ]);
 
-        return (int)$this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     /**
@@ -1566,9 +1608,9 @@ final class EventsController
     private function saveEventReportPictureFile(int $reportId, int $uploadedBy, array $file): ?array
     {
         $tmp = $file['tmp_name'] ?? '';
-        $original = (string)($file['name'] ?? 'file');
-        $size = (int)($file['size'] ?? 0);
-        $err = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
+        $original = (string) ($file['name'] ?? 'file');
+        $size = (int) ($file['size'] ?? 0);
+        $err = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
 
         if ($err !== UPLOAD_ERR_OK) {
             throw new RuntimeException('Upload error code: ' . $err);
@@ -1613,10 +1655,13 @@ final class EventsController
     private function toPublicUploadAbsPath(string $filepath): ?string
     {
         $fp = trim($filepath);
-        if ($fp === '') return null;
+        if ($fp === '')
+            return null;
         $fp = ltrim($fp, '/');
-        if (!str_starts_with($fp, 'uploads/')) return null;
-        if (str_contains($fp, '..')) return null;
+        if (!str_starts_with($fp, 'uploads/'))
+            return null;
+        if (str_contains($fp, '..'))
+            return null;
         return __DIR__ . '/../public/' . $fp;
     }
 
@@ -1631,7 +1676,7 @@ final class EventsController
         if (function_exists('get_bearer_token')) {
             $hasToken = (get_bearer_token() !== null);
         } else {
-            $auth = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+            $auth = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
             $hasToken = stripos($auth, 'Bearer ') !== false;
         }
 
