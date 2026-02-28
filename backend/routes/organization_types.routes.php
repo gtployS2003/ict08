@@ -18,7 +18,7 @@ function organization_types_routes(string $method, array $segments, PDO $pdo): b
         return false;
     }
 
-    $controller = new OrganizationTypesController();
+    $controller = new OrganizationTypesController($pdo);
 
     // /organization-types
     if (count($segments) === 1) {

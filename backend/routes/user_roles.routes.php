@@ -23,7 +23,7 @@ function user_roles_routes(string $method, array $segments, PDO $pdo): bool
     }
 
     // ถ้า controller ของคุณยังไม่ได้รับ pdo ก็ใช้แบบนี้ไปก่อน
-    $controller = new UserRolesController();
+    $controller = new UserRolesController($pdo);
 
     // /user-roles  หรือ /user_roles
     if (count($segments) === 1) {

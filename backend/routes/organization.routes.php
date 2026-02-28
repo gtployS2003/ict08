@@ -18,7 +18,7 @@ function organization_routes(string $method, array $segments, PDO $pdo): bool
         return false;
     }
 
-    $controller = new OrganizationsController();
+    $controller = new OrganizationsController($pdo);
 
     // /organizations
     if (count($segments) === 1) {

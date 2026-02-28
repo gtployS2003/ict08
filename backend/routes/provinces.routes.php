@@ -18,7 +18,7 @@ function provinces_routes(string $method, array $segments, PDO $pdo): bool
         return false;
     }
 
-    $controller = new ProvincesController();
+    $controller = new ProvincesController($pdo);
 
     // /provinces
     if (count($segments) === 1) {
