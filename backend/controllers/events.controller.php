@@ -2,6 +2,18 @@
 // backend/controllers/events.controller.php
 declare(strict_types=1);
 
+if (!function_exists('str_contains')) {
+    function str_contains($haystack, $needle): bool {
+        return $needle === '' || strpos((string)$haystack, (string)$needle) !== false;
+    }
+}
+
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($haystack, $needle): bool {
+        return $needle === '' || strpos((string)$haystack, (string)$needle) === 0;
+    }
+}
+
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../models/EventModel.php';
