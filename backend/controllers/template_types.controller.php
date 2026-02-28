@@ -396,7 +396,7 @@ final class TemplateTypesController
                     return $id > 0 ? $id : 0;
                 }
             }
-        } catch (Throwable) {
+       } catch (Throwable $e) {
             // best-effort only
         }
         return 0;
