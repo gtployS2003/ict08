@@ -1,6 +1,3 @@
-Parse error: syntax error, unexpected '=>' (T_DOUBLE_ARROW), expecting ')' in
-/home/ict8/domains/ict8.moi.go.th/public_html/ict8/backend/controllers/events.controller.php on line 463
-
 <?php
 // backend/controllers/events.controller.php
 declare(strict_types=1);
