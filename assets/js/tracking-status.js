@@ -201,11 +201,11 @@
 
     return `
       <tr ${trAttrs}>
-        <td class="ts-mono">${escapeHtml(id)}</td>
-        <td>${escapeHtml(name || "-")}</td>
-        <td>${escapeHtml(buildTypeLabel(row))}</td>
-        <td>${escapeHtml(staff)}</td>
-        <td>${statusHtml}</td>
+        <td class="ts-mono" data-label="ID">${escapeHtml(id)}</td>
+        <td data-label="ชื่อ">${escapeHtml(name || "-")}</td>
+        <td data-label="ประเภทคำร้อง">${escapeHtml(buildTypeLabel(row))}</td>
+        <td data-label="ผู้รับผิดชอบ">${escapeHtml(staff)}</td>
+        <td data-label="สถานะ">${statusHtml}</td>
       </tr>
     `;
   }

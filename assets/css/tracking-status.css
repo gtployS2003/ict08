@@ -179,3 +179,104 @@
   font-size: 12px;
   color: #374151;
 }
+
+/* ===== Responsive (phones) ===== */
+@media (max-width: 640px) {
+  .ts-switch {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .ts-switch-btn {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  /* Make table readable without horizontal scrolling */
+  .ts-table-wrap {
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+    background: transparent;
+  }
+
+  .ts-table thead {
+    display: none;
+  }
+
+  .ts-table,
+  .ts-table tbody,
+  .ts-table tr,
+  .ts-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .ts-table tbody tr.ts-row {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
+    margin: 12px 0;
+    background: #fff;
+  }
+
+  .ts-table tbody td {
+    border-bottom: 1px dashed #eef2f7;
+    padding: 10px 12px;
+    font-size: 13px;
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 8px;
+    align-items: start;
+  }
+
+  .ts-table tbody td:last-child {
+    border-bottom: 0;
+  }
+
+  .ts-table tbody td::before {
+    content: attr(data-label);
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  /* Loading/empty rows (colspan) should remain centered */
+  .ts-table tbody td.ts-loading,
+  .ts-table tbody td.ts-empty {
+    display: block;
+    padding: 14px 12px;
+  }
+
+  .ts-table tbody td.ts-loading::before,
+  .ts-table tbody td.ts-empty::before {
+    content: none;
+  }
+
+  .ts-stepper {
+    gap: 6px;
+  }
+
+  .ts-step {
+    white-space: normal;
+    line-height: 1.2;
+    max-width: 100%;
+  }
+}
+
+/* Extra small phones */
+@media (max-width: 360px) {
+  .ts-table tbody td {
+    grid-template-columns: 92px 1fr;
+  }
+
+  .ts-step {
+    padding: 6px 10px 6px 16px;
+  }
+
+  .ts-step::before {
+    left: 6px;
+  }
+}
