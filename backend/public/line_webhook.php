@@ -1,57 +1,61 @@
 <?php
-// backend/public/line_webhook.php
+// 🚨 STEP 1: อ่าน RAW BODY ก่อน
+$body = file_get_contents('php://input');
+$signature = $_SERVER['HTTP_X_LINE_SIGNATURE'] ?? '';
+
+// 🚨 STEP 2: โหลด SECRET อย่างเดียว (ยังไม่ include อะไร)
 require_once __DIR__ . '/../config/env.php';
 env_load(__DIR__ . '/../.env');
 
+$CHANNEL_SECRET = getenv('LINE_CHANNEL_SECRET') ?: '';
+
+if ($CHANNEL_SECRET === '') {
+    http_response_code(500);
+    exit('Missing secret');
+}
+
+// 🚨 STEP 3: VERIFY
+$hash = base64_encode(hash_hmac('sha256', $body, $CHANNEL_SECRET, true));
+
+if (!hash_equals($hash, $signature)) {
+    http_response_code(401);
+    exit('Invalid signature');
+}
+
+// 🚨 STEP 4: ตอบ LINE ก่อนทันที
+http_response_code(200);
+echo "OK";
+fastcgi_finish_request();
+
+
+// ---------------------------
+// จากนี้ค่อย process จริง
+// ---------------------------
+
+// parse json
+$data = json_decode($body, true);
+if (!isset($data['events'])) {
+    exit;
+}
+
+// include หลัง verify เท่านั้น ✅
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../models/UserModel.php';
 require_once __DIR__ . '/../models/UserRoleModel.php';
 require_once __DIR__ . '/../models/RequestTypeModel.php';
-
 require_once __DIR__ . '/../services/LineService.php';
 
-
-
-// 1) โหลดค่า env
-$CHANNEL_SECRET = getenv('LINE_CHANNEL_SECRET') ?: '';
 $ACCESS_TOKEN = getenv('LINE_CHANNEL_ACCESS_TOKEN') ?: '';
 
 $RM_BEFORE = getenv('LINE_RICHMENU_BEFORE') ?: '';
 $RM_INTERNAL = getenv('LINE_RICHMENU_INTERNAL') ?: '';
 $RM_EXTERNAL = getenv('LINE_RICHMENU_EXTERNAL') ?: '';
 
-if ($CHANNEL_SECRET === '' || $ACCESS_TOKEN === '') {
-    http_response_code(500);
-    echo "Missing LINE env";
-    exit;
-}
-
-// 2) Verify signature
-$body = file_get_contents('php://input');
-$signature = $_SERVER['HTTP_X_LINE_SIGNATURE'] ?? '';
-
-$hash = base64_encode(hash_hmac('sha256', $body, $CHANNEL_SECRET, true));
-if (!hash_equals($hash, $signature)) {
-    http_response_code(401);
-    echo "Invalid signature";
-    exit;
-}
-
-// 3) Parse JSON
-$data = json_decode($body, true);
-if (!isset($data['events'])) {
-    http_response_code(200);
-    echo "No events";
-    exit;
-}
-
 $line = new LineService($ACCESS_TOKEN);
 
 try {
     $pdo = db();
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo 'Database connection failed';
     exit;
 }
 
@@ -59,28 +63,29 @@ $userModel = new UserModel($pdo);
 $userRoleModel = new UserRoleModel($pdo);
 $requestTypeModel = new RequestTypeModel($pdo);
 
+// loop event
 foreach ($data['events'] as $event) {
+
     $type = $event['type'] ?? '';
-    $source = $event['source'] ?? [];
-    $userId = $source['userId'] ?? null;
+    $userId = $event['source']['userId'] ?? null;
 
     if (!$userId)
         continue;
 
-    // ===== 4) หา user + roleCode (INTERNAL/EXTERNAL/ADMIN/GUEST) =====
+    // ===== ROLE =====
     $user = $userModel->findByLineUserId($userId);
 
     $roleCode = 'GUEST';
     if ($user && !empty($user['user_role_id'])) {
         try {
-            $roleRow = $userRoleModel->getById((int) $user['user_role_id']); // getById อาจ throw
+            $roleRow = $userRoleModel->getById((int) $user['user_role_id']);
             $roleCode = strtoupper((string) ($roleRow['code'] ?? 'EXTERNAL'));
         } catch (Throwable $e) {
             $roleCode = 'EXTERNAL';
         }
     }
 
-    // ===== 4.1) สลับ richmenu ตาม role =====
+    // ===== SWITCH MENU =====
     $targetRichMenu = $RM_BEFORE;
     if ($roleCode === 'INTERNAL' || $roleCode === 'ADMIN') {
         $targetRichMenu = $RM_INTERNAL;
@@ -92,17 +97,14 @@ foreach ($data['events'] as $event) {
         $line->linkRichMenuToUser($userId, $targetRichMenu);
     }
 
-    // ===== 5) follow =====
-    if ($type === 'follow') {
-        if (isset($event['replyToken'])) {
-            $line->replyMessage($event['replyToken'], [
-                [
-                    'type' => 'text',
-                    'text' => "สวัสดีค่ะ 😊\nยินดีต้อนรับสู่ ศูนย์เทคโนโลยสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)\nกรุณาแตะเมนู “เข้าสู่ระบบ” เพื่อสมัคร/เข้าสู่ระบบก่อนใช้งานค่ะ"
-                ]
-            ]);
-        }
-        continue;
+    // ===== FOLLOW =====
+    if ($type === 'follow' && isset($event['replyToken'])) {
+        $line->replyMessage($event['replyToken'], [
+            [
+                'type' => 'text',
+                'text' => "สวัสดีค่ะ 😊\nยินดีต้อนรับสู่ ICT8\nกรุณาแตะเมนู “เข้าสู่ระบบ”"
+            ]
+        ]);
     }
 
     // ===== Handler กลาง: external menu actions =====
