@@ -413,6 +413,105 @@ final class EventsController
     }
 
     /**
+     * GET /events/my?q=&page=&limit=
+     * คืนรายการงาน (event) เฉพาะที่เกี่ยวข้องกับคำขอของผู้ร้องขอ (ตาม token)
+     * ใช้สำหรับหน้า tracking ฝั่งผู้ใช้งาน
+     */
+    public function my(): void
+    {
+        try {
+            $uid = $this->getAuthUserId();
+            if (!$uid || $uid <= 0) {
+                json_response(['error' => true, 'message' => 'UNAUTHORIZED'], 401);
+                return;
+            }
+
+            $q = trim((string) ($_GET['q'] ?? $_GET['search'] ?? ''));
+            $page = max(1, (int) ($_GET['page'] ?? 1));
+            $limit = max(1, min(200, (int) ($_GET['limit'] ?? 50)));
+            $offset = ($page - 1) * $limit;
+
+            $params = [':uid' => $uid];
+            $where = 'WHERE r.requester_id = :uid AND e.request_id IS NOT NULL';
+            if ($q !== '') {
+                $where .= ' AND (e.title LIKE :q OR r.subject LIKE :q)';
+                $params[':q'] = '%' . $q . '%';
+            }
+
+            $sqlCount = "
+                SELECT COUNT(*) AS cnt
+                FROM event e
+                INNER JOIN request r ON r.request_id = e.request_id
+                $where
+            ";
+            $stmtCount = $this->pdo->prepare($sqlCount);
+            foreach ($params as $k => $v) {
+                $stmtCount->bindValue($k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            }
+            $stmtCount->execute();
+            $total = (int) ($stmtCount->fetchColumn() ?: 0);
+
+            $sql = "
+                SELECT
+                    e.event_id,
+                    e.request_id,
+                    e.title,
+                    e.start_datetime,
+                    e.end_datetime,
+                    e.event_status_id,
+                    es.status_code AS event_status_code,
+                    es.status_name AS event_status_name,
+
+                    r.request_type,
+                    rt.type_name AS request_type_name,
+                    r.request_sub_type,
+                    rst.name AS request_sub_type_name,
+
+                    r.head_of_request_id,
+                    hor.staff_id AS staff_id,
+                    COALESCE(sp.display_name, su.line_user_name, CONCAT('user#', hor.staff_id)) AS staff_name
+                FROM event e
+                INNER JOIN request r ON r.request_id = e.request_id
+                LEFT JOIN request_type rt ON rt.request_type_id = r.request_type
+                LEFT JOIN request_sub_type rst ON rst.request_sub_type_id = r.request_sub_type
+                LEFT JOIN head_of_request hor ON hor.id = r.head_of_request_id
+                LEFT JOIN person sp ON sp.person_user_id = hor.staff_id
+                LEFT JOIN `user` su ON su.user_id = hor.staff_id
+                LEFT JOIN event_status es ON es.event_status_id = e.event_status_id
+                $where
+                ORDER BY COALESCE(e.start_datetime, e.end_datetime) DESC, e.event_id DESC
+                LIMIT :lim OFFSET :off
+            ";
+
+            $stmt = $this->pdo->prepare($sql);
+            foreach ($params as $k => $v) {
+                $stmt->bindValue($k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            }
+            $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            json_response([
+                'error' => false,
+                'data' => $items,
+                'pagination' => [
+                    'page' => $page,
+                    'limit' => $limit,
+                    'total' => $total,
+                    'totalPages' => (int) ceil($total / max(1, $limit)),
+                ],
+            ]);
+        } catch (Throwable $e) {
+            json_response([
+                'error' => true,
+                'message' => 'Failed to get my events',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * POST /events/internal
      * Create internal event (not via request) and create event_participant rows.
      */
@@ -1660,6 +1759,31 @@ final class EventsController
         if (str_contains($fp, '..'))
             return null;
         return __DIR__ . '/../public/' . $fp;
+    }
+
+    /**
+     * ดึง user_id จาก token (ใช้ใน endpoint ฝั่งผู้ใช้)
+     */
+    private function getAuthUserId(): ?int
+    {
+        try {
+            if (function_exists('get_auth_user')) {
+                $u = get_auth_user($this->pdo);
+                if (is_array($u) && isset($u['user_id']) && is_numeric($u['user_id'])) {
+                    return (int) $u['user_id'];
+                }
+            }
+
+            // fallback dev: Bearer 123 (สำหรับ dev เท่านั้น)
+            $auth = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+            if (preg_match('/Bearer\s+(\d+)/i', $auth, $m)) {
+                return (int) $m[1];
+            }
+        } catch (Throwable $e) {
+            return null;
+        }
+
+        return null;
     }
 
     /**

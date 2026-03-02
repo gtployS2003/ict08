@@ -15,6 +15,15 @@ function requests_routes(string $method, array $segments, PDO $pdo): bool
 
     $controller = new RequestsController($pdo);
 
+    // GET /requests/my
+    if (($segments[1] ?? '') === 'my') {
+        if ($method === 'GET') {
+            $controller->my();
+            return true;
+        }
+        return false;
+    }
+
     // GET /requests/pending
     if (($segments[1] ?? '') === 'pending') {
         if ($method === 'GET') {

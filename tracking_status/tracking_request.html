@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
+	<title>ติดตามสถานะคำขอ</title>
+
+	<link rel="stylesheet" href="/ict8/assets/css/request-form.css" />
+	<link rel="stylesheet" href="/ict8/assets/css/tracking-status.css" />
+
+	<!-- include head -->
+	<script src="/ict8/assets/js/include.js" defer></script>
+	<script src="/ict8/assets/js/auth.js" defer></script>
+	<script src="/ict8/assets/js/main.js" defer></script>
+	<script src="/ict8/backend/public/config.js.php" defer></script>
+	<script src="/ict8/assets/js/api/http.js" defer></script>
+
+	<!-- page script -->
+	<script src="/ict8/assets/js/tracking-status.js" defer></script>
+</head>
+
+<body data-tracking-kind="request">
+	<div id="header-index"></div>
+	<div id="schedule-nav"></div>
+
+	<main class="request-form-page">
+		<div class="request-form-container">
+			<div class="request-form-card">
+				<div class="request-form-card-header">
+					<div class="ts-head">
+						<div>
+							<div class="request-form-card-title">ติดตามสถานะ</div>
+							<div class="request-form-card-subtitle" id="ts-subtitle">สถานะของคำขอของคุณ</div>
+						</div>
+
+						<div class="ts-switch" role="tablist" aria-label="สลับหน้าติดตามสถานะ">
+							<a class="ts-switch-btn is-active" role="tab" aria-selected="true" href="/ict8/tracking_status/tracking_request.html">คำขอ</a>
+							<a class="ts-switch-btn" role="tab" aria-selected="false" href="/ict8/tracking_status/tracking_event.html">งาน</a>
+						</div>
+					</div>
+				</div>
+
+				<div id="ts-info" class="request-form-info-box" style="display:none;"></div>
+
+				<div class="ts-table-wrap" aria-live="polite">
+					<table class="ts-table">
+						<thead>
+							<tr>
+								<th style="width:90px;">ID</th>
+								<th>ชื่อ</th>
+								<th style="width:220px;">ประเภทคำร้องหลัก/ย่อย</th>
+								<th style="width:200px;">เจ้าหน้าที่ที่รับผิดชอบ</th>
+								<th style="min-width:320px;">สถานะ</th>
+							</tr>
+						</thead>
+						<tbody id="ts-tbody">
+							<tr>
+								<td colspan="5" class="ts-loading">กำลังโหลด...</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<div class="ts-hint">
+					* คลิกที่แถวเพื่อเปิดหน้าแก้ไขงาน (ถ้ามีงานที่ถูกสร้างจากคำขอนั้น)
+				</div>
+			</div>
+		</div>
+	</main>
+
+	<div id="footer-index"></div>
+</body>
+
+</html>

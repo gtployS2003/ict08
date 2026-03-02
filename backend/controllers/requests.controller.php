@@ -136,6 +136,107 @@ class RequestsController
     }
 
     /**
+     * GET /requests/my?q=&page=&limit=
+     * คืนคำขอเฉพาะของผู้ร้องขอ (ตาม token)
+     * Fields (for tracking UI):
+     * - request_id, subject
+     * - request_type, request_type_name
+     * - request_sub_type, request_sub_type_name
+     * - staff_id, staff_name (จาก head_of_request)
+     * - current_status_id, status_code, status_name
+     */
+    public function my(): void
+    {
+        try {
+            $uid = $this->getAuthUserId();
+            if (!$uid || $uid <= 0) {
+                json_response(['error' => true, 'message' => 'UNAUTHORIZED'], 401);
+                return;
+            }
+
+            $q = trim((string) ($_GET['q'] ?? $_GET['search'] ?? ''));
+            $page = max(1, (int) ($_GET['page'] ?? 1));
+            $limit = max(1, min(200, (int) ($_GET['limit'] ?? 50)));
+            $offset = ($page - 1) * $limit;
+
+            $params = [':uid' => $uid];
+            $where = 'WHERE r.requester_id = :uid';
+            if ($q !== '') {
+                $where .= ' AND (r.subject LIKE :q OR r.detail LIKE :q)';
+                $params[':q'] = '%' . $q . '%';
+            }
+
+            $sqlCount = "
+                SELECT COUNT(*) AS cnt
+                FROM request r
+                $where
+            ";
+            $stmtCount = $this->pdo->prepare($sqlCount);
+            foreach ($params as $k => $v) {
+                $stmtCount->bindValue($k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            }
+            $stmtCount->execute();
+            $total = (int) ($stmtCount->fetchColumn() ?: 0);
+
+            $sql = "
+                SELECT
+                    r.request_id,
+                    r.subject,
+                    r.detail,
+                    r.request_type,
+                    rt.type_name AS request_type_name,
+                    r.request_sub_type,
+                    rst.name AS request_sub_type_name,
+
+                    r.head_of_request_id,
+                    hor.staff_id AS staff_id,
+                    COALESCE(sp.display_name, su.line_user_name, CONCAT('user#', hor.staff_id)) AS staff_name,
+
+                    r.current_status_id,
+                    rs.status_code,
+                    rs.status_name,
+                    r.request_at
+                FROM request r
+                LEFT JOIN request_type rt ON rt.request_type_id = r.request_type
+                LEFT JOIN request_sub_type rst ON rst.request_sub_type_id = r.request_sub_type
+                LEFT JOIN head_of_request hor ON hor.id = r.head_of_request_id
+                LEFT JOIN person sp ON sp.person_user_id = hor.staff_id
+                LEFT JOIN `user` su ON su.user_id = hor.staff_id
+                LEFT JOIN request_status rs ON rs.status_id = r.current_status_id
+                $where
+                ORDER BY r.request_at DESC, r.request_id DESC
+                LIMIT :lim OFFSET :off
+            ";
+
+            $stmt = $this->pdo->prepare($sql);
+            foreach ($params as $k => $v) {
+                $stmt->bindValue($k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            }
+            $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            json_response([
+                'error' => false,
+                'data' => $items,
+                'pagination' => [
+                    'page' => $page,
+                    'limit' => $limit,
+                    'total' => $total,
+                    'totalPages' => (int) ceil($total / max(1, $limit)),
+                ],
+            ]);
+        } catch (Throwable $e) {
+            json_response([
+                'error' => true,
+                'message' => 'Failed to get my requests',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * GET /requests/{id}
      */
     public function show(int $id): void
