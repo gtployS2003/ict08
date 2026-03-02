@@ -160,7 +160,10 @@ class RequestsController
             $offset = ($page - 1) * $limit;
 
             $params = [':uid' => $uid];
-            $where = 'WHERE r.requester_id = :uid';
+            // Hide states that should not be shown on requester tracking page
+            // Requirement: ถ้าสถานะ "อนุมัติแล้ว" "กำลังดำเนินการ" "เสร็จสิ้น" "ไม่อนุมัติ" ไม่ต้องแสดงผล
+            // Use status_code for robustness (approved/in_progress/done/rejected)
+            $where = "WHERE r.requester_id = :uid AND (rs.status_code IS NULL OR rs.status_code NOT IN ('approved','in_progress','done','rejected'))";
             if ($q !== '') {
                 $where .= ' AND (r.subject LIKE :q OR r.detail LIKE :q)';
                 $params[':q'] = '%' . $q . '%';
@@ -169,6 +172,7 @@ class RequestsController
             $sqlCount = "
                 SELECT COUNT(*) AS cnt
                 FROM request r
+                LEFT JOIN request_status rs ON rs.status_id = r.current_status_id
                 $where
             ";
             $stmtCount = $this->pdo->prepare($sqlCount);

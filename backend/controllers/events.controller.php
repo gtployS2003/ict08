@@ -432,7 +432,9 @@ final class EventsController
             $offset = ($page - 1) * $limit;
 
             $params = [':uid' => $uid];
-            $where = 'WHERE r.requester_id = :uid AND e.request_id IS NOT NULL';
+            // Hide completed events from requester tracking
+            // Requirement: ถ้าสถานะ "เสร็จสิ้น" แล้วไม่ต้องแสดงผล
+            $where = "WHERE r.requester_id = :uid AND e.request_id IS NOT NULL AND (es.status_name IS NULL OR es.status_name <> 'เสร็จสิ้น')";
             if ($q !== '') {
                 $where .= ' AND (e.title LIKE :q OR r.subject LIKE :q)';
                 $params[':q'] = '%' . $q . '%';
@@ -442,6 +444,7 @@ final class EventsController
                 SELECT COUNT(*) AS cnt
                 FROM event e
                 INNER JOIN request r ON r.request_id = e.request_id
+                LEFT JOIN event_status es ON es.event_status_id = e.event_status_id
                 $where
             ";
             $stmtCount = $this->pdo->prepare($sqlCount);
