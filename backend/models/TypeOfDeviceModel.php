@@ -17,7 +17,7 @@ final class TypeOfDeviceModel
 
     /**
      * List with search + pagination
-     * @return array<int, array<string,mixed>>
+     * @return array<int, array<string, mixed>>
      */
     public function list(string $q = '', int $page = 1, int $limit = 50): array
     {
@@ -36,7 +36,7 @@ final class TypeOfDeviceModel
             )";
             $like = '%' . $q . '%';
             $params[':q1'] = $like;
-            $params[':q2'] = ctype_digit($q) ? (int)$q : 0;
+            $params[':q2'] = ctype_digit($q) ? (int) $q : 0;
         }
 
         $sql = "
@@ -56,11 +56,15 @@ final class TypeOfDeviceModel
 
         // bind search params
         foreach ($params as $k => $v) {
-            $stmt->bindValue($k, $v, PDO::PARAM_STR);
+            if ($k === ':q2') {
+                $stmt->bindValue($k, $v, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue($k, $v, PDO::PARAM_STR);
+            }
         }
 
         // bind pagination params (must be int)
-        $stmt->bindValue(':q2', $params[':q2'], PDO::PARAM_INT);
+
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 

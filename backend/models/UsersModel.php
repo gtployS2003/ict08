@@ -518,7 +518,11 @@ class UsersModel
         }
     }
 
-    private function toIntOrNull(mixed $v): ?int
+    /**
+     * @param mixed $v
+     * @return int|null
+     */
+    private function toIntOrNull($v)
     {
         if ($v === null)
             return null;
@@ -526,9 +530,11 @@ class UsersModel
             return null;
         if (is_int($v))
             return $v;
+
         $s = (string) $v;
         if (!ctype_digit($s))
             return null;
+
         return (int) $s;
     }
 }

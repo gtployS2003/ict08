@@ -19,7 +19,7 @@ final class UserNotificationChannelModel
     /**
      * List channels for a user (join channel + user + person) with pagination
      *
-     * @return array<int, array<string,mixed>>
+     * @return array<int, array<string, mixed>>
      */
     public function listByUser(int $userId, int $page = 1, int $limit = 50): array
     {
@@ -86,7 +86,7 @@ final class UserNotificationChannelModel
      * - q: ค้น display_name / first-last / line_user_name / channel
      * - channel_id: กรองเฉพาะช่องทาง (optional)
      *
-     * @return array<int, array<string,mixed>>
+     * @return array<int, array<string, mixed>>
      */
     public function listAll(string $q = '', int $channelId = 0, int $page = 1, int $limit = 50): array
     {

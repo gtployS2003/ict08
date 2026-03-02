@@ -16,7 +16,7 @@ final class TemplateTypeModel
     }
 
     /**
-     * @return array<int, array<string,mixed>>
+     * @return array<int, array<string, mixed>>
      */
     public function list(string $q = '', int $page = 1, int $limit = 50): array
     {
@@ -33,7 +33,7 @@ final class TemplateTypeModel
             $like = '%' . $q . '%';
             $params[':q1'] = $like;
             $params[':q2'] = $like;
-            $params[':q3'] = ctype_digit($q) ? (int)$q : 0;
+            $params[':q3'] = ctype_digit($q) ? (int) $q : 0;
         }
 
         $sql = "
@@ -58,9 +58,13 @@ final class TemplateTypeModel
 
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) {
-            $stmt->bindValue($k, $v, PDO::PARAM_STR);
+            if ($k === ':q3') {
+                $stmt->bindValue($k, $v, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue($k, $v, PDO::PARAM_STR);
+            }
         }
-        $stmt->bindValue(':q3', $params[':q3'], PDO::PARAM_INT);
+
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
