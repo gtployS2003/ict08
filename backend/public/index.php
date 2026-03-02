@@ -17,6 +17,7 @@ require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../routes/news.routes.php';
 require_once __DIR__ . '/../routes/activities.routes.php';
 require_once __DIR__ . '/../routes/auth.routes.php';
+require_once __DIR__ . '/../routes/profile.routes.php';
 require_once __DIR__ . '/../routes/provinces.routes.php';
 require_once __DIR__ . '/../routes/organization_types.routes.php';
 require_once __DIR__ . '/../routes/organization.routes.php';
@@ -125,6 +126,8 @@ try {
 
     // route matching
     if (auth_routes($method, $segments, $pdo))
+        exit;
+    if (profile_routes($method, $segments, $pdo))
         exit;
     if (news_routes($method, $segments, $pdo))
         exit;

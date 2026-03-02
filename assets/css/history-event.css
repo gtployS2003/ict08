@@ -1,0 +1,32 @@
+/* assets/css/history-event.css */
+
+.he-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.he-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.he-actions .request-form-btn{
+  height:34px;
+  padding:0 14px;
+  border-radius:999px;
+  font-size:13px;
+}
+
+.he-note{
+  margin: 10px 18px 0 18px;
+  font-size:12px;
+  color:#6b7280;
+}
+
+@media (min-width: 768px){
+  .he-note{ margin-left: 22px; margin-right: 22px; }
+}

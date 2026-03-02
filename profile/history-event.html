@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+	<link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
+	<title>ประวัติ (เสร็จสิ้น)</title>
+
+	<link rel="stylesheet" href="/ict8/assets/css/request-form.css" />
+	<link rel="stylesheet" href="/ict8/assets/css/tracking-status.css" />
+	<link rel="stylesheet" href="/ict8/assets/css/history-event.css" />
+
+	<!-- config + api -->
+	<script src="/ict8/backend/public/config.js.php" defer></script>
+	<script src="/ict8/assets/js/api/http.js" defer></script>
+
+	<!-- include head -->
+	<script src="/ict8/assets/js/include.js" defer></script>
+	<script src="/ict8/assets/js/auth.js" defer></script>
+	<script src="/ict8/assets/js/main.js" defer></script>
+
+	<!-- page script -->
+	<script src="/ict8/assets/js/history-event.js" defer></script>
+</head>
+
+<body>
+	<div id="header-form"></div>
+
+	<main class="request-form-page">
+		<div class="request-form-container">
+			<div class="request-form-card">
+				<div class="request-form-card-header">
+					<div class="he-head">
+						<div>
+							<div class="request-form-card-title">ประวัติ (เสร็จสิ้น)</div>
+							<div class="request-form-card-subtitle">รายการงานที่ “เสร็จสิ้นครบกระบวนการ” ของคุณ</div>
+						</div>
+						<div class="he-actions">
+							<a class="request-form-btn request-form-btn-ghost" href="/ict8/profile/profile.html">กลับหน้าโปรไฟล์</a>
+						</div>
+					</div>
+				</div>
+
+				<div id="he-info" class="request-form-info-box" style="display:none;"></div>
+				<div class="he-note">แสดงข้อมูลแบบย่อ: ชื่องาน + ประเภทหลัก/ย่อย (ตาม requirement)</div>
+
+				<div class="ts-table-wrap" aria-live="polite">
+					<table class="ts-table">
+						<thead>
+							<tr>
+								<th style="width:90px;">ID</th>
+								<th>ชื่อ</th>
+								<th style="width:260px;">ประเภทคำร้องหลัก/ย่อย</th>
+								<th style="width:200px;">เวลา</th>
+							</tr>
+						</thead>
+						<tbody id="he-tbody">
+							<tr>
+								<td colspan="4" class="ts-loading">กำลังโหลด...</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</main>
+
+	<div id="footer-index"></div>
+</body>
+
+</html>

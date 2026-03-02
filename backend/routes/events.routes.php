@@ -37,6 +37,12 @@ function events_routes(string $method, array $segments, PDO $pdo): bool
         return true;
     }
 
+    // GET /events/my/completed
+    if ($method === 'GET' && count($segments) === 3 && $segments[1] === 'my' && $segments[2] === 'completed') {
+        $ctl->myCompleted();
+        return true;
+    }
+
     // POST /events/internal
     if ($method === 'POST' && count($segments) === 2 && $segments[1] === 'internal') {
         $ctl->createInternal();
