@@ -25,8 +25,11 @@ $hash = base64_encode(hash_hmac('sha256', $body, $CHANNEL_SECRET, true));
 if (!hash_equals($hash, $signature)) {
     file_put_contents(
         __DIR__ . '/debug_line.txt',
+        "BODY_LEN=" . strlen($body) . "\n" .
+        "BODY=" . $body . "\n\n" .
         "HASH: $hash\nINVALID\n\n",
         FILE_APPEND
+
     );
     http_response_code(401);
     exit('Invalid signature');
