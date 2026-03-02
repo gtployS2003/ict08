@@ -50,6 +50,31 @@ final class SiteStructureController
     }
 
     /**
+     * GET /site-structures/{id}?public=1
+     * - public=1: no auth (for site)
+     * - otherwise: admin only
+     */
+    public function show(int $id): void
+    {
+        $public = (int)($_GET['public'] ?? 0) === 1;
+        if (!$public) {
+            require_admin($this->pdo);
+        }
+
+        if ($id <= 0) {
+            fail('Invalid id', 422);
+        }
+
+        $model = new SiteStructureModel($this->pdo);
+        $row = $model->find($id, self::ORG_ID);
+        if (!$row) {
+            fail('Not found', 404);
+        }
+
+        ok(['row' => $row]);
+    }
+
+    /**
      * POST /site-structures
      * multipart/form-data:
      * - prefix_person_id (required)

@@ -59,6 +59,18 @@
     });
   }
 
+  async function get(id, { isPublic = false } = {}) {
+    if (id === undefined || id === null || id === "") throw new Error("id is required");
+
+    const qs = new URLSearchParams();
+    if (isPublic) qs.set("public", "1");
+
+    return apiFetchCompat(`/site-structures/${Number(id)}${qs.toString() ? `?${qs.toString()}` : ""}`, {
+      method: "GET",
+      skipAuth: !!isPublic,
+    });
+  }
+
   async function create(payload) {
     if (!(payload instanceof FormData)) throw new Error("payload must be FormData");
     return apiFetchCompat("/site-structures", { method: "POST", body: payload });
@@ -90,6 +102,7 @@
 
   window.SiteStructureAPI = {
     list,
+    get,
     create,
     update,
     remove,
