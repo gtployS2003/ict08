@@ -878,7 +878,8 @@ body {
 =========================== */
 
 .director {
-    background: #f5f5f5;
+    /* ให้มีพื้นที่ขาวรอบ ๆ เหมือน mockup */
+    background: #ffffff;
     padding: 100px 100px 100px;
 }
 
@@ -889,6 +890,9 @@ body {
     grid-template-columns: 1.2fr 1fr;
     gap: 40px;
     align-items: center;
+    position: relative;
+    min-height: 475px;
+    padding: 70px 90px;
 
     /* ใช้ SVG พร้อม gradient แบบ inline */
     background: url("data:image/svg+xml;utf8,\
@@ -911,7 +915,7 @@ body {
 
 .director-left {
     z-index: 2;
-    padding-left: 125px;
+    padding-left: 0;
 }
 
 .director-title {
@@ -977,23 +981,39 @@ body {
     z-index: 2;
 }
 
+/* วงกลมไฮไลต์ด้านหลังรูป (ตามภาพตัวอย่าง) */
+.director-right::before {
+    content: "";
+    position: absolute;
+    width: 360px;
+    height: 360px;
+    border-radius: 999px;
+    right: 70px;
+    top: 40px;
+    background: rgba(255, 255, 255, 0.14);
+    z-index: 0;
+}
+
 .director-photo-wrap {
-    width: 320px;
-    padding-right: 260px;
+    width: 360px;
+    padding-right: 0;
     filter: drop-shadow(20px -10px 20px rgba(0, 0, 0, 0.25));
+    z-index: 1;
 }
 
 .director-photo {
     width: 100%;
     display: block;
+    height: auto;
 }
 
 .director-info {
     position: absolute;
-    left: 35%;
-    bottom: 30px;
-    transform: translateX(-10%);
-    max-width: 250px;
+    right: 70px;
+    bottom: 80px;
+    left: auto;
+    transform: none;
+    max-width: 360px;
     color: #000;
     text-align: left;
     z-index: 2;
