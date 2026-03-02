@@ -1,70 +1,77 @@
 <?php
-// 🚨 STEP 1: อ่าน RAW BODY ก่อน
-$body = file_get_contents('php://input');
+declare(strict_types=1);
 
-if ($body === '' || $body === false) {
-    $body = file_get_contents('php://stdin');
-}
-
+// ==============================
+// 0) READ RAW BODY (ONCE)
+// ==============================
+$rawBody = file_get_contents('php://input');   // อ่านครั้งเดียวเท่านั้น
 $signature = $_SERVER['HTTP_X_LINE_SIGNATURE'] ?? '';
 
-// 🚨 STEP 2: โหลด SECRET อย่างเดียว (ยังไม่ include อะไร)
+// ==============================
+// 1) LOAD SECRET (NO OUTPUT!)
+// ==============================
 require_once __DIR__ . '/../config/env.php';
+
 env_load(__DIR__ . '/../.env');
 
-$CHANNEL_SECRET = getenv('LINE_CHANNEL_SECRET') ?: '';
-
-if ($CHANNEL_SECRET === '') {
+$channelSecret = getenv('LINE_CHANNEL_SECRET') ?: '';
+if ($channelSecret === '') {
     http_response_code(500);
     exit('Missing secret');
 }
 
-// 🚨 STEP 3: VERIFY
-$hash = base64_encode(hash_hmac('sha256', $body, $CHANNEL_SECRET, true));
+// ==============================
+// 2) VERIFY FROM RAW BODY
+// ==============================
+$computed = base64_encode(
+    hash_hmac('sha256', $rawBody, $channelSecret, true)
+);
 
-if (!hash_equals($hash, $signature)) {
+if (!hash_equals($computed, $signature)) {
+    // DEBUG: ดูเฉพาะตอนทดสอบ แล้วลบทิ้งภายหลัง
     file_put_contents(
         __DIR__ . '/debug_line.txt',
-        "BODY_LEN=" . strlen($body) . "\n" .
-        "BODY=" . $body . "\n\n" .
-        "HASH: $hash\nINVALID\n\n",
+        "LEN=" . strlen($rawBody) . "\n" .
+        "SIG=" . $signature . "\n" .
+        "CMP=" . $computed . "\n\n",
         FILE_APPEND
-
     );
     http_response_code(401);
     exit('Invalid signature');
 }
 
-// 🚨 STEP 4: ตอบ LINE ก่อนทันที
+// ==============================
+// 3) ACK FIRST (VERY IMPORTANT)
+// ==============================
 http_response_code(200);
-echo "OK";
-fastcgi_finish_request();
+echo 'OK';
 
+// ให้ LINE ได้ 200 ก่อน แล้วค่อยทำงานต่อ
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+}
 
-// ---------------------------
-// จากนี้ค่อย process จริง
-// ---------------------------
-
-// parse json
-$data = json_decode($body, true);
+// ==============================
+// 4) PROCESS AFTER VERIFY
+// ==============================
+$data = json_decode($rawBody, true);
 if (!isset($data['events'])) {
     exit;
 }
 
-// include หลัง verify เท่านั้น ✅
+// include หลัง verify เท่านั้น
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../models/UserModel.php';
 require_once __DIR__ . '/../models/UserRoleModel.php';
 require_once __DIR__ . '/../models/RequestTypeModel.php';
 require_once __DIR__ . '/../services/LineService.php';
 
-$ACCESS_TOKEN = getenv('LINE_CHANNEL_ACCESS_TOKEN') ?: '';
+$accessToken = getenv('LINE_CHANNEL_ACCESS_TOKEN') ?: '';
+$rmBefore = getenv('LINE_RICHMENU_BEFORE') ?: '';
+$rmInternal = getenv('LINE_RICHMENU_INTERNAL') ?: '';
+$rmExternal = getenv('LINE_RICHMENU_EXTERNAL') ?: '';
 
-$RM_BEFORE = getenv('LINE_RICHMENU_BEFORE') ?: '';
-$RM_INTERNAL = getenv('LINE_RICHMENU_INTERNAL') ?: '';
-$RM_EXTERNAL = getenv('LINE_RICHMENU_EXTERNAL') ?: '';
-
-$line = new LineService($ACCESS_TOKEN);
+$line = new LineService($accessToken);
 
 try {
     $pdo = db();
@@ -76,19 +83,20 @@ $userModel = new UserModel($pdo);
 $userRoleModel = new UserRoleModel($pdo);
 $requestTypeModel = new RequestTypeModel($pdo);
 
-// loop event
+// ==============================
+// 5) LOOP EVENTS
+// ==============================
 foreach ($data['events'] as $event) {
 
     $type = $event['type'] ?? '';
     $userId = $event['source']['userId'] ?? null;
-
     if (!$userId)
         continue;
 
-    // ===== ROLE =====
+    // ----- role -----
     $user = $userModel->findByLineUserId($userId);
-
     $roleCode = 'GUEST';
+
     if ($user && !empty($user['user_role_id'])) {
         try {
             $roleRow = $userRoleModel->getById((int) $user['user_role_id']);
@@ -98,19 +106,18 @@ foreach ($data['events'] as $event) {
         }
     }
 
-    // ===== SWITCH MENU =====
-    $targetRichMenu = $RM_BEFORE;
+    // ----- richmenu switch -----
+    $target = $rmBefore;
     if ($roleCode === 'INTERNAL' || $roleCode === 'ADMIN') {
-        $targetRichMenu = $RM_INTERNAL;
+        $target = $rmInternal;
     } elseif ($roleCode === 'EXTERNAL') {
-        $targetRichMenu = $RM_EXTERNAL;
+        $target = $rmExternal;
+    }
+    if ($target !== '') {
+        $line->linkRichMenuToUser($userId, $target);
     }
 
-    if ($targetRichMenu !== '') {
-        $line->linkRichMenuToUser($userId, $targetRichMenu);
-    }
-
-    // ===== FOLLOW =====
+    // ----- follow -----
     if ($type === 'follow' && isset($event['replyToken'])) {
         $line->replyMessage($event['replyToken'], [
             [
