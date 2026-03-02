@@ -976,27 +976,30 @@ body {
 .director-right {
     position: relative;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: flex-end;
+    align-items: flex-end;
     z-index: 2;
+    min-height: 475px;
 }
 
 /* วงกลมไฮไลต์ด้านหลังรูป (ตามภาพตัวอย่าง) */
 .director-right::before {
     content: "";
     position: absolute;
-    width: 360px;
-    height: 360px;
+    width: 520px;
+    height: 520px;
     border-radius: 999px;
-    right: 70px;
-    top: 40px;
-    background: rgba(255, 255, 255, 0.14);
+    right: -40px;
+    top: -70px;
+    background: rgba(255, 255, 255, 0.16);
     z-index: 0;
 }
 
 .director-photo-wrap {
-    width: 360px;
-    padding-right: 0;
+    position: absolute;
+    left: -140px;
+    bottom: 0;
+    width: 440px;
     filter: drop-shadow(20px -10px 20px rgba(0, 0, 0, 0.25));
     z-index: 1;
 }
@@ -1005,15 +1008,19 @@ body {
     width: 100%;
     display: block;
     height: auto;
+    /* กันรูปจริงมีพื้นที่ว่างเยอะ ทำให้ตัวบุคคลดูเล็ก */
+    object-fit: cover;
+    object-position: center 12%;
 }
 
 .director-info {
     position: absolute;
-    right: 70px;
-    bottom: 80px;
+    right: 90px;
+    top: 95px;
+    bottom: auto;
     left: auto;
     transform: none;
-    max-width: 360px;
+    max-width: 430px;
     color: #000;
     text-align: left;
     z-index: 2;
@@ -1036,7 +1043,7 @@ body {
    - Tablet/Mobile: stack content and remove absolute positioning
 =========================== */
 
-@media (max-width: 1100px) {
+@media (max-width: 900px) {
     .director {
         padding: 70px 24px;
     }
@@ -1074,9 +1081,13 @@ body {
         padding: 0 24px 48px;
         flex-direction: column;
         gap: 16px;
+        min-height: auto;
     }
 
     .director-photo-wrap {
+        position: static;
+        left: auto;
+        bottom: auto;
         width: min(320px, 70vw);
         padding-right: 0;
         filter: drop-shadow(14px -8px 18px rgba(0, 0, 0, 0.22));
@@ -1085,12 +1096,14 @@ body {
     .director-photo {
         max-width: 100%;
         height: auto;
+        object-fit: contain;
     }
 
     .director-info {
         position: static;
         left: auto;
         bottom: auto;
+        top: auto;
         transform: none;
         max-width: 560px;
         text-align: center;
