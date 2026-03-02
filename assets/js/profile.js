@@ -61,6 +61,17 @@
     return document.getElementById(id);
   }
 
+  function setVal(id, value) {
+    const el = qs(id);
+    if (!el) return;
+    el.value = value ?? "";
+  }
+
+  function getVal(id) {
+    const el = qs(id);
+    return el ? String(el.value ?? "") : "";
+  }
+
   function setSelectOptions(sel, items, { getValue, getLabel, placeholder = "-- กรุณาเลือก --" } = {}) {
     if (!sel) return;
     const cur = String(sel.value || "");
@@ -197,28 +208,19 @@
     const p = person || {};
     const d = detail || {};
 
-    qs("person_id").value = p.person_id || "";
-    qs("person_user_id").value = p.person_user_id || u.user_id || "";
-    qs("line_user_name").value = d.line_user_name || u.line_user_name || "";
+    setVal("person_prefix_id", p.person_prefix_id || "");
+    setVal("first_name_th", p.first_name_th || "");
+    setVal("last_name_th", p.last_name_th || "");
+    setVal("first_name_en", p.first_name_en || "");
+    setVal("last_name_en", p.last_name_en || "");
+    setVal("display_name", p.display_name || "");
 
-    qs("person_prefix_id").value = p.person_prefix_id || "";
-    qs("first_name_th").value = p.first_name_th || "";
-    qs("last_name_th").value = p.last_name_th || "";
-    qs("first_name_en").value = p.first_name_en || "";
-    qs("last_name_en").value = p.last_name_en || "";
-    qs("display_name").value = p.display_name || "";
+    setVal("organization_id", p.organization_id || "");
+    setVal("department_id", p.department_id || "");
+    setVal("position_title_id", p.position_title_id || "");
 
-    qs("organization_id").value = p.organization_id || "";
-    qs("department_id").value = p.department_id || "";
-    qs("position_title_id").value = p.position_title_id || "";
-
-    qs("is_active").checked = Number(p.is_active || 0) === 1;
-
-    qs("start_date").value = toDatetimeLocal(p.start_date);
-    qs("end_date").value = toDatetimeLocal(p.end_date);
-
-    qs("create_at").value = String(p.create_at || "");
-    qs("photo_path").value = String(p.photo_path || "");
+    setVal("start_date", toDatetimeLocal(p.start_date));
+    setVal("end_date", toDatetimeLocal(p.end_date));
 
     const showName =
       (p.display_name || "").trim() ||
@@ -245,34 +247,27 @@
     const fd = new FormData();
 
     // Numeric ids
-    fd.set("person_prefix_id", qs("person_prefix_id").value || "");
-    fd.set("organization_id", qs("organization_id").value || "");
-    fd.set("department_id", qs("department_id").value || "");
-    fd.set("position_title_id", qs("position_title_id").value || "");
+    fd.set("person_prefix_id", getVal("person_prefix_id"));
+    fd.set("organization_id", getVal("organization_id"));
+    fd.set("department_id", getVal("department_id"));
+    fd.set("position_title_id", getVal("position_title_id"));
 
     // Strings
-    fd.set("first_name_th", qs("first_name_th").value || "");
-    fd.set("last_name_th", qs("last_name_th").value || "");
-    fd.set("first_name_en", qs("first_name_en").value || "");
-    fd.set("last_name_en", qs("last_name_en").value || "");
-    fd.set("display_name", qs("display_name").value || "");
+    fd.set("first_name_th", getVal("first_name_th"));
+    fd.set("last_name_th", getVal("last_name_th"));
+    fd.set("first_name_en", getVal("first_name_en"));
+    fd.set("last_name_en", getVal("last_name_en"));
+    fd.set("display_name", getVal("display_name"));
 
-    // Keep current photo_path unless clearing/uploading
-    fd.set("photo_path", qs("photo_path").value || "");
-
-    const start = fromDatetimeLocal(qs("start_date").value);
-    const end = fromDatetimeLocal(qs("end_date").value);
+    const start = fromDatetimeLocal(getVal("start_date"));
+    const end = fromDatetimeLocal(getVal("end_date"));
     if (start) fd.set("start_date", start);
     else fd.set("start_date", "");
     if (end) fd.set("end_date", end);
     else fd.set("end_date", "");
 
-    // is_active exists in table, but self-edit should not change it.
-    // Send current state (read-only) to satisfy "use all columns" without granting privilege.
-    fd.set("is_active", qs("is_active").checked ? "1" : "0");
-
     // photo clear flag if requested
-    const wantClear = qs("photo_clear").value === "1";
+    const wantClear = getVal("photo_clear") === "1";
     if (wantClear) fd.set("photo_clear", "1");
 
     const fileInput = qs("photo_file");
@@ -307,9 +302,9 @@
   }
 
   function clearPhoto() {
-    qs("photo_clear").value = "1";
-    qs("photo_file").value = "";
-    qs("photo_path").value = "";
+    setVal("photo_clear", "1");
+    const f = qs("photo_file");
+    if (f) f.value = "";
     setAvatar("");
     setInfo("เลือก ‘บันทึกข้อมูล’ เพื่อยืนยันการลบรูปโปรไฟล์", { isError: false });
   }

@@ -65,7 +65,6 @@
 					<input type="hidden" id="photo_clear" name="photo_clear" value="0" />
 
 					<div class="request-form-grid">
-
 						<div class="request-form-field">
 							<label class="request-form-label" for="person_prefix_id">คำนำหน้าชื่อ <span class="request-form-req">*</span></label>
 							<select class="request-form-select" id="person_prefix_id" name="person_prefix_id" required>
@@ -76,6 +75,7 @@
 						<div class="request-form-field">
 							<label class="request-form-label" for="display_name">display_name</label>
 							<input class="request-form-input" id="display_name" name="display_name" type="text" placeholder="เช่น สมชาย ใจดี" />
+							<div class="request-form-hint">ชื่อที่ใช้แสดงผล (ถ้าเว้นว่าง ระบบอาจใช้ชื่อ-นามสกุลแทน)</div>
 						</div>
 
 						<div class="request-form-field">
@@ -105,7 +105,7 @@
 							<select class="request-form-select" id="organization_id" name="organization_id" required>
 								<option value="">-- กรุณาเลือก --</option>
 							</select>
-			
+							<div class="request-form-hint">เปลี่ยนหน่วยงานแล้ว “ฝ่าย/ตำแหน่ง” จะโหลดใหม่</div>
 						</div>
 
 						<div class="request-form-field">
@@ -132,11 +132,6 @@
 						</div>
 
 						<div class="request-form-field">
-							<label class="request-form-label" for="create_at">create_at</label>
-							<input class="request-form-input pf-muted-input" id="create_at" name="create_at" type="text" readonly />
-						</div>
-
-						<div class="request-form-field">
 							<label class="request-form-label" for="start_date">start_date</label>
 							<input class="request-form-input" id="start_date" name="start_date" type="datetime-local" />
 							<div class="request-form-hint">ถ้าไม่ระบุจะเป็นค่าว่าง</div>
@@ -154,7 +149,7 @@
 						<button id="btn-save" class="request-form-btn request-form-btn-primary" type="submit">บันทึกข้อมูล</button>
 					</div>
 
-				
+					<div class="request-form-footer-note">หมายเหตุ: หน้านี้ใช้ข้อมูลทุกคอลัมน์ในตาราง <b>person</b> (บางช่องเป็นอ่านอย่างเดียว)</div>
 				</form>
 			</div>
 		</div>
