@@ -66,6 +66,29 @@ cors_handle_preflight();
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
+// 🚀 DirectAdmin FIX (สำคัญที่สุด)
+// Apache ไม่ยอม PUT / DELETE / PATCH
+// Frontend จะยิง POST + X-HTTP-Method-Override
+if ($method === 'POST') {
+
+    $override = $_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'] ?? '';
+
+    if ($override === '' && isset($_POST['_method'])) {
+        $override = $_POST['_method'];
+    }
+
+    if ($override === '' && isset($_GET['_method'])) {
+        $override = $_GET['_method'];
+    }
+
+    $override = strtoupper(trim($override));
+
+    if (in_array($override, ['PUT', 'PATCH', 'DELETE'], true)) {
+        $method = $override;
+        $_SERVER['REQUEST_METHOD'] = $override; // ⭐ ต้องมี
+    }
+}
+
 // Support method override for multipart/form-data.
 // PHP typically parses form-data into $_POST/$_FILES only for POST.
 // So the frontend can send POST with an override header/field, and we route it as PUT/PATCH/DELETE.

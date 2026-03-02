@@ -74,12 +74,14 @@ async function httpPut(path, body) {
 
 async function httpDelete(path) {
   const res = await fetch(`${API_BASE}/${path}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(),
+    method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+      "X-HTTP-Method-Override": "DELETE"
+    }
   });
   return handleJson(res);
 }
-
 // ✅ เพิ่ม: apiFetch ให้เข้ากับ auth.api.js และไฟล์ api อื่น ๆ
 window.apiFetch = async function apiFetch(
   path,
@@ -89,11 +91,21 @@ window.apiFetch = async function apiFetch(
 
   const baseHeaders = getAuthHeaders({ skipAuth });
 
+  let realMethod = method.toUpperCase();
+  let overrideMethod = null;
+
+  // DirectAdmin ไม่ยอม PUT / PATCH / DELETE
+  if (["PUT", "PATCH", "DELETE"].includes(realMethod)) {
+    overrideMethod = realMethod;
+    realMethod = "POST";
+  }
+
   const opts = {
-    method,
+    method: realMethod,
     headers: {
       ...baseHeaders,
       ...headers,
+      ...(overrideMethod ? { "X-HTTP-Method-Override": overrideMethod } : {})
     },
   };
 
