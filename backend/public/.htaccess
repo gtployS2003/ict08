@@ -1,14 +1,18 @@
 <IfModule LiteSpeed>
     RewriteEngine On
-    RewriteCond %{REQUEST_URI} ^/ict8/backend/public/line_webhook.php$
+    RewriteCond %{REQUEST_URI} ^/backend/public/line_webhook.php$
     RewriteRule .* - [E=LSAPI_NO_BUFFERING:1]
 </IfModule>
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # 🚨🚨🚨 LINE WEBHOOK BYPASS (ต้องอยู่บนสุด)
-    RewriteCond %{REQUEST_URI} ^/ict8/backend/public/line_webhook.php$
+    # 🚨🚨🚨 DO NOT REWRITE LINE WEBHOOK
+    RewriteCond %{REQUEST_URI} ^/backend/public/line_webhook\.php$
+    RewriteRule ^ - [L]
+
+    # 🚨 DO NOT REWRITE test file (for debug)
+    RewriteCond %{REQUEST_URI} ^/backend/public/test_post\.php$
     RewriteRule ^ - [L]
 
     # pass Authorization header to PHP
