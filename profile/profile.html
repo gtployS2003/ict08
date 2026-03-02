@@ -36,7 +36,6 @@
 					<div class="pf-topbar">
 						<div>
 							<div class="request-form-card-title">ข้อมูลส่วนตัว</div>
-							<div class="request-form-card-subtitle">เพิ่ม / แก้ไข / ลบข้อมูลส่วนตัวของคุณ (เชื่อมกับบัญชี LINE)</div>
 						</div>
 
 						<div class="pf-actions" aria-label="ปุ่มการทำงาน">
@@ -73,57 +72,53 @@
 						</div>
 
 						<div class="request-form-field">
-							<label class="request-form-label" for="display_name">display_name</label>
+							<label class="request-form-label" for="display_name">ชื่อที่ใช้แสดงผล</label>
 							<input class="request-form-input" id="display_name" name="display_name" type="text" placeholder="เช่น สมชาย ใจดี" />
-							<div class="request-form-hint">ชื่อที่ใช้แสดงผล (ถ้าเว้นว่าง ระบบอาจใช้ชื่อ-นามสกุลแทน)</div>
 						</div>
 
 						<div class="request-form-field">
-							<label class="request-form-label" for="first_name_th">first_name_th <span class="request-form-req">*</span></label>
+							<label class="request-form-label" for="first_name_th">ชื่อจริง (ภาษาไทย) <span class="request-form-req">*</span></label>
 							<input class="request-form-input" id="first_name_th" name="first_name_th" type="text" autocomplete="given-name" required />
-							<div class="request-form-hint">ชื่อจริงภาษาไทย</div>
 						</div>
 
 						<div class="request-form-field">
-							<label class="request-form-label" for="last_name_th">last_name_th <span class="request-form-req">*</span></label>
+							<label class="request-form-label" for="last_name_th">นามสกุล (ภาษาไทย) <span class="request-form-req">*</span></label>
 							<input class="request-form-input" id="last_name_th" name="last_name_th" type="text" autocomplete="family-name" required />
-							<div class="request-form-hint">นามสกุลภาษาไทย</div>
 						</div>
 
 						<div class="request-form-field">
-							<label class="request-form-label" for="first_name_en">first_name_en</label>
+							<label class="request-form-label" for="first_name_en">ชื่อจริง (ภาษาอังกฤษ)</label>
 							<input class="request-form-input" id="first_name_en" name="first_name_en" type="text" placeholder="Optional" />
 						</div>
 
 						<div class="request-form-field">
-							<label class="request-form-label" for="last_name_en">last_name_en</label>
+							<label class="request-form-label" for="last_name_en">นามสกุล (ภาษาอังกฤษ)</label>
 							<input class="request-form-input" id="last_name_en" name="last_name_en" type="text" placeholder="Optional" />
 						</div>
 
 						<div class="request-form-field">
-							<label class="request-form-label" for="organization_id">organization_id <span class="request-form-req">*</span></label>
+							<label class="request-form-label" for="organization_id">หน่วยงาน <span class="request-form-req">*</span></label>
 							<select class="request-form-select" id="organization_id" name="organization_id" required>
 								<option value="">-- กรุณาเลือก --</option>
 							</select>
-							<div class="request-form-hint">เปลี่ยนหน่วยงานแล้ว “ฝ่าย/ตำแหน่ง” จะโหลดใหม่</div>
 						</div>
 
 						<div class="request-form-field">
-							<label class="request-form-label" for="department_id">department_id <span class="request-form-req">*</span></label>
+							<label class="request-form-label" for="department_id">ฝ่าย <span class="request-form-req">*</span></label>
 							<select class="request-form-select" id="department_id" name="department_id" required>
 								<option value="">-- กรุณาเลือก --</option>
 							</select>
 						</div>
 
 						<div class="request-form-field">
-							<label class="request-form-label" for="position_title_id">position_title_id <span class="request-form-req">*</span></label>
+							<label class="request-form-label" for="position_title_id">ตำแหน่ง <span class="request-form-req">*</span></label>
 							<select class="request-form-select" id="position_title_id" name="position_title_id" required>
 								<option value="">-- กรุณาเลือก --</option>
 							</select>
 						</div>
 
 						<div class="request-form-field request-form-span-2">
-							<label class="request-form-label" for="photo_file">รูปโปรไฟล์ (photo_path / upload)</label>
+							<label class="request-form-label" for="photo_file">รูปโปรไฟล์</label>
 							<div class="pf-photo-actions">
 								<input class="request-form-input" id="photo_file" name="photo_file" type="file" accept="image/*" />
 								<button id="btn-clear-photo" class="request-form-btn request-form-btn-ghost" type="button">ลบรูป</button>
@@ -132,15 +127,13 @@
 						</div>
 
 						<div class="request-form-field">
-							<label class="request-form-label" for="start_date">start_date</label>
+							<label class="request-form-label" for="start_date">วันที่เริ่มต้น</label>
 							<input class="request-form-input" id="start_date" name="start_date" type="datetime-local" />
-							<div class="request-form-hint">ถ้าไม่ระบุจะเป็นค่าว่าง</div>
 						</div>
 
 						<div class="request-form-field">
-							<label class="request-form-label" for="end_date">end_date</label>
+							<label class="request-form-label" for="end_date">วันที่สิ้นสุด</label>
 							<input class="request-form-input" id="end_date" name="end_date" type="datetime-local" />
-							<div class="request-form-hint">ถ้ามีวันสิ้นสุด/หมดอายุให้ระบุได้</div>
 						</div>
 					</div>
 
@@ -149,7 +142,6 @@
 						<button id="btn-save" class="request-form-btn request-form-btn-primary" type="submit">บันทึกข้อมูล</button>
 					</div>
 
-					<div class="request-form-footer-note">หมายเหตุ: หน้านี้ใช้ข้อมูลทุกคอลัมน์ในตาราง <b>person</b> (บางช่องเป็นอ่านอย่างเดียว)</div>
 				</form>
 			</div>
 		</div>
