@@ -1,6 +1,10 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # 🚨🚨🚨 LINE WEBHOOK BYPASS (ต้องอยู่บนสุด)
+    RewriteCond %{REQUEST_URI} ^/ict8/backend/public/line_webhook.php$
+    RewriteRule ^ - [L]
+
     # pass Authorization header to PHP
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
