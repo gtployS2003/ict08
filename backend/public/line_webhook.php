@@ -1,6 +1,11 @@
 <?php
 // 🚨 STEP 1: อ่าน RAW BODY ก่อน
 $body = file_get_contents('php://input');
+
+if ($body === '' || $body === false) {
+    $body = file_get_contents('php://stdin');
+}
+
 $signature = $_SERVER['HTTP_X_LINE_SIGNATURE'] ?? '';
 
 // 🚨 STEP 2: โหลด SECRET อย่างเดียว (ยังไม่ include อะไร)
@@ -18,6 +23,11 @@ if ($CHANNEL_SECRET === '') {
 $hash = base64_encode(hash_hmac('sha256', $body, $CHANNEL_SECRET, true));
 
 if (!hash_equals($hash, $signature)) {
+    file_put_contents(
+        __DIR__ . '/debug_line.txt',
+        "HASH: $hash\nINVALID\n\n",
+        FILE_APPEND
+    );
     http_response_code(401);
     exit('Invalid signature');
 }
