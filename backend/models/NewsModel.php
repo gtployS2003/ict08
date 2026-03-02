@@ -50,12 +50,13 @@ class NewsModel
         // writer name (for public pages)
         $cols .= ", COALESCE(NULLIF(p.display_name, ''), NULLIF(u.line_user_name, ''), CONCAT('user#', n.writer)) AS writer_name";
 
+        // Return newest first so ?limit=15 yields the latest items.
         $sql = "SELECT {$cols}
-                FROM news n
-                LEFT JOIN `user` u ON u.user_id = n.writer
-                LEFT JOIN person p ON p.person_user_id = u.user_id
-                ORDER BY n.create_at ASC, n.news_id ASC
-                LIMIT :lim";
+            FROM news n
+            LEFT JOIN `user` u ON u.user_id = n.writer
+            LEFT JOIN person p ON p.person_user_id = u.user_id
+            ORDER BY n.create_at DESC, n.news_id DESC
+            LIMIT :lim";
         $stmt = $this->pdo->prepare($sql);
         $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
         $stmt->execute();

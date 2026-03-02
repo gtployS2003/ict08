@@ -341,13 +341,15 @@ function initNewsSlider() {
     const cards = track ? track.querySelectorAll(".news-card") : [];
     const btnLeft = document.querySelector(".news-arrow-left");
     const btnRight = document.querySelector(".news-arrow-right");
-    const dots = document.querySelectorAll(".news-dot");
+    const dotsWrap = document.querySelector(".news-dots");
 
     if (!track || cards.length === 0) return;
 
-    const perPage = 3;                         // แสดงทีละ 3 การ์ด
-    const totalPages = Math.ceil(cards.length / perPage);
+    // Responsive: คำนวณจำนวนการ์ดต่อหน้าอิงจากความกว้างจริง
+    let perPage = 3;
+    let totalPages = 1;
     let currentPage = 0;
+    let dots = [];
 
     // หาค่า gap จาก CSS (news-cards { gap: 24px; })
     function getGap() {
@@ -356,12 +358,54 @@ function initNewsSlider() {
         return isNaN(g) ? 0 : g;
     }
 
+    function computePerPage() {
+        if (!cards[0]) return 1;
+        const gap = getGap();
+        const trackW = track.getBoundingClientRect().width;
+        const cardW = cards[0].getBoundingClientRect().width;
+        if (!trackW || !cardW) return 1;
+
+        // จำนวนการ์ดที่น่าจะมองเห็นได้ใน 1 หน้า (เผื่อ gap)
+        const n = Math.floor((trackW + gap) / (cardW + gap));
+        return Math.max(1, Math.min(n, cards.length));
+    }
+
+    function buildDots(tp) {
+        const total = Math.max(1, Number(tp || 1));
+        if (!dotsWrap) {
+            dots = Array.from(document.querySelectorAll(".news-dot"));
+            return;
+        }
+
+        dotsWrap.innerHTML = "";
+        for (let i = 0; i < total; i++) {
+            const dot = document.createElement("span");
+            dot.className = `news-dot${i === 0 ? " active" : ""}`;
+            dot.dataset.index = String(i);
+            dot.addEventListener("click", () => goTo(i));
+            dotsWrap.appendChild(dot);
+        }
+        dots = Array.from(dotsWrap.querySelectorAll(".news-dot"));
+    }
+
     // คำนวณระยะเลื่อนต่อหน้า = กว้างการ์ด 3 ใบ + gap 2 ช่อง
     function getStep() {
         if (!cards[0]) return 0;
         const cardWidth = cards[0].getBoundingClientRect().width;
         const gap = getGap();
         return perPage * cardWidth + (perPage - 1) * gap + gap;
+    }
+
+    function recalc() {
+        const oldPerPage = perPage;
+        const oldItemIndex = currentPage * oldPerPage;
+
+        perPage = computePerPage();
+        totalPages = Math.ceil(cards.length / perPage) || 1;
+
+        currentPage = Math.max(0, Math.min(Math.floor(oldItemIndex / perPage), totalPages - 1));
+        buildDots(totalPages);
+        goTo(currentPage);
     }
 
     function goTo(page) {
@@ -397,20 +441,13 @@ function initNewsSlider() {
         }
     });
 
-    // คลิก dot
-    dots.forEach((dot, index) => {
-        dot.addEventListener("click", () => {
-            goTo(index);
-        });
-    });
-
     // เวลา resize ให้คงหน้าปัจจุบันแต่คำนวณ step ใหม่
     window.addEventListener("resize", () => {
-        goTo(currentPage);
+        recalc();
     });
 
-    // เรียกครั้งแรก
-    goTo(0);
+    // init
+    recalc();
 }
 
 // load news
@@ -419,56 +456,92 @@ function initHomeNews() {
     if (!container) return;   // ถ้าไม่ใช่หน้า home (ไม่มี .news-cards) ก็ไม่ต้องทำอะไร
 
     const HOME_NEWS_LIMIT = 15;
-    const isInPageFolder = window.location.pathname.includes("/site/");
-    const jsonPath = "/ict8/assets/js/data-ex/news.json";
 
-    fetch(jsonPath)
-        .then(res => res.json())
-        .then(data => {
-            // เอาเฉพาะ 15 ข่าวล่าสุดตาม id (id มาก = ใหม่กว่า)
-            const latestNews = [...data]
-                .sort((a, b) => b.id - a.id)
+    function escapeHtml(str) {
+        if (str == null) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function formatThaiDate(mysqlDateTime) {
+        const s = String(mysqlDateTime || "").trim();
+        if (!s) return "-";
+        const dt = new Date(s.replace(" ", "T"));
+        if (isNaN(dt.getTime())) return s;
+
+        try {
+            return new Intl.DateTimeFormat("th-TH", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+            }).format(dt);
+        } catch {
+            const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            const d = dt.getDate();
+            const m = months[dt.getMonth()] || "";
+            const y = dt.getFullYear() + 543;
+            return `${d} ${m} ${y}`;
+        }
+    }
+
+    function joinUrl(base, path) {
+        const b = String(base || "").replace(/\/$/, "");
+        const p = String(path || "");
+        if (!p) return b;
+        if (p.startsWith("/")) return `${b}${p}`;
+        return `${b}/${p}`;
+    }
+
+    const API_BASE = window.API_BASE_URL || window.__API_BASE__ || (window.__APP_CONFIG__ && window.__APP_CONFIG__.API_BASE) || "/ict8/backend/public";
+
+    fetch(joinUrl(API_BASE, `/news?limit=${HOME_NEWS_LIMIT}`), {
+        headers: { "Accept": "application/json" },
+    })
+        .then(async (res) => {
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || json?.ok === false) {
+                throw new Error(json?.message || `HTTP ${res.status}`);
+            }
+            return json;
+        })
+        .then((json) => {
+            const rows = Array.isArray(json?.data) ? json.data : [];
+
+            // safety: sort newest first (in case backend order changes)
+            const latestNews = [...rows]
+                .sort((a, b) => {
+                    const ad = String(a?.create_at || "");
+                    const bd = String(b?.create_at || "");
+                    if (ad !== bd) return bd.localeCompare(ad);
+                    return Number(b?.news_id || 0) - Number(a?.news_id || 0);
+                })
                 .slice(0, HOME_NEWS_LIMIT);
 
-            container.innerHTML = latestNews.map(item => `
-                <a href="/ict8/site/news-detail.html?id=${item.id}" target="_blank" rel="noopener noreferrer" class="news-card" >
-                    <h3 class="news-card-title">${item.title}</h3>
-                    <div class="news-card-date">${item.date}</div>
-                    <p  class="news-card-link">
-                        รายละเอียดเพิ่มเติม ➜
-                    </p>
-                </a>
-            `).join("");
+            container.innerHTML = latestNews
+                .map((row) => {
+                    const id = row?.news_id ?? row?.id;
+                    const title = String(row?.title || "");
+                    const date = formatThaiDate(row?.create_at || row?.update_at || "");
 
-            // หลังจากเติมการ์ดแล้ว ค่อย init slider
+                    return `
+                        <a href="/ict8/site/news-detail.html?id=${encodeURIComponent(String(id ?? ""))}" target="_blank" rel="noopener noreferrer" class="news-card" >
+                            <h3 class="news-card-title">${escapeHtml(title)}</h3>
+                            <div class="news-card-date">${escapeHtml(date)}</div>
+                            <p class="news-card-link">รายละเอียดเพิ่มเติม ➜</p>
+                        </a>
+                    `;
+                })
+                .join("");
+
             initNewsSlider();
         })
-        .catch(err => {
+        .catch((err) => {
             console.error("โหลดข่าวสำหรับหน้าแรกไม่สำเร็จ", err);
         });
-}
-
-function parseThaiDateForHome(str) {
-    if (!str || typeof str !== "string") return null;
-    const parts = str.trim().split(/\s+/);
-    if (parts.length < 3) return null;
-
-    const day = parseInt(parts[0], 10);
-    const yearBE = parseInt(parts[2], 10);
-    if (isNaN(day) || isNaN(yearBE)) return null;
-
-    // "7 พ.ย. 2568" -> เดือน key = "พย"
-    const monthKey = parts[1].replace(/\./g, "");
-    const monthMap = {
-        "มค": 0, "กพ": 1, "มีค": 2, "เมย": 3,
-        "พค": 4, "มิย": 5, "กค": 6, "สค": 7,
-        "กย": 8, "ตค": 9, "พย": 10, "ธค": 11
-    };
-    const m = monthMap[monthKey];
-    if (m === undefined) return null;
-
-    const yearAD = yearBE - 543;
-    return new Date(yearAD, m, day);
 }
 
 // load activity 
@@ -478,15 +551,88 @@ function initHomeActivities() {
     if (!slidesContainer || !dotsContainer) return;  // ถ้าไม่ได้อยู่หน้า home ก็ไม่ทำอะไร
 
     const HOME_ACT_LIMIT = 15;
-    const jsonPath = "/ict8/assets/js/data-ex/activity.json";  // เหมือนที่ใช้ใน activities.js
 
-    fetch(jsonPath)
-        .then(res => res.json())
-        .then(data => {
-            // เรียงจากกิจกรรมล่าสุดไปเก่าสุด (ลองใช้วันที่)
-            const latest = [...data]
-                .sort((a, b) => b.id - a.id)
-                .slice(0, HOME_ACT_LIMIT);
+    function escapeHtml(str) {
+        if (str == null) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function joinUrl(base, path) {
+        const b = String(base || "").replace(/\/$/, "");
+        const p = String(path || "");
+        if (!p) return b;
+        if (p.startsWith("/")) return `${b}${p}`;
+        return `${b}/${p}`;
+    }
+
+    const API_BASE = window.API_BASE_URL || window.__API_BASE__ || (window.__APP_CONFIG__ && window.__APP_CONFIG__.API_BASE) || "/ict8/backend/public";
+
+    function buildFileUrl(filepath) {
+        const fp = String(filepath || "").trim();
+        if (!fp) return "";
+
+        // DB usually stores: "uploads/..." or "/uploads/..." => under backend/public
+        if (fp.startsWith("/uploads/")) return joinUrl(API_BASE, fp);
+        if (fp.startsWith("uploads/")) return joinUrl(API_BASE, `/${fp}`);
+        if (fp.startsWith("./uploads/")) return joinUrl(API_BASE, `/${fp.replace(/^\.\//, "")}`);
+
+        // Already absolute
+        if (fp.startsWith("/")) return fp;
+        return joinUrl(API_BASE, `/${fp}`);
+    }
+
+    function formatThaiDate(mysqlDt) {
+        const s = String(mysqlDt || "").trim();
+        if (!s) return "-";
+
+        const d = new Date(s.replace(" ", "T"));
+        if (Number.isNaN(d.getTime())) return s;
+
+        try {
+            return new Intl.DateTimeFormat("th-TH", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+            }).format(d);
+        } catch {
+            return s;
+        }
+    }
+
+    function getCategory(item) {
+        const sub = String(item?.request_sub_type_name || "").trim();
+        if (sub) return sub;
+        const t = String(item?.request_type_name || "").trim();
+        return t || "-";
+    }
+
+    function getDateText(item) {
+        const dt = item?.end_datetime || item?.start_datetime || item?.update_at || item?.create_at;
+        return formatThaiDate(dt);
+    }
+
+    const qs = new URLSearchParams();
+    qs.set("page", "1");
+    qs.set("limit", String(HOME_ACT_LIMIT));
+
+    fetch(joinUrl(API_BASE, `/activities?${qs.toString()}`), {
+        headers: { "Accept": "application/json" },
+    })
+        .then(async (res) => {
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || json?.ok === false) {
+                throw new Error(json?.message || `HTTP ${res.status}`);
+            }
+            return json;
+        })
+        .then((json) => {
+            const latest = Array.isArray(json?.data?.items) ? json.data.items : [];
+
             // เคลียร์ของเก่า
             slidesContainer.innerHTML = "";
             dotsContainer.innerHTML = "";
@@ -501,32 +647,31 @@ function initHomeActivities() {
 
                 if (!main) continue;
 
-                const mainImg =
-                    main.images && main.images.length > 0
-                        ? main.images[0]
-                        : "/img/activities/01.png";
+                const mainImg = buildFileUrl(main?.cover_filepath) || "/ict8/assets/image/activities/01.png";
 
-                const detailHref = `activity-detail.html?id=${main.id}`;
+                const mainId = Number(main?.activity_id || 0);
+                const detailHref = `/ict8/site/activity-detail.html?id=${encodeURIComponent(String(mainId || ""))}`;
 
                 // สร้าง HTML ฝั่งขวา (side)
                 let sideHtml = "";
 
                 function renderSide(item) {
                     if (!item) return "";
-                    const img =
-                        item.images && item.images.length > 0
-                            ? item.images[0]
-                            : "/ict8/assets/img/activities/01.png";
+                    const img = buildFileUrl(item?.cover_filepath) || "/ict8/assets/image/activities/01.png";
+                    const id = Number(item?.activity_id || 0);
+                    const title = String(item?.title || "").trim();
+                    const category = getCategory(item);
+                    const dateText = getDateText(item);
                     return `
-                        <a href="/ict8/site/activity-detail.html?id=${item.id}" target="_blank" rel="noopener noreferrer"
+                        <a href="/ict8/site/activity-detail.html?id=${encodeURIComponent(String(id || ""))}" target="_blank" rel="noopener noreferrer"
                            class="activity-side-item card-link">
-                            <img src="${img}" alt="${item.title}" class="activity-side-img">
+                            <img src="${escapeHtml(img)}" alt="${escapeHtml(title)}" class="activity-side-img" loading="lazy">
                             <div class="activity-side-content">
                                 <h3 class="activity-side-title">
-                                    ${item.title}
+                                    ${escapeHtml(title)}
                                 </h3>
-                                <span class="activity-side-tag">${item.category}</span>
-                                <div class="activity-side-date">${item.date}</div>
+                                <span class="activity-side-tag">${escapeHtml(category)}</span>
+                                <div class="activity-side-date">${escapeHtml(dateText)}</div>
                             </div>
                         </a>
                     `;
@@ -546,13 +691,13 @@ function initHomeActivities() {
                     <div class="activities-grid activity-slide ${slideIndex === 0 ? "active" : ""}">
                         <!-- การ์ดใหญ่ด้านซ้าย -->
                         <a href="${detailHref}" target="_blank" rel="noopener noreferrer" class="activity-main card-link">
-                            <img src="${mainImg}" alt="${main.title}" class="activity-main-img">
+                            <img src="${escapeHtml(mainImg)}" alt="${escapeHtml(String(main?.title || ""))}" class="activity-main-img" loading="lazy">
                             <div class="activity-main-overlay">
                                 <h3 class="activity-main-title">
-                                    ${main.title}
+                                    ${escapeHtml(String(main?.title || "").trim())}
                                 </h3>
-                                <span class="activity-main-tag">${main.category}</span>
-                                <div class="activity-main-date">${main.date}</div>
+                                <span class="activity-main-tag">${escapeHtml(getCategory(main))}</span>
+                                <div class="activity-main-date">${escapeHtml(getDateText(main))}</div>
                             </div>
                         </a>
 
