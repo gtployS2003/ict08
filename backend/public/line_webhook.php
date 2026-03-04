@@ -7,6 +7,11 @@ declare(strict_types=1);
 $rawBody = file_get_contents('php://input');   // อ่านครั้งเดียวเท่านั้น
 $signature = $_SERVER['HTTP_X_LINE_SIGNATURE'] ?? '';
 
+if (!$signature) {
+    $headers = getallheaders();
+    $signature = $headers['X-Line-Signature'] ?? $headers['x-line-signature'] ?? '';
+}
+
 // ==============================
 // 1) LOAD SECRET (NO OUTPUT!)
 // ==============================
@@ -287,5 +292,3 @@ foreach ($data['events'] as $event) {
     }
 }
 
-http_response_code(200);
-echo "OK";
