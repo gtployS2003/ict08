@@ -80,10 +80,21 @@
 
   async function apiFetch(path, { method = "GET", body, headers = {} } = {}) {
     const url = `${API_BASE}${path}`;
+    let realMethod = String(method || "GET").toUpperCase();
+    let overrideMethod = "";
+
+    // Some servers (or Apache setups) reject real PUT/PATCH/DELETE.
+    // Backend supports POST + X-HTTP-Method-Override, so tunnel it here.
+    if (["PUT", "PATCH", "DELETE"].includes(realMethod)) {
+      overrideMethod = realMethod;
+      realMethod = "POST";
+    }
+
     const opts = {
-      method,
+      method: realMethod,
       headers: {
         ...headers,
+        ...(overrideMethod ? { "X-HTTP-Method-Override": overrideMethod } : {}),
       },
     };
 

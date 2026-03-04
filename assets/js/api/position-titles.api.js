@@ -8,11 +8,32 @@
     window.__API_BASE__ ||
     "/ict8/backend/public";
 
+  const BASE_PATH = "/position-titles";
+  function toQuery(params = {}) {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v === undefined || v === null || v === "") return;
+      qs.set(k, String(v));
+    });
+    const s = qs.toString();
+    return s ? `?${s}` : "";
+  }
+
   async function apiFetch(path, { method = "GET", body, headers = {} } = {}) {
     const url = `${API_BASE}${path}`;
+    let realMethod = String(method || "GET").toUpperCase();
+    let overrideMethod = "";
+    if (["PUT", "PATCH", "DELETE"].includes(realMethod)) {
+      overrideMethod = realMethod;
+      realMethod = "POST";
+    }
+
     const opts = {
-      method,
-      headers: { ...headers },
+      method: realMethod,
+      headers: {
+        ...headers,
+        ...(overrideMethod ? { "X-HTTP-Method-Override": overrideMethod } : {}),
+      },
     };
 
     if (body !== undefined) {

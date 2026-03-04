@@ -20,7 +20,20 @@
 
   async function apiFetch(path, { method = "GET", body, headers = {} } = {}) {
     const url = `${API_BASE}${path}`;
-    const opts = { method, headers: { ...headers } };
+    let realMethod = String(method || "GET").toUpperCase();
+    let overrideMethod = "";
+    if (["PUT", "PATCH", "DELETE"].includes(realMethod)) {
+      overrideMethod = realMethod;
+      realMethod = "POST";
+    }
+
+    const opts = {
+      method: realMethod,
+      headers: {
+        ...headers,
+        ...(overrideMethod ? { "X-HTTP-Method-Override": overrideMethod } : {}),
+      },
+    };
 
     if (body !== undefined) {
       opts.headers["Content-Type"] = "application/json; charset=utf-8";
