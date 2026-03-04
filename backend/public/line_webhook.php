@@ -2,6 +2,38 @@
 declare(strict_types=1);
 
 // ==============================
+// DEBUG LOG (safe location)
+// ==============================
+function line_debug_log(string $label, array $data = []): void
+{
+    // บนบางเครื่อง sys_get_temp_dir() อาจชี้ไปที่โฟลเดอร์ที่ Apache เขียนไม่ได้
+    $candidates = [
+        '/tmp',
+        sys_get_temp_dir(),
+        __DIR__,
+    ];
+
+    $dir = null;
+    foreach ($candidates as $d) {
+        if (is_string($d) && $d !== '' && is_dir($d) && is_writable($d)) {
+            $dir = $d;
+            break;
+        }
+    }
+
+    if ($dir === null) {
+        return;
+    }
+
+    $file = rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'ict8_line_webhook_' . date('Ymd') . '.log';
+    @file_put_contents(
+        $file,
+        date('c') . "\t" . $label . "\t" . json_encode($data, JSON_UNESCAPED_UNICODE) . "\n",
+        FILE_APPEND
+    );
+}
+
+// ==============================
 // 0) READ RAW BODY (ONCE)
 // ==============================
 $rawBody = file_get_contents('php://input');   // อ่านครั้งเดียวเท่านั้น
@@ -22,6 +54,7 @@ env_load(__DIR__ . '/../.env');
 $channelSecret = getenv('LINE_CHANNEL_SECRET') ?: '';
 if ($channelSecret === '') {
     http_response_code(500);
+    line_debug_log('missing_channel_secret');
     exit('Missing secret');
 }
 
@@ -34,13 +67,12 @@ $computed = base64_encode(
 
 if (!hash_equals($computed, $signature)) {
     // DEBUG: ดูเฉพาะตอนทดสอบ แล้วลบทิ้งภายหลัง
-    file_put_contents(
-        __DIR__ . '/debug_line.txt',
-        "LEN=" . strlen($rawBody) . "\n" .
-        "SIG=" . $signature . "\n" .
-        "CMP=" . $computed . "\n\n",
-        FILE_APPEND
-    );
+    line_debug_log('invalid_signature', [
+        'len' => strlen($rawBody),
+        'sig' => $signature,
+        'cmp' => $computed,
+        'ua' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+    ]);
     http_response_code(401);
     exit('Invalid signature');
 }
@@ -50,6 +82,10 @@ if (!hash_equals($computed, $signature)) {
 // ==============================
 http_response_code(200);
 echo 'OK';
+
+// ให้โค้ดหลังบ้านทำงานต่อ แม้ client ปิด connection แล้ว
+@ignore_user_abort(true);
+@set_time_limit(0);
 
 // ให้ LINE ได้ 200 ก่อน แล้วค่อยทำงานต่อ
 if (function_exists('fastcgi_finish_request')) {
@@ -78,15 +114,22 @@ $rmExternal = getenv('LINE_RICHMENU_EXTERNAL') ?: '';
 
 $line = new LineService($accessToken);
 
+// DB อาจล่ม/สิทธิ์ไม่ถูก ต้องไม่ทำให้ webhook เงียบ
+$pdo = null;
+$userModel = null;
+$userRoleModel = null;
+$requestTypeModel = null;
+
 try {
     $pdo = db();
+    $userModel = new UserModel($pdo);
+    $userRoleModel = new UserRoleModel($pdo);
+    $requestTypeModel = new RequestTypeModel($pdo);
 } catch (Throwable $e) {
-    exit;
+    line_debug_log('db_connect_failed', [
+        'error' => $e->getMessage(),
+    ]);
 }
-
-$userModel = new UserModel($pdo);
-$userRoleModel = new UserRoleModel($pdo);
-$requestTypeModel = new RequestTypeModel($pdo);
 
 // ==============================
 // 5) LOOP EVENTS
@@ -99,15 +142,17 @@ foreach ($data['events'] as $event) {
         continue;
 
     // ----- role -----
-    $user = $userModel->findByLineUserId($userId);
     $roleCode = 'GUEST';
+    if ($userModel && $userRoleModel) {
+        $user = $userModel->findByLineUserId($userId);
 
-    if ($user && !empty($user['user_role_id'])) {
-        try {
-            $roleRow = $userRoleModel->getById((int) $user['user_role_id']);
-            $roleCode = strtoupper((string) ($roleRow['code'] ?? 'EXTERNAL'));
-        } catch (Throwable $e) {
-            $roleCode = 'EXTERNAL';
+        if ($user && !empty($user['user_role_id'])) {
+            try {
+                $roleRow = $userRoleModel->getById((int) $user['user_role_id']);
+                $roleCode = strtoupper((string) ($roleRow['code'] ?? 'EXTERNAL'));
+            } catch (Throwable $e) {
+                $roleCode = 'EXTERNAL';
+            }
         }
     }
 
@@ -121,6 +166,21 @@ foreach ($data['events'] as $event) {
     if ($target !== '') {
         $line->linkRichMenuToUser($userId, $target);
     }
+
+    // debug: เห็นว่ามี event เข้ามาจริงไหม
+    $eventLog = [
+        'type' => $type,
+        'role' => $roleCode,
+        'hasReplyToken' => isset($event['replyToken']),
+        'msgType' => $event['message']['type'] ?? null,
+    ];
+    if ($type === 'message') {
+        $eventLog['text'] = $event['message']['text'] ?? null;
+    }
+    if ($type === 'postback') {
+        $eventLog['postback'] = $event['postback']['data'] ?? null;
+    }
+    line_debug_log('event', $eventLog);
 
     // ----- follow -----
     if ($type === 'follow' && isset($event['replyToken'])) {
@@ -143,16 +203,12 @@ foreach ($data['events'] as $event) {
         $reply = function (array $messages) use ($line, $event): void {
             $resp = $line->replyMessage($event['replyToken'], $messages);
             if (!($resp['ok'] ?? false)) {
-                @file_put_contents(
-                    __DIR__ . '/debug_line_reply.txt',
-                    date('c') . "\t" . json_encode([
-                        'http' => $resp['http'] ?? null,
-                        'url' => $resp['url'] ?? null,
-                        'method' => $resp['method'] ?? null,
-                        'raw' => $resp['raw'] ?? null,
-                    ], JSON_UNESCAPED_UNICODE) . "\n",
-                    FILE_APPEND
-                );
+                line_debug_log('reply_failed', [
+                    'http' => $resp['http'] ?? null,
+                    'url' => $resp['url'] ?? null,
+                    'method' => $resp['method'] ?? null,
+                    'raw' => $resp['raw'] ?? null,
+                ]);
             }
         };
 
@@ -164,8 +220,18 @@ foreach ($data['events'] as $event) {
             $ICT8_PURPLE = '#532274';
             $TEXT_MUTED = '#6B7280';
 
-            // 👉 ดึงจาก DB
-            $items = $requestTypeModel->list('', 1, 200);
+            // 👉 ดึงจาก DB (ถ้า DB ใช้งานได้)
+            $items = [];
+            if ($requestTypeModel) {
+                try {
+                    $items = $requestTypeModel->list('', 1, 200);
+                } catch (Throwable $e) {
+                    line_debug_log('request_type_list_failed', [
+                        'error' => $e->getMessage(),
+                    ]);
+                    $items = [];
+                }
+            }
 
             $buttons = [];
 
@@ -193,11 +259,40 @@ foreach ($data['events'] as $event) {
                 }
             }
 
-            // ถ้าไม่มีใน DB
+            // Fallback: ถ้า DB ดึงไม่ได้/ว่าง ให้แสดง 3 ปุ่มหลักแบบคงที่
+            if (!$buttons) {
+                $basePath = getenv('BASE_PATH') ?: '/ict8';
+                $host = $_SERVER['HTTP_HOST'] ?? '';
+                $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+                $scheme = $https ? 'https' : 'http';
+                $publicBase = $host !== '' ? ($scheme . '://' . $host . $basePath) : $basePath;
+
+                $fallback = [
+                    ['label' => 'ขอสนับสนุนห้องประชุม', 'path' => '/gcms/request-conference.html'],
+                    ['label' => 'แจ้งเสีย/ซ่อมอุปกรณ์', 'path' => '/gcms/request-repair.html'],
+                    ['label' => 'ขอใช้บริการอื่น ๆ', 'path' => '/gcms/request-other.html'],
+                ];
+
+                foreach ($fallback as $fb) {
+                    $buttons[] = [
+                        'type' => 'button',
+                        'style' => 'secondary',
+                        'height' => 'md',
+                        'margin' => empty($buttons) ? 'lg' : 'md',
+                        'action' => [
+                            'type' => 'uri',
+                            'label' => mb_strimwidth((string) $fb['label'], 0, 20, '...'),
+                            'uri' => $publicBase . $fb['path'],
+                        ]
+                    ];
+                }
+            }
+
+            // ถ้ายังไม่มีจริง ๆ (ทั้ง DB และ fallback สร้างไม่ได้)
             if (!$buttons) {
                 $buttons[] = [
                     'type' => 'text',
-                    'text' => 'ยังไม่มีประเภทคำขอในระบบ',
+                    'text' => 'ไม่สามารถแสดงเมนูคำขอได้ในขณะนี้',
                     'wrap' => true,
                     'margin' => 'lg',
                     'color' => $TEXT_MUTED,
