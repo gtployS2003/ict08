@@ -13,7 +13,9 @@ body {
 }
 
 main.site-home {
-    padding-top: 150px;
+    /* The fixed header + nav already reserve space via body padding-top.
+       Keep site pages from adding extra top space (which caused big white gaps on mobile). */
+    padding-top: 0;
 }
 
 *::before,
@@ -970,7 +972,8 @@ body {
 }
 
 .mission-divider {
-    width: 400px;
+    width: 100%;
+    max-width: 400px;
     height: 4px;
     background: #ffffff;
     margin: 16px 0 24px;
@@ -3351,8 +3354,8 @@ body {
 
 @media (max-width: 900px) {
     main.site-home {
-    padding-top: 120px;
-}
+        padding-top: 0;
+    }
 
     .header {
         padding: 12px 16px;
@@ -3438,15 +3441,67 @@ body {
         min-height: 260px;
     }
 
+    .hero-arrow {
+        width: 44px;
+        height: 44px;
+        font-size: 22px;
+    }
+
+    .hero-arrow-left {
+        left: 12px;
+    }
+
+    .hero-arrow-right {
+        right: 12px;
+    }
+
     .hero-slide img {
         height: 100%;
         object-fit: cover;
+    }
+
+    /* Vision: reduce font-size/line-height so it doesn't overflow on phones */
+    .vision {
+        padding: 24px 16px;
+    }
+
+    .vision-card {
+        padding: 26px 16px 30px;
+        border-radius: 16px;
+    }
+
+    .vision-title {
+        font-size: 28px;
+    }
+
+    .vision-divider {
+        width: min(220px, 100%);
+        margin: 14px auto 20px;
+    }
+
+    .vision-main,
+    .vision-main-content {
+        font-size: 18px;
+        line-height: 1.65;
     }
 
     .mission-inner {
         display: grid;
         grid-template-columns: 1fr;
         grid-template-rows: auto auto;
+        gap: 32px;
+    }
+
+    .mission {
+        padding: 40px 16px 48px;
+    }
+
+    .mission-images {
+        gap: 14px;
+    }
+
+    .mission-right {
+        gap: 14px;
     }
 
     .mission-content {
@@ -3458,8 +3513,33 @@ body {
     }
 
     .mission-divider {
+        /* Prevent horizontal overflow (desktop width was 400px) */
+        width: 100%;
+        max-width: 260px;
         margin-left: auto;
         margin-right: auto;
+    }
+
+    .mission-text {
+        font-size: 16px;
+        margin-bottom: 22px;
+    }
+
+    .mission-btn {
+        font-size: 18px;
+        gap: 12px;
+        padding: 12px 20px 12px 24px;
+    }
+
+    .mission-btn-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 18px;
+    }
+
+    .mission-left img,
+    .mission-right img {
+        border-radius: 24px;
     }
 
     .mission-btn {
@@ -3498,8 +3578,8 @@ body {
     }
 
     .province-logo {
-        width: 120px;
-        height: 120px;
+        width: 104px;
+        height: 104px;
     }
 
     /* activities page */
@@ -3564,6 +3644,31 @@ body {
     .contact-grid {
         grid-template-columns: 1fr;
         gap: 32px;
+    }
+
+    .contact-map-iframe {
+        height: 340px;
+        border-radius: 28px;
+    }
+
+    .contact-title {
+        font-size: 28px;
+    }
+
+    .contact-underline {
+        width: min(240px, 100%);
+        margin: 14px 0 24px;
+    }
+
+    .contact-icon {
+        width: 44px;
+        height: 44px;
+        font-size: 18px;
+    }
+
+    .contact-text,
+    .contact-link {
+        font-size: 16px;
     }
 
     .contact-title {
@@ -3799,6 +3904,59 @@ body {
 
     .title-sub {
         font-size: 13px;
+    }
+
+    /* Home: tighter hero + mission image layout on very small screens */
+    .hero-inner {
+        height: 46vh;
+        min-height: 220px;
+    }
+
+    .hero-arrow {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+
+    .hero-dots {
+        bottom: 12px;
+        gap: 6px;
+    }
+
+    .hero-dots .dot {
+        width: 7px;
+        height: 7px;
+    }
+
+    .mission-images {
+        grid-template-columns: 1fr;
+    }
+
+    .mission-right {
+        grid-template-rows: 1fr;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .provinces {
+        padding: 36px 16px 44px;
+    }
+
+    .province-logo {
+        width: 92px;
+        height: 92px;
+    }
+
+    .province-name {
+        font-size: 18px;
+    }
+
+    .contact {
+        padding: 36px 16px 52px;
+    }
+
+    .contact-map-iframe {
+        height: 300px;
+        border-radius: 24px;
     }
 
     .card {
