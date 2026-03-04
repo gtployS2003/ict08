@@ -1686,14 +1686,16 @@
       mtdEls.inputTitle.value = "";
     }
 
-    mtdEls.modal.hidden = false;
+    // Use shared modal helper so we always clear inline display styles
+    // (some close handlers call hide(), which sets style.display='none').
+    openModal("main-type-of-device-modal");
     // โฟกัสช่อง title
     setTimeout(() => mtdEls.inputTitle?.focus(), 0);
   }
 
   function mtdCloseModal() {
     if (!mtdEls.modal) return;
-    mtdEls.modal.hidden = true;
+    closeModal("main-type-of-device-modal");
   }
 
   function mtdEscapeHtml(s) {
@@ -8895,17 +8897,13 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
         isEdit ? (row?.meaning ?? row?.description ?? row?.desc ?? "") : "";
     }
 
-    if (notificationTypeEls.modal) {
-      notificationTypeEls.modal.hidden = false;
-      document.body.style.overflow = "hidden";
-    }
+    // Use shared modal helper so we always clear inline display styles
+    // (some close handlers call hide(), which sets style.display='none').
+    openModal("notification-type-modal");
   }
 
   function closeNotificationTypeModal() {
-    if (notificationTypeEls.modal) {
-      notificationTypeEls.modal.hidden = true;
-      document.body.style.overflow = "";
-    }
+    closeModal("notification-type-modal");
   }
 
   function openNotificationTypeStaffModal({ mode, row = null } = {}) {
