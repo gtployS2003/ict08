@@ -14,6 +14,121 @@ let currentTask = null;
 let __provincesLoaded = false;
 let __participantsLoaded = false;
 
+function getStoredToken() {
+    return (
+        localStorage.getItem('auth_token') ||
+        sessionStorage.getItem('auth_token') ||
+        localStorage.getItem('token') ||
+        sessionStorage.getItem('token') ||
+        localStorage.getItem('access_token') ||
+        sessionStorage.getItem('access_token')
+    );
+}
+
+function saveToken(token) {
+    if (!token) return;
+    try { localStorage.setItem('auth_token', String(token)); } catch {}
+}
+
+function buildLoginHref() {
+    const redirect = encodeURIComponent(window.location.href);
+    return `/ict8/login.html?redirect=${redirect}`;
+}
+
+function renderAuthRequiredPage(message) {
+    const calendarEl = document.getElementById('calendar');
+    const todayListEl = document.getElementById('today-task-list');
+    const pendingListEl = document.getElementById('pending-task-list');
+
+    const loginHref = buildLoginHref();
+    const msg = message || 'กรุณาเข้าสู่ระบบก่อนใช้งานปฏิทินงาน';
+
+    const html = `
+        <div style="padding:16px;border:1px solid rgba(0,0,0,.10);border-radius:14px;background:#fff;max-width:680px;margin:18px auto;">
+            <div style="font-weight:800;color:#b91c1c;">${escapeHtml(msg)}</div>
+            <div style="margin-top:10px;">
+                <a href="${loginHref}" style="display:inline-block; padding:8px 12px; border-radius:10px; border:1px solid rgba(0,0,0,.12); text-decoration:none;">
+                    ไปหน้าเข้าสู่ระบบ
+                </a>
+            </div>
+        </div>
+    `;
+
+    if (calendarEl) calendarEl.innerHTML = html;
+    if (todayListEl) todayListEl.innerHTML = '';
+    if (pendingListEl) pendingListEl.innerHTML = '';
+    const todayCountEl = document.getElementById('today-count');
+    const pendingCountEl = document.getElementById('pending-count');
+    if (todayCountEl) todayCountEl.textContent = '0';
+    if (pendingCountEl) pendingCountEl.textContent = '0';
+}
+
+async function ensureStaffAuthToken() {
+    const existing = getStoredToken();
+    if (existing) return existing;
+
+    if (!window.liff || !window.LIFF_ID) return null;
+
+    try {
+        await liff.init({ liffId: window.LIFF_ID });
+    } catch (e) {
+        console.warn('LIFF init failed (fallback to manual login)', e);
+        return null;
+    }
+
+    if (!liff.isLoggedIn()) {
+        try {
+            liff.login({ redirectUri: window.location.href });
+        } catch {
+            liff.login();
+        }
+        return null;
+    }
+
+    const profile = await liff.getProfile();
+    if (!profile?.userId) throw new Error('ไม่พบข้อมูลผู้ใช้จาก LINE');
+
+    const payload = {
+        line_user_id: profile.userId,
+        line_user_name: profile.displayName || '',
+    };
+
+    let res;
+    if (window.AuthAPI && typeof window.AuthAPI.lineLogin === 'function') {
+        res = await window.AuthAPI.lineLogin(payload);
+    } else if (typeof window.apiFetch === 'function') {
+        res = await window.apiFetch('/auth/line-login', {
+            method: 'POST',
+            body: payload,
+            skipAuth: true,
+        });
+    } else {
+        throw new Error('missing apiFetch');
+    }
+
+    const data = res?.data || {};
+
+    if (data.status === 'active') {
+        if (data.token) saveToken(data.token);
+        return data.token || getStoredToken();
+    }
+
+    if (data.status === 'register') {
+        try {
+            sessionStorage.setItem('line_user_id', profile.userId);
+            sessionStorage.setItem('line_user_name', profile.displayName || '');
+        } catch {}
+        window.location.href = '/ict8/profile-setup.html';
+        return null;
+    }
+
+    if (data.status === 'pending') {
+        throw new Error('บัญชีของคุณอยู่ระหว่างรอการอนุมัติจากเจ้าหน้าที่');
+    }
+
+    throw new Error('ไม่สามารถเข้าสู่ระบบได้');
+}
+
 function toIsoDate(d) {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -149,10 +264,19 @@ async function fetchEventsForRange(fromDate, toDate) {
     const apiFetch = window.apiFetch;
     if (typeof apiFetch !== 'function') throw new Error('missing apiFetch');
 
-    const res = await apiFetch(
-        `/events?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}`,
-        { method: 'GET' }
-    );
+    const endpoint = `/events?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}`;
+
+    let res;
+    try {
+        res = await apiFetch(endpoint, { method: 'GET' });
+    } catch (err) {
+        if (err && Number(err.status) === 401) {
+            await ensureStaffAuthToken();
+            res = await apiFetch(endpoint, { method: 'GET' });
+        } else {
+            throw err;
+        }
+    }
 
     const rows = Array.isArray(res?.data) ? res.data : [];
     return rows.map(mapApiEventToTask);
@@ -710,8 +834,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainEl = document.querySelector('.schedule-main');
     if (!mainEl) return;
 
-    initSidebarTasks();
-    setupAddTaskModal();
+    (async () => {
+        try {
+            const token = await ensureStaffAuthToken();
+            if (!token) {
+                renderAuthRequiredPage('กรุณาเข้าสู่ระบบก่อนใช้งาน');
+                return;
+            }
+
+            initSidebarTasks();
+            setupAddTaskModal();
+        } catch (err) {
+            console.error(err);
+            if (err && Number(err.status) === 401) {
+                renderAuthRequiredPage('ไม่สามารถโหลดข้อมูลได้ (ต้องเข้าสู่ระบบ)');
+            } else if (err && Number(err.status) === 403) {
+                renderAuthRequiredPage('ไม่สามารถโหลดข้อมูลได้ (ไม่มีสิทธิ์เข้าถึงข้อมูลเจ้าหน้าที่)');
+            } else {
+                renderAuthRequiredPage(err?.message || 'ไม่สามารถโหลดข้อมูลได้');
+            }
+        }
+    })();
 
     // Task modal controls
     const overlay = document.getElementById('task-modal-overlay');

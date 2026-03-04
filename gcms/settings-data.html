@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/ict8/assets/css/style.css" />
     <link rel="stylesheet" href="/ict8/assets/css/schedule.css" />
     <link rel="stylesheet" href="/ict8/assets/css/device.css" />
-    <link rel="stylesheet" href="/ict8/assets/css/gcms.css" />
+    <link rel="stylesheet" href="/ict8/assets/css/gcms.css?v=2026-03-04-1" />
     <link rel="stylesheet" href="/ict8/assets/css/login.css" />
     <link rel="stylesheet" href="/ict8/assets/css/profile-setup.css" />
 
@@ -29,7 +29,7 @@
 
     <!-- include head -->
     <script src="/ict8/backend/public/config.js.php"></script>
-    <script src="/ict8/assets/js/api/http.js?v=2026-03-04"></script>
+    <script src="/ict8/assets/js/api/http.js?v=2026-03-04-2"></script>
     <script src="/ict8/assets/js/api/news.api.js"></script>
     <script src="/ict8/assets/js/api/organization-types.api.js"></script>
     <script src="/ict8/assets/js/api/organizations.api.js"></script>
@@ -2304,9 +2304,10 @@
                             ระบบจะคำนวณขนาด Canvas จากรูปพื้นหลังที่อัปโหลดให้อัตโนมัติ
                             (<span id="template-type-canvas-label">-</span>)
                         </div>
-                        <div style="margin-top:10px; display:flex; gap:10px; align-items:flex-start;">
-                            <img id="template-type-bg-preview" alt="ตัวอย่างพื้นหลัง" style="width:160px; height:auto; border-radius:10px; border:1px solid #eee; background:#fafafa;" />
-                            <div class="muted" style="line-height:1.5;">
+                        <div class="template-type-preview-row" style="margin-top:10px;">
+                            <img id="template-type-bg-preview" alt="ตัวอย่างพื้นหลัง"
+                                style="height:auto; border-radius:10px; border:1px solid #eee; background:#fafafa;" />
+                            <div class="muted template-type-preview-meta">
                                 <div>ไฟล์: <span id="template-type-bg-filename">-</span></div>
                                 <div>ขนาด: <span id="template-type-bg-dims">-</span></div>
                             </div>

@@ -3,7 +3,33 @@
 // อ่านค่าจาก backend/public/config.js.php
 const APP_CONFIG = window.__APP_CONFIG__ || {};
 
-const API_BASE = APP_CONFIG.API_BASE || "http://127.0.0.1/ict8/backend/public";
+function normalizeApiBase(raw) {
+  const fallback = "/ict8/backend/public";
+  let base = (raw == null ? "" : String(raw)).trim();
+  if (!base) base = fallback;
+
+  // Remove trailing slashes for consistent joins
+  base = base.replace(/\/+$/, "");
+
+  // If the page is https but API_BASE is http, upgrade to https to avoid mixed-content blocking
+  try {
+    if (typeof location !== "undefined" && location.protocol === "https:" && base.startsWith("http://")) {
+      base = "https://" + base.slice("http://".length);
+    }
+  } catch {}
+
+  return base;
+}
+
+function joinUrl(base, path) {
+  const b = (base == null ? "" : String(base)).replace(/\/+$/, "");
+  const p = (path == null ? "" : String(path));
+  if (!p) return b;
+  if (p.startsWith("/")) return b + p;
+  return b + "/" + p;
+}
+
+const API_BASE = normalizeApiBase(APP_CONFIG.API_BASE || "http://127.0.0.1/ict8/backend/public");
 const APP_ENV = APP_CONFIG.APP_ENV || "dev";
 const DEV_API_KEY = APP_CONFIG.DEV_API_KEY || "";
 
@@ -105,12 +131,12 @@ async function handleJson(res) {
 }
 
 async function httpGet(path) {
-  const res = await fetch(`${API_BASE}/${path}`, { headers: getAuthHeaders() });
+  const res = await fetch(joinUrl(API_BASE, path), { headers: getAuthHeaders() });
   return handleJson(res);
 }
 
 async function httpPost(path, body) {
-  const res = await fetch(`${API_BASE}/${path}`, {
+  const res = await fetch(joinUrl(API_BASE, path), {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(body ?? {}),
@@ -119,7 +145,7 @@ async function httpPost(path, body) {
 }
 
 async function httpPut(path, body) {
-  const res = await fetch(`${API_BASE}/${path}`, {
+  const res = await fetch(joinUrl(API_BASE, path), {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify(body ?? {}),
@@ -128,7 +154,7 @@ async function httpPut(path, body) {
 }
 
 async function httpDelete(path) {
-  const res = await fetch(`${API_BASE}/${path}`, {
+  const res = await fetch(joinUrl(API_BASE, path), {
     method: "POST",
     headers: {
       ...getAuthHeaders(),
@@ -142,7 +168,7 @@ window.apiFetch = async function apiFetch(
   path,
   { method = "GET", body, headers = {}, skipAuth = false } = {}
 ) {
-  const url = `${API_BASE}${path}`;
+  const url = joinUrl(API_BASE, path);
 
   const baseHeaders = getAuthHeaders({ skipAuth });
 

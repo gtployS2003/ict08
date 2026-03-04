@@ -8,6 +8,116 @@
   let __provincesLoaded = false;
   let __participantsLoaded = false;
 
+  function getStoredToken() {
+    return (
+      localStorage.getItem("auth_token") ||
+      sessionStorage.getItem("auth_token") ||
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("token") ||
+      localStorage.getItem("access_token") ||
+      sessionStorage.getItem("access_token")
+    );
+  }
+
+  function saveToken(token) {
+    if (!token) return;
+    try {
+      localStorage.setItem("auth_token", String(token));
+    } catch {}
+  }
+
+  function buildLoginHref() {
+    const redirect = encodeURIComponent(window.location.href);
+    return `/ict8/login.html?redirect=${redirect}`;
+  }
+
+  function renderAuthRequiredRow(message) {
+    if (!tbodyEl) return;
+    const loginHref = buildLoginHref();
+    tbodyEl.innerHTML = `
+      <tr>
+        <td colspan="10" style="text-align:center; color:#b91c1c; line-height:1.6;">
+          ${escapeHtml(message || "กรุณาเข้าสู่ระบบก่อนใช้งาน")}
+          <div style="margin-top:10px;">
+            <a href="${loginHref}" style="display:inline-block; padding:8px 12px; border-radius:10px; border:1px solid rgba(0,0,0,.12); text-decoration:none;">
+              ไปหน้าเข้าสู่ระบบ
+            </a>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  async function ensureStaffAuthToken() {
+    const existing = getStoredToken();
+    if (existing) return existing;
+
+    // If LIFF SDK isn't available, fallback to manual login.
+    if (!window.liff || !window.LIFF_ID) return null;
+
+    // Init LIFF (ถ้า init ไม่ได้ เช่น เปิดนอกโดเมนที่อนุญาต ให้ fallback ไป login ปกติ)
+    try {
+      await liff.init({ liffId: window.LIFF_ID });
+    } catch (e) {
+      console.warn("LIFF init failed (fallback to manual login)", e);
+      return null;
+    }
+
+    // Not logged in -> trigger LINE login (will redirect)
+    if (!liff.isLoggedIn()) {
+      try {
+        liff.login({ redirectUri: window.location.href });
+      } catch {
+        liff.login();
+      }
+      return null;
+    }
+
+    // Logged in -> exchange profile for backend token
+    const profile = await liff.getProfile();
+    if (!profile?.userId) throw new Error("ไม่พบข้อมูลผู้ใช้จาก LINE");
+
+    const payload = {
+      line_user_id: profile.userId,
+      line_user_name: profile.displayName || "",
+    };
+
+    let res;
+    if (window.AuthAPI && typeof window.AuthAPI.lineLogin === "function") {
+      res = await window.AuthAPI.lineLogin(payload);
+    } else if (typeof window.apiFetch === "function") {
+      res = await window.apiFetch("/auth/line-login", {
+        method: "POST",
+        body: payload,
+        skipAuth: true,
+      });
+    } else {
+      throw new Error("missing apiFetch");
+    }
+
+    const data = res?.data || {};
+
+    if (data.status === "active") {
+      if (data.token) saveToken(data.token);
+      return data.token || getStoredToken();
+    }
+
+    if (data.status === "register") {
+      try {
+        sessionStorage.setItem("line_user_id", profile.userId);
+        sessionStorage.setItem("line_user_name", profile.displayName || "");
+      } catch {}
+      window.location.href = "/ict8/profile-setup.html";
+      return null;
+    }
+
+    if (data.status === "pending") {
+      throw new Error("บัญชีของคุณอยู่ระหว่างรอการอนุมัติจากเจ้าหน้าที่");
+    }
+
+    throw new Error("ไม่สามารถเข้าสู่ระบบได้");
+  }
+
   function escapeHtml(str) {
     if (str == null) return "";
     return String(str)
@@ -377,8 +487,18 @@
     const endpoint = `/events/table?page=1&limit=500`;
 
     if (typeof window.apiFetch === "function") {
-      const json = await window.apiFetch(endpoint, { method: "GET" });
-      return json?.data || [];
+      try {
+        const json = await window.apiFetch(endpoint, { method: "GET" });
+        return json?.data || [];
+      } catch (err) {
+        // If unauthorized, try to auto-login via LIFF once, then retry
+        if (err && Number(err.status) === 401) {
+          await ensureStaffAuthToken();
+          const json = await window.apiFetch(endpoint, { method: "GET" });
+          return json?.data || [];
+        }
+        throw err;
+      }
     }
 
     // Fallback: direct fetch relative to backend public
@@ -405,10 +525,34 @@
     setupAddTaskModal();
 
     try {
+      // Ensure we have an auth token (LINE OA / LIFF)
+      const token = await ensureStaffAuthToken();
+      if (!token) {
+        renderAuthRequiredRow("กรุณาเข้าสู่ระบบก่อนใช้งาน");
+        return;
+      }
+
       allRows = await loadRows();
       applySearch();
     } catch (err) {
       console.error("โหลดข้อมูลงานไม่สำเร็จ", err);
+
+      if (err && Number(err.status) === 401) {
+        renderAuthRequiredRow("ไม่สามารถโหลดข้อมูลงานได้ (ต้องเข้าสู่ระบบ)");
+        return;
+      }
+
+      if (err && Number(err.status) === 403) {
+        tbodyEl.innerHTML = `
+          <tr>
+            <td colspan="10" style="text-align:center; color:#b91c1c; line-height:1.6;">
+              ไม่สามารถโหลดข้อมูลงานได้ (ไม่มีสิทธิ์เข้าถึงข้อมูลเจ้าหน้าที่)
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
       tbodyEl.innerHTML = `
         <tr>
           <td colspan="10" style="text-align:center; color:#b91c1c;">
