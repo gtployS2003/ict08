@@ -135,8 +135,26 @@ foreach ($data['events'] as $event) {
     // ===== Handler กลาง: external menu actions =====
     $handleExternal = function ($action) use ($line, $event, $requestTypeModel) {
 
-        if (!isset($event['replyToken']))
+        if (!isset($event['replyToken'])) {
             return;
+        }
+
+        // log เฉพาะกรณี reply ไป LINE ไม่สำเร็จ (กันอาการเงียบ)
+        $reply = function (array $messages) use ($line, $event): void {
+            $resp = $line->replyMessage($event['replyToken'], $messages);
+            if (!($resp['ok'] ?? false)) {
+                @file_put_contents(
+                    __DIR__ . '/debug_line_reply.txt',
+                    date('c') . "\t" . json_encode([
+                        'http' => $resp['http'] ?? null,
+                        'url' => $resp['url'] ?? null,
+                        'method' => $resp['method'] ?? null,
+                        'raw' => $resp['raw'] ?? null,
+                    ], JSON_UNESCAPED_UNICODE) . "\n",
+                    FILE_APPEND
+                );
+            }
+        };
 
         // =============================
         // ขอสนับสนุน (Dynamic จาก DB)
@@ -220,7 +238,7 @@ foreach ($data['events'] as $event) {
                 ],
             ];
 
-            $line->replyMessage($event['replyToken'], [$flex]);
+            $reply([$flex]);
             return;
         }
 
@@ -228,7 +246,7 @@ foreach ($data['events'] as $event) {
         // ติดตามสถานะ (เดิม)
         // =============================
         if ($action === 'ext:track') {
-            $line->replyMessage($event['replyToken'], [
+            $reply([
                 [
                     'type' => 'text',
                     'text' => "🔎 ติดตามสถานะ\nกรุณาพิมพ์ “เลขคำขอ” หรือ “รหัสติดตาม” ที่ได้รับค่ะ"
@@ -269,14 +287,29 @@ foreach ($data['events'] as $event) {
     // ===== 7) Message text =====
     if ($type === 'message' && isset($event['replyToken'])) {
         $msg = trim((string) ($event['message']['text'] ?? ''));
+        // normalize ช่องว่าง (กันผู้ใช้พิมพ์มีเว้นวรรคแปลก ๆ)
+        $msg = preg_replace('/\s+/u', ' ', $msg);
 
         $textToExternal = [
             'ขอสนับสนุน' => 'ext:support',
+            'ขอรับการสนับสนุน' => 'ext:support',
+            'การขอสนับสนุน' => 'ext:support',
             'ติดตามสถานะ' => 'ext:track',
         ];
 
-        if (($roleCode === 'INTERNAL' || $roleCode === 'ADMIN' || $roleCode === 'EXTERNAL') && isset($textToExternal[$msg])) {
+        // ให้พิมพ์เรียกเมนูได้ทุก role (รวมถึง GUEST)
+        if (isset($textToExternal[$msg])) {
             $handleExternal($textToExternal[$msg]);
+            continue;
+        }
+
+        // จับแบบไม่ต้องตรงเป๊ะ (เช่น "ขอสนับสนุนครับ" / "ขอรับการสนับสนุนหน่อย")
+        if (preg_match('/ขอ\s*(?:รับ\s*)?การ?\s*สนับสนุน/iu', $msg)) {
+            $handleExternal('ext:support');
+            continue;
+        }
+        if (preg_match('/ติดตาม\s*สถานะ/iu', $msg)) {
+            $handleExternal('ext:track');
             continue;
         }
 
