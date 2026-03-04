@@ -8,6 +8,9 @@ function line_debug_log(string $label, array $data = []): void
 {
     // บนบางเครื่อง sys_get_temp_dir() อาจชี้ไปที่โฟลเดอร์ที่ Apache เขียนไม่ได้
     $candidates = [
+        // โฟลเดอร์นี้อยู่ใน web root แต่ใช้สำหรับเก็บไฟล์ฝั่งเซิร์ฟเวอร์ (ควรมี .htaccess กันอ่าน)
+        __DIR__ . '/uploads/_logs',
+        __DIR__ . '/uploads',
         '/tmp',
         sys_get_temp_dir(),
         __DIR__,
