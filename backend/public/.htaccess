@@ -18,11 +18,6 @@
     # pass Authorization header to PHP
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # allow REST methods
-    <LimitExcept GET POST PUT DELETE PATCH OPTIONS>
-        Require all granted
-    </LimitExcept>
-
     # handle CORS preflight (ให้ PHP ส่ง CORS headers + 204)
     RewriteCond %{REQUEST_METHOD} OPTIONS
     RewriteRule ^ index.php [QSA,L]

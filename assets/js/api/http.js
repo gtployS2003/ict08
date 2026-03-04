@@ -7,6 +7,61 @@ const API_BASE = APP_CONFIG.API_BASE || "http://127.0.0.1/ict8/backend/public";
 const APP_ENV = APP_CONFIG.APP_ENV || "dev";
 const DEV_API_KEY = APP_CONFIG.DEV_API_KEY || "";
 
+// ✅ Global safeguard: tunnel PUT/PATCH/DELETE as POST + X-HTTP-Method-Override
+// Some servers/proxies block non-GET/POST methods and return 405 before PHP routing.
+// This keeps existing code (even legacy fetch calls) working.
+(function patchFetchMethodOverrideOnce() {
+  if (window.__ICT8_FETCH_METHOD_OVERRIDE_PATCHED__) return;
+  window.__ICT8_FETCH_METHOD_OVERRIDE_PATCHED__ = true;
+
+  const origFetch = window.fetch;
+  if (typeof origFetch !== "function") return;
+
+  window.fetch = function patchedFetch(input, init) {
+    try {
+      const methodFromInit = init && init.method ? String(init.method) : "";
+      const methodFromReq = (typeof Request !== "undefined" && input instanceof Request)
+        ? String(input.method || "")
+        : "";
+
+      const method = (methodFromInit || methodFromReq || "GET").toUpperCase();
+      if (!["PUT", "PATCH", "DELETE"].includes(method)) {
+        return origFetch.call(this, input, init);
+      }
+
+      // Build headers (support object, array, or Headers)
+      const baseHeaders = init && init.headers !== undefined
+        ? init.headers
+        : (typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined);
+      const headers = new Headers(baseHeaders || undefined);
+
+      // If someone already set override, do not modify again.
+      if (headers.has("X-HTTP-Method-Override")) {
+        return origFetch.call(this, input, init);
+      }
+
+      headers.set("X-HTTP-Method-Override", method);
+
+      /** @type {RequestInit} */
+      const nextInit = {
+        ...(init || {}),
+        method: "POST",
+        headers,
+      };
+
+      // If input is a Request, create a new Request to ensure method/headers apply.
+      if (typeof Request !== "undefined" && input instanceof Request) {
+        const nextReq = new Request(input, nextInit);
+        return origFetch.call(this, nextReq);
+      }
+
+      return origFetch.call(this, input, nextInit);
+    } catch {
+      return origFetch.call(this, input, init);
+    }
+  };
+})();
+
 function getAuthHeaders({ skipAuth = false } = {}) {
   const headers = { "Content-Type": "application/json" };
 

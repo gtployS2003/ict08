@@ -60,12 +60,20 @@ async function parseJson(res) {
 async function request(method, path, body, { headers = {}, skipAuth = false } = {}) {
   const url = joinUrl(API_BASE, path);
 
+  let realMethod = String(method || "GET").toUpperCase();
+  let overrideMethod = "";
+  if (["PUT", "PATCH", "DELETE"].includes(realMethod)) {
+    overrideMethod = realMethod;
+    realMethod = "POST";
+  }
+
   /** @type {RequestInit} */
   const opts = {
-    method,
+    method: realMethod,
     headers: {
       ...getAuthHeaders({ skipAuth }),
       ...headers,
+      ...(overrideMethod ? { "X-HTTP-Method-Override": overrideMethod } : {}),
     },
   };
 
