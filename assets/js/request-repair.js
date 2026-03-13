@@ -164,12 +164,41 @@ function initRepairRequestForm() {
 			await loadProvinces(provinceSelect);
 		} catch (err) {
 			console.error("[request-repair] submit error:", err);
-			const msg = err?.payload?.message || err?.message || "เกิดข้อผิดพลาดในการส่งแจ้งซ่อม";
+			const payload = err?.payload;
+			const msg = buildFriendlyErrorMessage(payload) || err?.message || "เกิดข้อผิดพลาดในการส่งคำขอ";
 			showMsg(msgEl, "❌ " + msg, true, true);
 		} finally {
 			submitBtn.disabled = false;
 		}
 	});
+
+function buildFriendlyErrorMessage(payload) {
+  if (!payload) return "";
+
+  const errors = payload?.errors;
+  const message = String(payload?.message || "").trim();
+
+  if (errors && typeof errors === "object") {
+    const label = {
+      subject: "หัวข้อคำขอ",
+      device_id: "อุปกรณ์",
+      province_id: "จังหวัด",
+      location: "สถานที่/พื้นที่ปฏิบัติงาน",
+    };
+
+    const lines = Object.entries(errors)
+      .map(([k, v]) => {
+        const key = label[k] || k;
+        const val = Array.isArray(v) ? v.join(", ") : String(v);
+        return `- ${key}: ${val}`;
+      });
+
+    return ["ตรวจสอบข้อมูลไม่ถูกต้อง", ...lines].join("\n");
+  }
+
+  if (message) return message;
+  return "";
+}
 
 	function clearDeviceFields() {
 		typeEl.value = "";

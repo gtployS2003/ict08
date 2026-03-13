@@ -18,48 +18,61 @@ function initConferenceRequestForm() {
     loadConferenceSubTypes(subtypeSelect);
     loadProvinces(provinceSelect);
 
-    form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
 
-    try {
-      submitBtn.disabled = true;
+            try {
+                submitBtn.disabled = true;
 
-      const fd = new FormData(form);
+                const fd = new FormData(form);
 
-      // ✅ 1) บังคับส่ง request_type=2 สำหรับ conference
-      fd.set("request_type", "2");
+                // ✅ 1) บังคับส่ง request_type=2 สำหรับ conference
+                fd.set("request_type", "2");
 
-      // ✅ 2) บังคับส่ง province_id (กันเคส HTML ไม่มี name="province_id")
-      const provinceId = String(provinceSelect?.value || "").trim();
-      if (!provinceId) {
-        alert("❌ กรุณาเลือกจังหวัด");
-        return;
-      }
-      fd.set("province_id", provinceId);
+                // ✅ 2) บังคับส่ง province_id (กันเคส HTML ไม่มี name="province_id")
+                const provinceId = String(provinceSelect?.value || "").trim();
+                if (!provinceId) {
+                    alert("❌ กรุณาเลือกจังหวัด");
+                    return;
+                }
+                fd.set("province_id", provinceId);
 
-      // ✅ 3) แปลง datetime-local -> YYYY-MM-DD HH:MM:SS แบบไม่ซ้ำ
-      const startLocal = String(form.querySelector("#start_date_time")?.value || "").trim();
-      const endLocal = String(form.querySelector("#end_date_time")?.value || "").trim();
+                // ✅ 3) แปลง datetime-local -> YYYY-MM-DD HH:MM:SS + ตรวจ start/end
+                const startLocal = String(form.querySelector("#start_date_time")?.value || "").trim();
+                const endLocal = String(form.querySelector("#end_date_time")?.value || "").trim();
+                const startMysql = toMysqlDatetime(startLocal);
+                const endMysql = toMysqlDatetime(endLocal);
 
-      fd.set("start_date_time", toMysqlDatetime(startLocal));
-      fd.set("end_date_time", toMysqlDatetime(endLocal));
+                fd.set("start_date_time", startMysql);
+                fd.set("end_date_time", endMysql);
 
-      const res = await window.apiFetch("/requests", {
-        method: "POST",
-        body: fd, // ✅ FormData
-      });
+                if (startMysql && endMysql) {
+                    const s = new Date(startMysql.replace(" ", "T"));
+                    const t = new Date(endMysql.replace(" ", "T"));
+                    if (!isNaN(s.getTime()) && !isNaN(t.getTime()) && t.getTime() <= s.getTime()) {
+                        alert("❌ วัน-เวลาสิ้นสุด ต้องมากกว่า วัน-เวลาเริ่มต้น");
+                        return;
+                    }
+                }
 
-      alert("✅ ส่งคำขอเรียบร้อยแล้ว");
-      console.log("[request-conference] created:", res);
-      form.reset();
-    } catch (err) {
-      console.error("[request-conference] submit error:", err);
-      const msg = err?.payload?.message || err?.message || "เกิดข้อผิดพลาดในการส่งคำขอ";
-      alert("❌ " + msg);
-    } finally {
-      submitBtn.disabled = false;
-    }
-  });
+                const res = await window.apiFetch("/requests", {
+                    method: "POST",
+                    body: fd, // ✅ FormData
+                });
+
+                alert("✅ ส่งคำขอเรียบร้อยแล้ว");
+                console.log("[request-conference] created:", res);
+                form.reset();
+            } catch (err) {
+                console.error("[request-conference] submit error:", err);
+
+                const payload = err?.payload;
+                const msg = buildFriendlyErrorMessage(payload) || err?.message || "เกิดข้อผิดพลาดในการส่งคำขอ";
+                alert("❌ " + msg);
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
 }
 
 
@@ -157,7 +170,50 @@ function normalizeList(res) {
 }
 
 function toMysqlDatetime(dtLocal) {
-    if (!dtLocal) return "";
-    return dtLocal.replace("T", " ") + ":00";
+        const s0 = String(dtLocal || "").trim();
+        if (!s0) return "";
+
+        // already mysql
+        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s0)) return s0;
+
+        const s = s0.replace("T", " ");
+        // no seconds
+        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(s)) return s + ":00";
+        // has seconds
+        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) return s;
+        // fallback
+        return s;
+}
+
+function buildFriendlyErrorMessage(payload) {
+    if (!payload) return "";
+
+    // If backend returns { error:true, message:'Validation failed', errors:{...} }
+    const errors = payload?.errors;
+    const message = String(payload?.message || "").trim();
+
+    if (errors && typeof errors === "object") {
+        const label = {
+            subject: "หัวข้อคำขอ (เรื่อง)",
+            request_sub_type: "ระบบประชุมที่ต้องการ",
+            start_date_time: "วัน-เวลาเริ่มต้น",
+            end_date_time: "วัน-เวลาสิ้นสุด",
+            province_id: "จังหวัด",
+        };
+
+        const lines = Object.entries(errors)
+            .map(([k, v]) => {
+                const key = label[k] || k;
+                const val = Array.isArray(v) ? v.join(", ") : String(v);
+                return `- ${key}: ${val}`;
+            });
+
+        // Prefer Thai headline
+        return ["ตรวจสอบข้อมูลไม่ถูกต้อง", ...lines].join("\n");
+    }
+
+    // fallback to backend message
+    if (message) return message;
+    return "";
 }
 

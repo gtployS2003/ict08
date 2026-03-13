@@ -54,11 +54,22 @@ function initOtherRequestForm() {
       }
       fd.set("province_id", provinceId);
 
-      // ✅ แปลง datetime-local -> YYYY-MM-DD HH:MM:SS
+      // ✅ แปลง datetime-local -> YYYY-MM-DD HH:MM:SS + ตรวจ start/end
       const startLocal = String(form.querySelector("#start_date_time")?.value || "").trim();
       const endLocal = String(form.querySelector("#end_date_time")?.value || "").trim();
-      fd.set("start_date_time", toMysqlDatetime(startLocal));
-      fd.set("end_date_time", toMysqlDatetime(endLocal));
+      const startMysql = toMysqlDatetime(startLocal);
+      const endMysql = toMysqlDatetime(endLocal);
+      fd.set("start_date_time", startMysql);
+      fd.set("end_date_time", endMysql);
+
+      if (startMysql && endMysql) {
+        const s = new Date(startMysql.replace(" ", "T"));
+        const t = new Date(endMysql.replace(" ", "T"));
+        if (!isNaN(s.getTime()) && !isNaN(t.getTime()) && t.getTime() <= s.getTime()) {
+          showMsg(msgEl, "❌ วัน-เวลาสิ้นสุด ต้องมากกว่า วัน-เวลาเริ่มต้น", true, true);
+          return;
+        }
+      }
 
       // ✅ รองรับ name="attachments[]" อยู่แล้ว (FormData จะพาไปเอง)
       // แต่ถ้าอยากชัวร์ว่าเป็น attachments[]:
@@ -83,7 +94,8 @@ function initOtherRequestForm() {
       console.log("[request-other] created:", res);
     } catch (err) {
       console.error("[request-other] submit error:", err);
-      const msg = err?.payload?.message || err?.message || "เกิดข้อผิดพลาดในการส่งคำขอ";
+      const payload = err?.payload;
+      const msg = buildFriendlyErrorMessage(payload) || err?.message || "เกิดข้อผิดพลาดในการส่งคำขอ";
       showMsg(msgEl, "❌ " + msg, true, true);
     } finally {
       submitBtn.disabled = false;
@@ -158,8 +170,43 @@ function normalizeList(res) {
 }
 
 function toMysqlDatetime(dtLocal) {
-  if (!dtLocal) return "";
-  return dtLocal.replace("T", " ") + ":00";
+  const s0 = String(dtLocal || "").trim();
+  if (!s0) return "";
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s0)) return s0;
+  const s = s0.replace("T", " ");
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(s)) return s + ":00";
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) return s;
+  return s;
+}
+
+function buildFriendlyErrorMessage(payload) {
+  if (!payload) return "";
+
+  const errors = payload?.errors;
+  const message = String(payload?.message || "").trim();
+
+  if (errors && typeof errors === "object") {
+    const label = {
+      subject: "หัวข้อคำขอ",
+      request_sub_type: "ประเภทบริการ",
+      start_date_time: "วัน-เวลาเริ่มต้น",
+      end_date_time: "วัน-เวลาสิ้นสุด",
+      province_id: "จังหวัด",
+      location: "สถานที่/พื้นที่ปฏิบัติงาน",
+    };
+
+    const lines = Object.entries(errors)
+      .map(([k, v]) => {
+        const key = label[k] || k;
+        const val = Array.isArray(v) ? v.join(", ") : String(v);
+        return `- ${key}: ${val}`;
+      });
+
+    return ["ตรวจสอบข้อมูลไม่ถูกต้อง", ...lines].join("\n");
+  }
+
+  if (message) return message;
+  return "";
 }
 
 function showMsg(el, text, isError, show) {

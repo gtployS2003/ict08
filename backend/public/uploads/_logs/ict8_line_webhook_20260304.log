@@ -1,1 +1,12 @@
 2026-03-04T06:46:06+01:00	invalid_signature	{"len":0,"sig":"","cmp":"mUScI5hHH7bVBlyq33Zf+34hn2JuY6qFkckfoN3f8P4=","ua":"curl\/8.7.1"}
+2026-03-04T08:58:30+01:00	event	{"type":"message","role":"ADMIN","hasReplyToken":true,"msgType":"text","text":"ติดต่อเจ้าหน้าที่"}
+2026-03-04T08:59:34+01:00	event	{"type":"message","role":"ADMIN","hasReplyToken":true,"msgType":"text","text":"ขอสนับสนุน"}
+2026-03-04T09:07:28+01:00	event	{"type":"message","role":"ADMIN","hasReplyToken":true,"msgType":"text","text":"ติดตามสถานะ"}
+2026-03-04T09:10:47+01:00	event	{"type":"message","role":"ADMIN","hasReplyToken":true,"msgType":"text","text":"หน้าหลัก"}
+2026-03-04T10:18:04+01:00	event	{"type":"message","role":"ADMIN","hasReplyToken":true,"msgType":"text","text":"ติดตามสถานะ"}
+2026-03-04T11:59:43+01:00	event	{"type":"follow","role":"GUEST","hasReplyToken":true,"msgType":null}
+2026-03-04T12:03:37+01:00	event	{"type":"postback","role":"USER","hasReplyToken":true,"msgType":null,"postback":"ext:support"}
+2026-03-04T12:03:46+01:00	event	{"type":"postback","role":"USER","hasReplyToken":true,"msgType":null,"postback":"ext:support"}
+2026-03-04T12:05:07+01:00	event	{"type":"postback","role":"USER","hasReplyToken":true,"msgType":null,"postback":"ext:support"}
+2026-03-04T12:09:15+01:00	event	{"type":"postback","role":"USER","approved":true,"hasReplyToken":true,"msgType":null,"postback":"ext:support"}
+2026-03-04T12:09:44+01:00	event	{"type":"postback","role":"USER","approved":true,"hasReplyToken":true,"msgType":null,"postback":"ext:support"}

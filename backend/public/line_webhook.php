@@ -107,6 +107,7 @@ if (!isset($data['events'])) {
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../models/UserModel.php';
 require_once __DIR__ . '/../models/UserRoleModel.php';
+require_once __DIR__ . '/../models/PersonModel.php';
 require_once __DIR__ . '/../models/RequestTypeModel.php';
 require_once __DIR__ . '/../services/LineService.php';
 
@@ -121,12 +122,14 @@ $line = new LineService($accessToken);
 $pdo = null;
 $userModel = null;
 $userRoleModel = null;
+$personModel = null;
 $requestTypeModel = null;
 
 try {
     $pdo = db();
     $userModel = new UserModel($pdo);
     $userRoleModel = new UserRoleModel($pdo);
+    $personModel = new PersonModel($pdo);
     $requestTypeModel = new RequestTypeModel($pdo);
 } catch (Throwable $e) {
     line_debug_log('db_connect_failed', [
@@ -144,27 +147,53 @@ foreach ($data['events'] as $event) {
     if (!$userId)
         continue;
 
-    // ----- role -----
+    // ----- user + role + approval -----
+    // แนวคิดเดียวกับ AuthController:
+    // - ถ้า person.is_active != 1 => ถือว่ายังไม่อนุมัติ => ต้องอยู่เมนู before_login
+    // - ถ้าอนุมัติแล้วค่อย map role -> internal/external
     $roleCode = 'GUEST';
-    if ($userModel && $userRoleModel) {
+    $isApproved = false;
+
+    $user = null;
+    if ($userModel && $userRoleModel && $personModel) {
         $user = $userModel->findByLineUserId($userId);
 
-        if ($user && !empty($user['user_role_id'])) {
+        if ($user) {
+            // approved?
             try {
-                $roleRow = $userRoleModel->getById((int) $user['user_role_id']);
-                $roleCode = strtoupper((string) ($roleRow['code'] ?? 'EXTERNAL'));
+                $person = $personModel->findByUserId((int)($user['user_id'] ?? 0));
+                $isApproved = ((int)($person['is_active'] ?? 0) === 1);
             } catch (Throwable $e) {
-                $roleCode = 'EXTERNAL';
+                $isApproved = false;
+            }
+
+            // role
+            if (!empty($user['user_role_id'])) {
+                try {
+                    $roleRow = $userRoleModel->getById((int) $user['user_role_id']);
+                    $roleCode = strtoupper((string) ($roleRow['code'] ?? 'EXTERNAL'));
+                } catch (Throwable $e) {
+                    $roleCode = 'EXTERNAL';
+                }
             }
         }
     }
 
     // ----- richmenu switch -----
+    // NOTE:
+    // - ใน DB role code ปัจจุบันใช้ชุดเช่น ADMIN/STAFF/USER
+    // - แต่โค้ดเดิมเช็ค INTERNAL/EXTERNAL ทำให้ role=USER ไม่เข้าเงื่อนไข => ตกไป rmBefore
+    //   ผลคือกด postback (เช่น ext:support) แล้ว rich menu เด้งกลับ before_login
     $target = $rmBefore;
-    if ($roleCode === 'INTERNAL' || $roleCode === 'ADMIN') {
-        $target = $rmInternal;
-    } elseif ($roleCode === 'EXTERNAL') {
-        $target = $rmExternal;
+    $internalRoleCodes = ['INTERNAL', 'ADMIN', 'STAFF'];
+    $externalRoleCodes = ['EXTERNAL', 'USER'];
+
+    if ($isApproved) {
+        if (in_array($roleCode, $internalRoleCodes, true)) {
+            $target = $rmInternal;
+        } elseif (in_array($roleCode, $externalRoleCodes, true)) {
+            $target = $rmExternal;
+        }
     }
     if ($target !== '') {
         $line->linkRichMenuToUser($userId, $target);
@@ -174,6 +203,7 @@ foreach ($data['events'] as $event) {
     $eventLog = [
         'type' => $type,
         'role' => $roleCode,
+        'approved' => $isApproved,
         'hasReplyToken' => isset($event['replyToken']),
         'msgType' => $event['message']['type'] ?? null,
     ];
@@ -344,12 +374,88 @@ foreach ($data['events'] as $event) {
         // ติดตามสถานะ (เดิม)
         // =============================
         if ($action === 'ext:track') {
-            $reply([
+            $ICT8_PURPLE = '#532274';
+            $TEXT_MUTED = '#6B7280';
+
+            // สร้าง public base (รองรับ reverse proxy/ngrok)
+            $basePath = getenv('BASE_PATH') ?: '/ict8';
+            $basePath = '/' . ltrim((string) $basePath, '/');
+            $basePath = rtrim($basePath, '/');
+
+            $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? ($_SERVER['HTTP_HOST'] ?? '');
+            $proto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
+            $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || strtolower((string) $proto) === 'https';
+            $scheme = $https ? 'https' : 'http';
+            $publicBase = $host !== '' ? ($scheme . '://' . $host . $basePath) : $basePath;
+
+            $links = [
                 [
-                    'type' => 'text',
-                    'text' => "🔎 ติดตามสถานะ\nกรุณาพิมพ์ “เลขคำขอ” หรือ “รหัสติดตาม” ที่ได้รับค่ะ"
-                ]
-            ]);
+                    'label' => 'ติดตามสถานะคำขอ',
+                    'uri' => $publicBase . '/tracking_status/tracking_request.html',
+                ],
+                [
+                    'label' => 'ติดตามสถานะงาน',
+                    'uri' => $publicBase . '/tracking_status/tracking_event.html',
+                ],
+            ];
+
+            $buttons = [];
+            foreach ($links as $lnk) {
+                $buttons[] = [
+                    'type' => 'button',
+                    'style' => 'secondary',
+                    'height' => 'md',
+                    'margin' => empty($buttons) ? 'lg' : 'md',
+                    'action' => [
+                        'type' => 'uri',
+                        'label' => mb_strimwidth((string) $lnk['label'], 0, 20, '...'),
+                        'uri' => (string) $lnk['uri'],
+                    ]
+                ];
+            }
+
+            $flex = [
+                'type' => 'flex',
+                'altText' => 'เมนูติดตามสถานะ',
+                'contents' => [
+                    'type' => 'bubble',
+                    'size' => 'mega',
+                    'body' => [
+                        'type' => 'box',
+                        'layout' => 'vertical',
+                        'spacing' => 'md',
+                        'paddingAll' => '20px',
+                        'backgroundColor' => '#FFFFFF',
+                        'contents' => array_merge(
+                            [
+                                [
+                                    'type' => 'text',
+                                    'text' => 'ติดตามสถานะ',
+                                    'weight' => 'bold',
+                                    'size' => 'xl',
+                                    'color' => $ICT8_PURPLE,
+                                ],
+                                [
+                                    'type' => 'text',
+                                    'text' => 'กรุณาเลือกเมนูที่ต้องการติดตาม',
+                                    'wrap' => true,
+                                    'margin' => 'sm',
+                                    'color' => $TEXT_MUTED,
+                                    'size' => 'sm',
+                                ],
+                                [
+                                    'type' => 'separator',
+                                    'margin' => 'lg',
+                                    'color' => '#E5E7EB',
+                                ],
+                            ],
+                            $buttons
+                        ),
+                    ],
+                ],
+            ];
+
+            $reply([$flex]);
             return;
         }
     };
@@ -387,6 +493,87 @@ foreach ($data['events'] as $event) {
         $msg = trim((string) ($event['message']['text'] ?? ''));
         // normalize ช่องว่าง (กันผู้ใช้พิมพ์มีเว้นวรรคแปลก ๆ)
         $msg = preg_replace('/\s+/u', ' ', $msg);
+
+        // =============================
+        // INTERNAL shortcut: "หน้าหลัก" -> ปุ่มไปหน้า index.html
+        // =============================
+        if (preg_match('/^หน้าหลัก$/u', $msg)) {
+            if ($roleCode === 'INTERNAL' || $roleCode === 'ADMIN') {
+                $ICT8_PURPLE = '#532274';
+                $TEXT_MUTED = '#6B7280';
+
+                // สร้าง public base (รองรับ reverse proxy/ngrok)
+                $basePath = getenv('BASE_PATH') ?: '/ict8';
+                $basePath = '/' . ltrim((string) $basePath, '/');
+                $basePath = rtrim($basePath, '/');
+
+                $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? ($_SERVER['HTTP_HOST'] ?? '');
+                $proto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
+                $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || strtolower((string) $proto) === 'https';
+                $scheme = $https ? 'https' : 'http';
+                $publicBase = $host !== '' ? ($scheme . '://' . $host . $basePath) : $basePath;
+
+                $flex = [
+                    'type' => 'flex',
+                    'altText' => 'เข้าสู่หน้าหลัก',
+                    'contents' => [
+                        'type' => 'bubble',
+                        'size' => 'mega',
+                        'body' => [
+                            'type' => 'box',
+                            'layout' => 'vertical',
+                            'spacing' => 'md',
+                            'paddingAll' => '20px',
+                            'backgroundColor' => '#FFFFFF',
+                            'contents' => [
+                                [
+                                    'type' => 'text',
+                                    'text' => 'หน้าหลัก',
+                                    'weight' => 'bold',
+                                    'size' => 'xl',
+                                    'color' => $ICT8_PURPLE,
+                                ],
+                                [
+                                    'type' => 'text',
+                                    'text' => 'กดปุ่มด้านล่างเพื่อเข้าสู่หน้าหลัก',
+                                    'wrap' => true,
+                                    'margin' => 'sm',
+                                    'color' => $TEXT_MUTED,
+                                    'size' => 'sm',
+                                ],
+                                [
+                                    'type' => 'separator',
+                                    'margin' => 'lg',
+                                    'color' => '#E5E7EB',
+                                ],
+                                [
+                                    'type' => 'button',
+                                    'style' => 'secondary',
+                                    'height' => 'md',
+                                    'margin' => 'lg',
+                                    'action' => [
+                                        'type' => 'uri',
+                                        'label' => 'เข้าสู่หน้าหลัก',
+                                        'uri' => $publicBase . '/index.html',
+                                    ]
+                                ],
+                            ],
+                        ],
+                    ],
+                ];
+
+                $line->replyMessage($event['replyToken'], [$flex]);
+            } else {
+                // เงียบหรือแจ้งเตือนก็ได้ — เลือกแจ้งแบบสุภาพ
+                $line->replyMessage($event['replyToken'], [
+                    [
+                        'type' => 'text',
+                        'text' => 'คำสั่งนี้สำหรับเจ้าหน้าที่ภายในเท่านั้นค่ะ',
+                    ]
+                ]);
+            }
+            continue;
+        }
 
         $textToExternal = [
             'ขอสนับสนุน' => 'ext:support',

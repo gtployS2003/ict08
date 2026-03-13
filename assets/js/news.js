@@ -1,6 +1,29 @@
+// Guard against accidental double-includes
+(function initIct8NewsPage() {
+  if (window.__ICT8_NEWS_JS_LOADED__) return;
+  window.__ICT8_NEWS_JS_LOADED__ = true;
+
 const PAGE_SIZE = 9;
 
-const API_BASE = (window.__APP_CONFIG__ && window.__APP_CONFIG__.API_BASE) || "/ict8/backend/public";
+function normalizeApiBase(raw) {
+  const fallback = "/ict8/backend/public";
+  let base = (raw == null ? "" : String(raw)).trim();
+  if (!base) base = fallback;
+  base = base.replace(/\/+$/, "");
+  try {
+    if (typeof location !== "undefined" && location.protocol === "https:" && base.startsWith("http://")) {
+      base = "https://" + base.slice("http://".length);
+    }
+  } catch {}
+  return base;
+}
+
+const API_BASE = normalizeApiBase(
+  window.API_BASE_URL ||
+  window.__API_BASE__ ||
+  (window.__APP_CONFIG__ && window.__APP_CONFIG__.API_BASE) ||
+  "/ict8/backend/public"
+);
 
 let allNews = [];
 let filteredNews = [];
@@ -49,11 +72,17 @@ function normalizeNewsRow(row) {
 
 async function initNewsPage() {
   try {
-    const res = await fetch(`${API_BASE}/news?limit=500`, {
-      headers: { 'Accept': 'application/json' },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
+    let json;
+    if (typeof window.apiFetch === 'function') {
+      // Use shared helper (handles base URL normalization + tunnel-safe method override)
+      json = await window.apiFetch('/news?limit=500', { skipAuth: true });
+    } else {
+      const res = await fetch(`${API_BASE}/news?limit=500`, {
+        headers: { 'Accept': 'application/json' },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      json = await res.json();
+    }
     const rows = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
 
     allNews = rows.map(normalizeNewsRow);
@@ -253,4 +282,6 @@ function applySearch() {
   renderNewsList(1);
   renderPagination();
 }
+
+})();
 

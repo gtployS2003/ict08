@@ -72,14 +72,45 @@
     ].join("");
   }
  
+  function normalizeApiBase(raw) {
+    const fallback = "/ict8/backend/public";
+    let base = (raw == null ? "" : String(raw)).trim();
+    if (!base) base = fallback;
+    base = base.replace(/\/+$/, "");
+
+    // If the page is https but API base is http, upgrade to https (prevents mixed-content blocking)
+    try {
+      if (typeof location !== "undefined" && location.protocol === "https:" && base.startsWith("http://")) {
+        base = "https://" + base.slice("http://".length);
+      }
+    } catch {}
+
+    return base;
+  }
+
+  function normalizeApiPath(path) {
+    const p = String(path ?? "");
+    if (!p) return "/";
+    return p.startsWith("/") ? p : "/" + p;
+  }
+
   // base url: ใช้จาก config.js.php ก่อน ถ้าไม่มีค่อย fallback
-  const API_BASE =
+  const API_BASE = normalizeApiBase(
     window.API_BASE_URL ||
     window.__API_BASE__ ||
-    "/ict8/backend/public"; // fallback (ปรับได้)
+    (window.__APP_CONFIG__ && window.__APP_CONFIG__.API_BASE) ||
+    "/ict8/backend/public" // fallback
+  );
 
   async function apiFetch(path, { method = "GET", body, headers = {} } = {}) {
-    const url = `${API_BASE}${path}`;
+    const p = normalizeApiPath(path);
+
+    // Prefer shared helper from assets/js/api/http.js
+    if (typeof window.apiFetch === "function") {
+      return window.apiFetch(p, { method, body, headers });
+    }
+
+    const url = `${API_BASE}${p}`;
     let realMethod = String(method || "GET").toUpperCase();
     let overrideMethod = "";
 
@@ -232,6 +263,7 @@
     hide($("#btn-add-history-image"));
     hide($("#btn-add-diractor"));
     hide($("#btn-add-mission"));
+    hide($("#btn-add-mission-image"));
     hide($("#btn-add-structure"));
     hide($("#btn-add-banner"));
 
@@ -1284,15 +1316,15 @@
         return `
           <tr class="mission-row" data-id="${escapeHtml(id)}" draggable="true">
             <td style="text-align:center;">
-              <span class="drag-handle" title="ลากเพื่อเรียงลำดับ" aria-label="ลากเพื่อเรียงลำดับ">
+              <span class="drag-handle" draggable="true" title="ลากเพื่อเรียงลำดับ" aria-label="ลากเพื่อเรียงลำดับ">
                 <i class="fa-solid fa-grip-vertical"></i>
               </span>
             </td>
             <td>${escapeHtml(id)}</td>
             <td>
-              <img src="${escapeHtml(img)}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:10px;border:1px solid #eee;background:#fafafa" onerror="this.onerror=null;this.src='${escapeHtml(MS_PLACEHOLDER)}';" />
+              <img src="${escapeHtml(img)}" alt="" draggable="false" style="width:56px;height:56px;object-fit:cover;border-radius:10px;border:1px solid #eee;background:#fafafa" onerror="this.onerror=null;this.src='${escapeHtml(MS_PLACEHOLDER)}';" />
             </td>
-            <td>${escapeHtml(sort === null ? "" : String(sort))}</td>
+            <td data-col="sort_order">${escapeHtml(sort === null ? "" : String(sort))}</td>
             <td>${escapeHtml(title)}</td>
             <td class="muted">${escapeHtml(descShort)}</td>
             <td>
@@ -1361,6 +1393,45 @@
     return Array.from(msEls.tbody.querySelectorAll("tr[data-id]")).map((tr) => Number(tr.getAttribute("data-id")));
   }
 
+  function msRenumberSortOrderCells() {
+    // UI-only: show the new order immediately after drag/drop.
+    // Server-side order is persisted via SiteMissionAPI.reorder().
+    if (!msEls.tbody) return;
+    const rows = Array.from(msEls.tbody.querySelectorAll("tr[data-id]"));
+    const offset = Math.max(0, (Number(msState.page || 1) - 1) * Number(msState.limit || 50));
+    rows.forEach((tr, idx) => {
+      const cell = tr.querySelector("td[data-col='sort_order']");
+      if (cell) cell.textContent = String(offset + idx + 1);
+    });
+  }
+
+  async function msFetchAllMissionIds() {
+    // Fetch ALL mission ids in current server order using limit=200 and paging.
+    if (!window.SiteMissionAPI?.list) throw new Error("SiteMissionAPI.list not found");
+
+    const limit = 200; // backend clamps to 200
+    let page = 1;
+    const all = [];
+
+    while (true) {
+      const res = await window.SiteMissionAPI.list({ q: "", page, limit });
+      const data = res?.data || {};
+      const items = Array.isArray(data.items) ? data.items : [];
+      const pag = data.pagination || {};
+      const totalPages = Math.max(1, Number(pag.total_pages || 1));
+
+      for (const it of items) {
+        const id = Number(it?.site_mission_id);
+        if (Number.isFinite(id) && id > 0) all.push(id);
+      }
+
+      if (page >= totalPages) break;
+      page += 1;
+    }
+
+    return all;
+  }
+
   function msBindDragAndDropOnce() {
     if (!msEls.tbody || msEls.tbody.__MISSION_DND_BOUND__) return;
     msEls.tbody.__MISSION_DND_BOUND__ = true;
@@ -1370,8 +1441,10 @@
     msEls.tbody.addEventListener("dragstart", (e) => {
       const tr = e.target?.closest?.("tr[data-id]");
       if (!tr) return;
-      // only start drag from handle
-      if (!e.target?.closest?.(".drag-handle")) {
+      // Prevent dragging when the user interacts with controls (buttons/inputs) inside the row.
+      // (Some browsers set event.target to the draggable row itself; a strict handle-only check can block all drags.)
+      const isInteractive = !!e.target?.closest?.("button, a, input, textarea, select, label");
+      if (isInteractive) {
         e.preventDefault();
         return;
       }
@@ -1380,6 +1453,10 @@
       try {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", tr.getAttribute("data-id") || "");
+        // Prefer showing the whole row as the drag image (better UX than dragging only the handle/icon).
+        if (typeof e.dataTransfer.setDragImage === "function") {
+          e.dataTransfer.setDragImage(tr, 16, 16);
+        }
       } catch (_) {
         // ignore
       }
@@ -1410,10 +1487,10 @@
       if (!dragEl) return;
       e.preventDefault();
 
-      // Reorder is only safe when all items are visible.
-      if (msState.page !== 1 || msState.total > msState.limit) {
-        msSetSectionStatus("การเรียงลำดับต้องอยู่หน้า 1 และตั้ง limit ให้แสดงทั้งหมด", { isError: true });
-        // revert by reloading
+      // Reordering while searching is ambiguous (partial list). Require empty search.
+      const qNow = String(msEls.search?.value || "").trim();
+      if (qNow) {
+        msSetSectionStatus("กรุณาล้างคำค้นหา (search) ก่อน เพื่อเรียงลำดับทั้งหมด", { isError: true });
         await loadMissions();
         return;
       }
@@ -1422,9 +1499,43 @@
       const same = ids.length === msState.lastOrder.length && ids.every((x, i) => x === msState.lastOrder[i]);
       if (same) return;
 
+      // Ensure the set of IDs on this page didn't change mid-drag.
+      const a = ids.slice().sort((x, y) => x - y);
+      const b = (msState.lastOrder || []).slice().sort((x, y) => x - y);
+      const sameSet = a.length === b.length && a.every((x, i) => x === b[i]);
+      if (!sameSet) {
+        msSetSectionStatus("ข้อมูลเปลี่ยนระหว่างลาก (โปรดลองใหม่)", { isError: true });
+        await loadMissions();
+        return;
+      }
+
       try {
         msSetSectionStatus("กำลังบันทึกลำดับ...");
-        await window.SiteMissionAPI.reorder(ids);
+        msRenumberSortOrderCells();
+
+        // If we're currently showing the whole list, reorder directly.
+        const totalNow = Number(msState.total || 0);
+        const isFullList = msState.page === 1 && totalNow > 0 && totalNow <= Number(msState.limit || 0) && ids.length === totalNow;
+
+        if (isFullList) {
+          await window.SiteMissionAPI.reorder(ids);
+        } else {
+          // Otherwise, fetch the full ordered list and replace this page slice.
+          const allIds = await msFetchAllMissionIds();
+          const start = Math.max(0, (Number(msState.page || 1) - 1) * Number(msState.limit || 50));
+          const expected = allIds.slice(start, start + (msState.lastOrder?.length || 0));
+
+          const expectedSorted = expected.slice().sort((x, y) => x - y);
+          const lastSorted = (msState.lastOrder || []).slice().sort((x, y) => x - y);
+          const sliceMatches = expectedSorted.length === lastSorted.length && expectedSorted.every((x, i) => x === lastSorted[i]);
+          if (!sliceMatches) {
+            throw new Error("ไม่สามารถยืนยันลำดับเดิมได้ (โปรดรีเฟรชแล้วลองใหม่)");
+          }
+
+          allIds.splice(start, msState.lastOrder.length, ...ids);
+          await window.SiteMissionAPI.reorder(allIds);
+        }
+
         msSetSectionStatus("บันทึกลำดับสำเร็จ");
         await loadMissions();
       } catch (err) {

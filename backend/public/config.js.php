@@ -7,12 +7,35 @@ env_load(__DIR__ . '/../.env');
 ob_start(); // ✅ กัน header already sent
 
 header('Content-Type: application/javascript; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
 
 $appEnv   = env('APP_ENV', 'dev');
 $devKey   = env('DEV_API_KEY', '');
-$apiBase  = env('API_BASE', 'http://127.0.0.1/ict8/backend/public');
 $basePath = env('BASE_PATH', '/ict8');
 $liffId   = env('LIFF_ID', '');
+
+// API_BASE:
+// - Prefer .env, but allow empty (then fall back to BASE_PATH/backend/public)
+// - Avoid hard-coding http:// in defaults to prevent mixed-content on HTTPS pages
+$apiBase  = trim((string) env('API_BASE', ''));
+if ($apiBase === '') {
+  $bp = rtrim((string) $basePath, '/');
+  $apiBase = ($bp ? $bp : '') . '/backend/public';
+}
+
+// If the current request is HTTPS but API_BASE is HTTP, upgrade to HTTPS.
+$isHttps = false;
+try {
+  $proto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
+  $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $proto === 'https';
+} catch (Throwable $e) {
+  $isHttps = false;
+}
+if ($isHttps && strpos($apiBase, 'http://') === 0) {
+  $apiBase = 'https://' . substr($apiBase, strlen('http://'));
+}
 
 $config = [
   "APP_ENV" => $appEnv,
