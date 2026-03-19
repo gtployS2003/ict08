@@ -11,8 +11,8 @@
     RewriteCond %{REQUEST_URI} ^/backend/public/line_webhook\.php$
     RewriteRule ^ - [L]
 
-    # 🚨 DO NOT REWRITE test/debug files
-    RewriteCond %{REQUEST_URI} ^/backend/public/(test_post|line_webhook_debug|line_webhook_detailed|line_webhook_test|line_webhook_simple)\.php$
+    # 🚨 DO NOT REWRITE special endpoints
+    RewriteCond %{REQUEST_URI} ^/backend/public/(api-|test_post|line_webhook_debug|line_webhook_detailed|line_webhook_test|line_webhook_simple)
     RewriteRule ^ - [L]
 
     # pass Authorization header to PHP

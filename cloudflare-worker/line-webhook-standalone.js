@@ -8,6 +8,7 @@
  * - PHP backend has connectivity issues (origin_http=522 or 500 errors)
  * - Worker responds IMMEDIATELY from edge (no PHP latency)
  * - LINE gets ACK in <100ms ✅
+ * - Fetches dynamic button data from PHP API
  *
  * ===== SETUP IN CLOUDFLARE DASHBOARD =====
  * 
@@ -18,9 +19,8 @@
  *    - LINE_CHANNEL_ACCESS_TOKEN = [from LINE Developers Console]
  *    
  *    VARIABLES (regular):
- *    - SUPPORT_URL_CONFERENCE = https://ict8.moi.go.th/ict8/gcms/request-conference.html
- *    - SUPPORT_URL_REPAIR = https://ict8.moi.go.th/ict8/gcms/request-repair.html
- *    - SUPPORT_URL_OTHER = https://ict8.moi.go.th/ict8/gcms/request-other.html
+ *    - API_BASE = https://ict8.moi.go.th/ict8/backend/public
+ *      (Worker will call {API_BASE}/api-support-types.php to fetch buttons)
  *
  * 2) Deploy this worker as the webhook handler
  * 
@@ -29,7 +29,7 @@
  *    Click "Verify" → should show ✅ Success
  *
  * 4) Test by sending "ขอสนับสนุน" in LINE
- *    → Should see 3 buttons immediately ✅
+ *    → Should fetch buttons from DB and show 3 buttons immediately ✅
  */
 
 const textEncoder = new TextEncoder();
@@ -72,16 +72,23 @@ async function computeLineSignatureBase64(channelSecret, bodyArrayBuffer) {
   return base64FromArrayBuffer(sig);
 }
 
-function buildSupportFlex(env) {
-  const urlConference = env.SUPPORT_URL_CONFERENCE || 'https://example.com';
-  const urlRepair = env.SUPPORT_URL_REPAIR || 'https://example.com';
-  const urlOther = env.SUPPORT_URL_OTHER || 'https://example.com';
-
-  const buttons = [
-    { label: 'ขอสนับสนุนห้องประชุม', uri: urlConference },
-    { label: 'แจ้งเสีย/ซ่อมอุปกรณ์', uri: urlRepair },
-    { label: 'ขอใช้บริการอื่น ๆ', uri: urlOther },
-  ];
+function buildSupportFlex(items) {
+  // items = array of { id, label, url }
+  
+  const buttons = (items || [])
+    .filter(item => item?.label && item?.url)
+    .slice(0, 3)  // limit to 3 buttons
+    .map((item, idx) => ({
+      type: 'button',
+      style: 'secondary',
+      height: 'md',
+      margin: idx === 0 ? 'lg' : 'md',
+      action: {
+        type: 'uri',
+        label: item.label.length > 20 ? item.label.slice(0, 19) + '…' : item.label,
+        uri: item.url,
+      },
+    }));
 
   return {
     type: 'flex',
@@ -108,17 +115,7 @@ function buildSupportFlex(env) {
             margin: 'lg',
             color: '#E5E7EB',
           },
-          ...buttons.map((b, idx) => ({
-            type: 'button',
-            style: 'secondary',
-            height: 'md',
-            margin: idx === 0 ? 'lg' : 'md',
-            action: {
-              type: 'uri',
-              label: b.label.length > 20 ? b.label.slice(0, 19) + '…' : b.label,
-              uri: b.uri,
-            },
-          })),
+          ...buttons,
         ],
       },
     },
@@ -136,6 +133,36 @@ async function replyToLine(accessToken, replyToken, messages) {
   });
   const text = await resp.text();
   return { ok: resp.ok, status: resp.status, text };
+}
+
+async function getSupportTypes(apiBase) {
+  /**
+   * Fetch support request types from PHP API
+   * Returns: { ok, items: [{ id, label, url }] }
+   */
+  try {
+    const url = `${apiBase}/api-support-types.php`;
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!resp.ok) {
+      console.warn('getSupportTypes failed', { status: resp.status });
+      return { ok: false, items: [] };
+    }
+
+    const data = await resp.json();
+    return {
+      ok: data?.ok === true,
+      items: data?.items || [],
+    };
+  } catch (e) {
+    console.error('getSupportTypes error', e);
+    return { ok: false, items: [] };
+  }
 }
 
 export default {
@@ -239,8 +266,16 @@ export default {
 
         if (!shouldShowSupport) continue;
 
-        // Build and send flex message with 3 support buttons
-        const flex = buildSupportFlex(env);
+        // Fetch support types from PHP API
+        const apiBase = env.API_BASE || 'https://ict8.moi.go.th/ict8/backend/public';
+        const supportData = await getSupportTypes(apiBase);
+
+        // Build flex message: use data from API, or empty array if failed
+        const items = supportData?.ok && supportData?.items?.length > 0
+          ? supportData.items
+          : [];
+
+        const flex = buildSupportFlex(items);
         const result = await replyToLine(accessToken, replyToken, [flex]);
 
         if (!result.ok) {
