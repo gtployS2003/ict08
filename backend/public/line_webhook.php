@@ -87,6 +87,12 @@ if (!hash_equals($computed, $signature)) {
 @ignore_user_abort(true);
 @set_time_limit(0);
 
+// Log ว่า webhook received
+line_debug_log('webhook_start', [
+    'timestamp' => date('c'),
+    'rawBodyLen' => strlen($rawBody),
+]);
+
 // ==============================
 // 4) PROCESS AFTER VERIFY
 // ==============================
@@ -96,19 +102,39 @@ if (!isset($data['events'])) {
 }
 
 // include หลัง verify เท่านั้น
-require_once __DIR__ . '/../config/db.php';
-require_once __DIR__ . '/../models/UserModel.php';
-require_once __DIR__ . '/../models/UserRoleModel.php';
-require_once __DIR__ . '/../models/PersonModel.php';
-require_once __DIR__ . '/../models/RequestTypeModel.php';
-require_once __DIR__ . '/../services/LineService.php';
+try {
+    require_once __DIR__ . '/../config/db.php';
+    require_once __DIR__ . '/../models/UserModel.php';
+    require_once __DIR__ . '/../models/UserRoleModel.php';
+    require_once __DIR__ . '/../models/PersonModel.php';
+    require_once __DIR__ . '/../models/RequestTypeModel.php';
+    require_once __DIR__ . '/../services/LineService.php';
+} catch (Throwable $e) {
+    line_debug_log('include_failed', [
+        'error' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+    ]);
+    // ตัวแปรจะไม่มี → สำหรับ graceful fallback ต่อ
+}
 
 $accessToken = getenv('LINE_CHANNEL_ACCESS_TOKEN') ?: '';
 $rmBefore = getenv('LINE_RICHMENU_BEFORE') ?: '';
 $rmInternal = getenv('LINE_RICHMENU_INTERNAL') ?: '';
 $rmExternal = getenv('LINE_RICHMENU_EXTERNAL') ?: '';
 
-$line = new LineService($accessToken);
+$line = null;
+try {
+    if (class_exists('LineService')) {
+        $line = new LineService($accessToken);
+    } else {
+        line_debug_log('line_service_not_found', ['class' => 'LineService']);
+    }
+} catch (Throwable $e) {
+    line_debug_log('line_service_init_failed', [
+        'error' => $e->getMessage(),
+    ]);
+}
 
 // DB อาจล่ม/สิทธิ์ไม่ถูก ต้องไม่ทำให้ webhook เงียบ
 $pdo = null;
@@ -130,7 +156,7 @@ try {
 }
 
 // ==============================
-// 5) LOOP EVENTS
+// 5) LOOP EVENTS (with fallback)
 // ==============================
 foreach ($data['events'] as $event) {
 
@@ -138,6 +164,15 @@ foreach ($data['events'] as $event) {
     $userId = $event['source']['userId'] ?? null;
     if (!$userId)
         continue;
+
+    // ถ้า LineService ไม่พร้อม ให้ skip event processing
+    if (!$line) {
+        line_debug_log('skip_event_no_line_service', [
+            'type' => $type,
+            'userId' => $userId,
+        ]);
+        continue;
+    }
 
     // ----- user + role + approval -----
     // แนวคิดเดียวกับ AuthController:
@@ -228,7 +263,7 @@ foreach ($data['events'] as $event) {
     line_debug_log('event', $eventLog);
 
     // ----- follow -----
-    if ($type === 'follow' && isset($event['replyToken'])) {
+    if ($type === 'follow' && isset($event['replyToken']) && $line) {
         $line->replyMessage($event['replyToken'], [
             [
                 'type' => 'text',
@@ -240,7 +275,7 @@ foreach ($data['events'] as $event) {
     // ===== Handler กลาง: external menu actions =====
     $handleExternal = function ($action) use ($line, $event, $requestTypeModel) {
 
-        if (!isset($event['replyToken'])) {
+        if (!$line || !isset($event['replyToken'])) {
             return;
         }
 
@@ -521,7 +556,7 @@ foreach ($data['events'] as $event) {
         }
 
         // ประเภทคำขอเดิม
-        if (in_array($postback, ['req_meeting', 'req_repair', 'req_other'], true) && isset($event['replyToken'])) {
+        if (in_array($postback, ['req_meeting', 'req_repair', 'req_other'], true) && isset($event['replyToken']) && $line) {
             $map = [
                 'req_meeting' => 'คุณเลือก: ขอสนับสนุนห้องประชุม',
                 'req_repair' => 'คุณเลือก: แจ้งเสีย/แจ้งซ่อม',
@@ -538,7 +573,7 @@ foreach ($data['events'] as $event) {
     }
 
     // ===== 7) Message text =====
-    if ($type === 'message' && isset($event['replyToken'])) {
+    if ($type === 'message' && isset($event['replyToken']) && $line) {
         $msg = trim((string) ($event['message']['text'] ?? ''));
         // normalize ช่องว่าง (กันผู้ใช้พิมพ์มีเว้นวรรคแปลก ๆ)
         $msg = preg_replace('/\s+/u', ' ', $msg);
