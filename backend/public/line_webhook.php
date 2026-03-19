@@ -81,19 +81,11 @@ if (!hash_equals($computed, $signature)) {
 }
 
 // ==============================
-// 3) ACK FIRST (VERY IMPORTANT)
+// 3) PARSE & PROCESS FIRST (ก่อน ACK)
 // ==============================
-http_response_code(200);
-echo 'OK';
-
-// ให้โค้ดหลังบ้านทำงานต่อ แม้ client ปิด connection แล้ว
+// ให้โค้ดหลังบ้านทำงานได้เต็มที่
 @ignore_user_abort(true);
 @set_time_limit(0);
-
-// ให้ LINE ได้ 200 ก่อน แล้วค่อยทำงานต่อ
-if (function_exists('fastcgi_finish_request')) {
-    fastcgi_finish_request();
-}
 
 // ==============================
 // 4) PROCESS AFTER VERIFY
@@ -196,7 +188,27 @@ foreach ($data['events'] as $event) {
         }
     }
     if ($target !== '') {
-        $line->linkRichMenuToUser($userId, $target);
+        // ใช้ setUserRichMenu เพื่อให้ได้ผลลัพธ์ที่แน่นอนและจัดการ edge case
+        $linkResp = $line->setUserRichMenu($userId, $target);
+        
+        // Log ผลลัพธ์
+        line_debug_log('richmenu_link', [
+            'userId' => $userId,
+            'target' => $target,
+            'ok' => $linkResp['ok'] ?? false,
+            'step' => $linkResp['step'] ?? null,
+            'http' => $linkResp['http'] ?? null,
+            'response' => $linkResp,
+        ]);
+        
+        // ถ้า link ไม่สำเร็จ ยัง pass ต่อ (ไม่ block webhook) แต่ log ไว้เพื่อการ debug
+        if (!($linkResp['ok'] ?? false)) {
+            line_debug_log('richmenu_link_failed', [
+                'userId' => $userId,
+                'target' => $target,
+                'fullResponse' => $linkResp,
+            ]);
+        }
     }
 
     // debug: เห็นว่ามี event เข้ามาจริงไหม
@@ -234,13 +246,30 @@ foreach ($data['events'] as $event) {
 
         // log เฉพาะกรณี reply ไป LINE ไม่สำเร็จ (กันอาการเงียบ)
         $reply = function (array $messages) use ($line, $event): void {
+            // Log message ที่จะส่ง
+            line_debug_log('sending_reply', [
+                'replyToken' => mb_strimwidth((string) ($event['replyToken'] ?? ''), 0, 20, '...'),
+                'messageCount' => count($messages),
+                'messageTypes' => array_map(fn($m) => $m['type'] ?? 'unknown', $messages),
+            ]);
+            
             $resp = $line->replyMessage($event['replyToken'], $messages);
+            
+            line_debug_log('reply_response', [
+                'ok' => $resp['ok'] ?? false,
+                'http' => $resp['http'] ?? null,
+                'data' => $resp['data'] ?? null,
+                'raw' => mb_strimwidth((string) ($resp['raw'] ?? ''), 0, 500, '...'),
+            ]);
+            
             if (!($resp['ok'] ?? false)) {
                 line_debug_log('reply_failed', [
                     'http' => $resp['http'] ?? null,
                     'url' => $resp['url'] ?? null,
                     'method' => $resp['method'] ?? null,
                     'raw' => $resp['raw'] ?? null,
+                    'data' => $resp['data'] ?? null,
+                    'error' => $resp['error'] ?? null,
                 ]);
             }
         };
@@ -366,6 +395,13 @@ foreach ($data['events'] as $event) {
                 ],
             ];
 
+            // Log Flex structure ก่อนส่ง
+            line_debug_log('flex_message_structure', [
+                'action' => $action,
+                'buttonCount' => count($buttons),
+                'flexJSON' => json_encode($flex, JSON_UNESCAPED_UNICODE),
+            ]);
+
             $reply([$flex]);
             return;
         }
@@ -454,6 +490,13 @@ foreach ($data['events'] as $event) {
                     ],
                 ],
             ];
+
+            // Log Flex structure ก่อนส่ง
+            line_debug_log('flex_message_structure', [
+                'action' => $action,
+                'buttonCount' => count($buttons),
+                'flexJSON' => json_encode($flex, JSON_UNESCAPED_UNICODE),
+            ]);
 
             $reply([$flex]);
             return;
@@ -609,4 +652,10 @@ foreach ($data['events'] as $event) {
         }
     }
 }
+
+// ==============================
+// 8) ACK LAST (หลังประมวลผลเสร็จ)
+// ==============================
+http_response_code(200);
+echo 'OK';
 
