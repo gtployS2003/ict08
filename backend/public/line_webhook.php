@@ -323,9 +323,15 @@ foreach ($data['events'] as $event) {
 
             // Fallback: ถ้า DB ดึงไม่ได้/ว่าง ให้แสดง 3 ปุ่มหลักแบบคงที่
             if (!$buttons) {
+                // สร้าง public base (รองรับ reverse proxy/ngrok/domain ใหม่)
                 $basePath = getenv('BASE_PATH') ?: '/ict8';
-                $host = $_SERVER['HTTP_HOST'] ?? '';
-                $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+                $basePath = '/' . ltrim((string) $basePath, '/');
+                $basePath = rtrim($basePath, '/');
+
+                // ใจใหญ่: รองรับ X-Forwarded-Host สำหรับ reverse proxy
+                $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? ($_SERVER['HTTP_HOST'] ?? '');
+                $proto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
+                $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || strtolower((string) $proto) === 'https';
                 $scheme = $https ? 'https' : 'http';
                 $publicBase = $host !== '' ? ($scheme . '://' . $host . $basePath) : $basePath;
 
