@@ -4,7 +4,14 @@ declare(strict_types=1);
 @ignore_user_abort(true);
 @set_time_limit(0);
 
-// FCGIใจใหญ่ให้ LINE ได้ 200 ก่อน
+// ==============================
+// ACK IMMEDIATELY (CRITICAL!)
+// ==============================
+// 🚨 MUST send 200 before anything else, then let LINE close connection
+http_response_code(200);
+echo 'OK';
+
+// Now safe to process in background
 if (function_exists('fastcgi_finish_request')) {
     fastcgi_finish_request();
 }
@@ -95,22 +102,6 @@ if (!hash_equals($computed, $signature)) {
     ]);
     http_response_code(401);
     exit('Invalid signature');
-}
-
-// ==============================
-// 3) ACK IMMEDIATELY (CRITICAL!)
-// ==============================
-// **IMPORTANT: ต้อง ACK ด่วน เพื่อ LINE ไม่ timeout**
-http_response_code(200);
-echo 'OK';
-
-// ให้ background processing ทำงานต่อ แม้ client ปิด connection
-@ignore_user_abort(true);
-@set_time_limit(0);
-
-// FCGIใจใหญ่ให้ LINE ได้ 200 ก่อน
-if (function_exists('fastcgi_finish_request')) {
-    fastcgi_finish_request();
 }
 
 // ==============================
