@@ -33,6 +33,10 @@
  */
 
 const textEncoder = new TextEncoder();
+const supportTypeCache = {
+  expiresAt: 0,
+  items: [],
+};
 
 function normalizeThaiText(s) {
   return (s || '')
@@ -74,8 +78,16 @@ async function computeLineSignatureBase64(channelSecret, bodyArrayBuffer) {
 
 function buildSupportFlex(items) {
   // items = array of { id, label, url }
-  
-  const buttons = (items || [])
+
+  const fallbackItems = [
+    { label: 'ขอสนับสนุนห้องประชุม', url: 'https://ict8.moi.go.th/ict8/gcms/request-conference.html' },
+    { label: 'แจ้งเสีย/ซ่อมอุปกรณ์', url: 'https://ict8.moi.go.th/ict8/gcms/request-repair.html' },
+    { label: 'ขอใช้บริการอื่น ๆ', url: 'https://ict8.moi.go.th/ict8/gcms/request-other.html' },
+  ];
+
+  const sourceItems = Array.isArray(items) && items.length > 0 ? items : fallbackItems;
+
+  const buttons = (sourceItems || [])
     .filter(item => item?.label && item?.url)
     .slice(0, 3)  // limit to 3 buttons
     .map((item, idx) => ({
@@ -141,6 +153,11 @@ async function getSupportTypes(apiBase) {
    * Returns: { ok, items: [{ id, label, url }] }
    */
   try {
+    const now = Date.now();
+    if (supportTypeCache.expiresAt > now && supportTypeCache.items.length > 0) {
+      return { ok: true, items: supportTypeCache.items, cached: true };
+    }
+
     const url = `${apiBase}/api-support-types.php`;
     const resp = await fetch(url, {
       method: 'GET',
@@ -155,6 +172,10 @@ async function getSupportTypes(apiBase) {
     }
 
     const data = await resp.json();
+    const ttlSec = 30;
+    supportTypeCache.items = Array.isArray(data?.items) ? data.items : [];
+    supportTypeCache.expiresAt = Date.now() + (ttlSec * 1000);
+
     return {
       ok: data?.ok === true,
       items: data?.items || [],
@@ -162,6 +183,83 @@ async function getSupportTypes(apiBase) {
   } catch (e) {
     console.error('getSupportTypes error', e);
     return { ok: false, items: [] };
+  }
+}
+
+async function setUserRichMenu(accessToken, userId, richMenuId) {
+  if (!accessToken || !userId || !richMenuId) {
+    return { ok: false, reason: 'missing_params' };
+  }
+
+  try {
+    // unlink first for consistency
+    await fetch(`https://api.line.me/v2/bot/user/${encodeURIComponent(userId)}/richmenu`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    const linkResp = await fetch(`https://api.line.me/v2/bot/user/${encodeURIComponent(userId)}/richmenu/${encodeURIComponent(richMenuId)}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    const raw = await linkResp.text();
+    return {
+      ok: linkResp.ok,
+      status: linkResp.status,
+      raw,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      reason: 'exception',
+      error: String(e),
+    };
+  }
+}
+
+async function resolveRichMenuTarget(apiBase, lineUserId, internalApiKey = '') {
+  if (!apiBase || !lineUserId) {
+    return { ok: false, message: 'missing_params' };
+  }
+
+  try {
+    const endpoint = `${apiBase}/api-line-richmenu-target.php?lineUserId=${encodeURIComponent(lineUserId)}`;
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    if (internalApiKey) {
+      headers['X-API-Key'] = internalApiKey;
+    }
+
+    const resp = await fetch(endpoint, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!resp.ok) {
+      return { ok: false, status: resp.status };
+    }
+
+    const data = await resp.json();
+    return {
+      ok: data?.ok === true,
+      targetCode: data?.targetCode || 'before',
+      targetRichMenuId: data?.targetRichMenuId || '',
+      roleCode: data?.roleCode || 'GUEST',
+      isApproved: Boolean(data?.isApproved),
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      reason: 'exception',
+      error: String(e),
+    };
   }
 }
 
@@ -186,10 +284,12 @@ export default {
         configuration: {
           haveSecret: Boolean(env.LINE_CHANNEL_SECRET),
           haveToken: Boolean(env.LINE_CHANNEL_ACCESS_TOKEN),
-          urls: {
-            conference: Boolean(env.SUPPORT_URL_CONFERENCE),
-            repair: Boolean(env.SUPPORT_URL_REPAIR),
-            other: Boolean(env.SUPPORT_URL_OTHER),
+          apiBase: env.API_BASE || 'https://ict8.moi.go.th/ict8/backend/public',
+          haveInternalApiKey: Boolean(env.INTERNAL_API_KEY),
+          cacheTtlSec: 30,
+          features: {
+            dynamicSupportButtons: true,
+            dynamicRichMenuByRole: true,
           },
         },
         timestamp: new Date().toISOString(),
@@ -242,12 +342,40 @@ export default {
 
     // Step 4: Process events in background
     const work = (async () => {
+      const apiBase = env.API_BASE || 'https://ict8.moi.go.th/ict8/backend/public';
+      const internalApiKey = env.INTERNAL_API_KEY || '';
+
       for (const ev of events) {
         const replyToken = ev?.replyToken;
         if (!replyToken) continue;
+        const lineUserId = ev?.source?.userId || '';
 
         let shouldShowSupport = false;
         const eventType = ev?.type || '';
+
+        // sync rich menu (role-based) in parallel
+        const richMenuSyncPromise = (async () => {
+          if (!lineUserId) return;
+
+          const menu = await resolveRichMenuTarget(apiBase, lineUserId, internalApiKey);
+          if (!menu?.ok || !menu?.targetRichMenuId) {
+            console.warn('resolveRichMenuTarget failed', {
+              lineUserId: lineUserId.slice(0, 8) + '...',
+              status: menu?.status,
+              reason: menu?.reason,
+            });
+            return;
+          }
+
+          const linkResp = await setUserRichMenu(accessToken, lineUserId, menu.targetRichMenuId);
+          if (!linkResp.ok) {
+            console.warn('setUserRichMenu failed', {
+              lineUserId: lineUserId.slice(0, 8) + '...',
+              targetCode: menu.targetCode,
+              status: linkResp.status,
+            });
+          }
+        })();
 
         // Check postback with "ext:support"
         if (eventType === 'postback') {
@@ -264,10 +392,12 @@ export default {
           }
         }
 
-        if (!shouldShowSupport) continue;
+        if (!shouldShowSupport) {
+          await richMenuSyncPromise;
+          continue;
+        }
 
         // Fetch support types from PHP API
-        const apiBase = env.API_BASE || 'https://ict8.moi.go.th/ict8/backend/public';
         const supportData = await getSupportTypes(apiBase);
 
         // Build flex message: use data from API, or empty array if failed
@@ -286,6 +416,8 @@ export default {
         } else {
           console.log('replyToLine success', { replyToken: replyToken.slice(0, 20) + '...' });
         }
+
+        await richMenuSyncPromise;
       }
     })();
 
