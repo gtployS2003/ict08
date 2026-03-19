@@ -12,7 +12,7 @@
     RewriteRule ^ - [L]
 
     # 🚨 DO NOT REWRITE test/debug files
-    RewriteCond %{REQUEST_URI} ^/backend/public/(test_post|line_webhook_debug|line_webhook_test|line_webhook_simple)\.php$
+    RewriteCond %{REQUEST_URI} ^/backend/public/(test_post|line_webhook_debug|line_webhook_detailed|line_webhook_test|line_webhook_simple)\.php$
     RewriteRule ^ - [L]
 
     # pass Authorization header to PHP
