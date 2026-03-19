@@ -43,16 +43,25 @@ $rawBody = file_get_contents('php://input');   // อ่านครั้งเ
 $signature = $_SERVER['HTTP_X_LINE_SIGNATURE'] ?? '';
 
 if (!$signature) {
-    $headers = getallheaders();
-    $signature = $headers['X-Line-Signature'] ?? $headers['x-line-signature'] ?? '';
+    try {
+        $headers = @getallheaders() ?: [];
+        $signature = $headers['X-Line-Signature'] ?? $headers['x-line-signature'] ?? '';
+    } catch (Throwable $e) {
+        // getallheaders() might not be available
+    }
 }
 
 // ==============================
 // 1) LOAD SECRET (NO OUTPUT!)
 // ==============================
-require_once __DIR__ . '/../config/env.php';
-
-env_load(__DIR__ . '/../.env');
+try {
+    require_once __DIR__ . '/../config/env.php';
+    env_load(__DIR__ . '/../.env');
+} catch (Throwable $e) {
+    http_response_code(500);
+    line_debug_log('env_load_failed', ['error' => $e->getMessage()]);
+    exit('Env load failed');
+}
 
 $channelSecret = getenv('LINE_CHANNEL_SECRET') ?: '';
 if ($channelSecret === '') {
