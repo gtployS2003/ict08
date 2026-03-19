@@ -11,8 +11,6 @@ assets/js/gcms-settings-data.js.bak
 
 node_modules/
 
-.log
-
 .env
 
 bot/deploy_richmenu.php
