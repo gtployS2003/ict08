@@ -2,6 +2,22 @@
 declare(strict_types=1);
 
 // ==============================
+// CRITICAL: ACK FIRST (NO OUTPUT BEFORE THIS!)
+// ==============================
+http_response_code(200);
+header('Content-Type: text/plain');
+echo 'OK';
+
+// ให้ background processing ทำงานต่อ แม้ client ปิด connection
+@ignore_user_abort(true);
+@set_time_limit(0);
+
+// FCGIใจใหญ่ให้ LINE ได้ 200 ก่อน
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+}
+
+// ==============================
 // DEBUG LOG (safe location)
 // ==============================
 function line_debug_log(string $label, array $data = []): void
