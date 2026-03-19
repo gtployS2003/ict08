@@ -90,20 +90,23 @@ if (!hash_equals($computed, $signature)) {
 }
 
 // ==============================
-// 3) PARSE & PROCESS FIRST (ก่อน ACK)
+// 3) ACK IMMEDIATELY (CRITICAL!)
 // ==============================
-// ให้โค้ดหลังบ้านทำงานได้เต็มที่
+// **IMPORTANT: ต้อง ACK ด่วน เพื่อ LINE ไม่ timeout**
+http_response_code(200);
+echo 'OK';
+
+// ให้ background processing ทำงานต่อ แม้ client ปิด connection
 @ignore_user_abort(true);
 @set_time_limit(0);
 
-// Log ว่า webhook received
-line_debug_log('webhook_start', [
-    'timestamp' => date('c'),
-    'rawBodyLen' => strlen($rawBody),
-]);
+// FCGIใจใหญ่ให้ LINE ได้ 200 ก่อน
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+}
 
 // ==============================
-// 4) PROCESS AFTER VERIFY
+// 4) PROCESS AFTER ACK
 // ==============================
 $data = json_decode($rawBody, true);
 if (!isset($data['events'])) {
@@ -702,10 +705,4 @@ foreach ($data['events'] as $event) {
         }
     }
 }
-
-// ==============================
-// 8) ACK LAST (หลังประมวลผลเสร็จ)
-// ==============================
-http_response_code(200);
-echo 'OK';
 
