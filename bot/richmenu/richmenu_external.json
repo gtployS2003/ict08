@@ -23,21 +23,21 @@
       "bounds": { "x": 1666, "y": 0, "width": 834, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict8/tracking_status/tracking_event.html"
+        "uri": "https://ict8.moi.go.th/ict8/tracking_status/tracking_event.html"
       }
     },
     {
       "bounds": { "x": 0, "y": 843, "width": 833, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict8/profile/profile.html"
+        "uri": "https://ict8.moi.go.th/ict8/profile/profile.html"
       }
     },
     {
       "bounds": { "x": 833, "y": 843, "width": 833, "height": 843 },
       "action": {
         "type": "uri",
-        "uri": "https://unjogging-melany-deadliest.ngrok-free.dev/ict8/document/download.html"
+        "uri": "https://ict8.moi.go.th/ict8/document/download.html"
       }
     },
     {
