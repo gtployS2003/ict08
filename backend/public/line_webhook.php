@@ -1,5 +1,5 @@
 <?php
-declare(strict_types=1);
+// declare(strict_types=1);  // Disabled: may cause type coercion errors with included files
 
 @ignore_user_abort(true);
 @set_time_limit(0);
