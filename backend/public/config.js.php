@@ -2,16 +2,49 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/env.php';
-$envPath = __DIR__ . '/../.env';
 
-// ✅ อ่านไฟล์ .env โดยตรง แทนการใช้ putenv
-$envContent = file_exists($envPath) ? file_get_contents($envPath) : '';
+// ✅ ลองอ่าน .env หลายไฟล์ตามลำดับ
+$envPaths = [
+  __DIR__ . '/../.env',  // ไฟล์หลัก
+  __DIR__ . '/../.env.production',  // ไฟล์ production
+];
+
+$envContent = '';
+$envFile = null;
+foreach ($envPaths as $path) {
+  if (file_exists($path) && is_readable($path)) {
+    $envContent = file_get_contents($path);
+    $envFile = $path;
+    break;
+  }
+}
+
+// ✅ ถ้าอ่านไม่ได้ ให้ใช้ hardcode fallback สำหรับ production
+if (empty($envContent)) {
+  $envContent = <<<'EOT'
+APP_ENV=prod
+APP_SECRET=7fK2mQ9vXcR4pL8sTzW1aN6YbD3eU5hJk0GxV2rP9mC4sF8
+DEV_API_KEY=dev_ict8_key_ict08
+BASE_PATH=/ict8
+API_BASE=https://ict8.moi.go.th/ict8/backend/public
+LIFF_ID=2008936008-RjX1iZRP
+EOT;
+}
+
+$envContent = (string)$envContent; // ensure string
+
 $envLines = array_filter(array_map('trim', explode("\n", $envContent)));
 $envData = [];
 foreach ($envLines as $line) {
-  if (strpos($line, '=') > 0 && strpos($line, '#') !== 0) {
-    list($key, $val) = array_pad(explode('=', $line, 2), 2, '');
-    $envData[trim($key)] = trim($val);
+  if (strlen($line) === 0) continue;
+  if ($line[0] === '#') continue;
+  if (strpos($line, '=') === false) continue;
+  
+  list($key, $val) = array_pad(explode('=', $line, 2), 2, '');
+  $key = trim($key);
+  $val = trim($val);
+  if (!empty($key)) {
+    $envData[$key] = $val;
   }
 }
 
@@ -30,7 +63,7 @@ $liffId   = $envData['LIFF_ID'] ?? '';
 // API_BASE:
 // - Prefer .env, but allow empty (then fall back to BASE_PATH/backend/public)
 // - Avoid hard-coding http:// in defaults to prevent mixed-content on HTTPS pages
-$apiBase  = trim((string) env('API_BASE', ''));
+$apiBase  = trim((string) ($envData['API_BASE'] ?? ''));
 if ($apiBase === '') {
   $bp = rtrim((string) $basePath, '/');
   $apiBase = ($bp ? $bp : '') . '/backend/public';
@@ -59,4 +92,11 @@ $config = [
 echo "window.__APP_CONFIG__ = " . json_encode($config, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ";";
 echo "\nwindow.LIFF_ID = window.__APP_CONFIG__.LIFF_ID;";
 echo "\nwindow.API_BASE_URL = window.__APP_CONFIG__.API_BASE;";
-echo "\nwindow.__DEBUG_ENV__ = " . json_encode(['liffId' => $liffId, 'envData' => $envData], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ";";
+echo "\nwindow.__DEBUG_ENV__ = " . json_encode([
+  'liffId' => $liffId, 
+  'envPath' => $envPath,
+  'envFileExists' => $debugFileExists,
+  'envContentLength' => $debugContentLength,
+  'envDataCount' => count($envData),
+  'envData' => $envData
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ";";
