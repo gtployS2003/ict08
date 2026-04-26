@@ -7,7 +7,7 @@ function isLoggedIn() {
 function logout() {
   localStorage.removeItem("auth_token");
   localStorage.removeItem("isLoggedIn"); // เผื่อเคยใช้ของเก่า
-  window.location.href = "/ict8/site/home.html";
+  window.location.href = "/ict8/login.html";
 }
 
 // ซ่อน/แสดง element ตามสถานะ login
