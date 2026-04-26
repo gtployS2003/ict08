@@ -27,6 +27,10 @@ function applyAuthUI() {
 function protectPages() {
   const path = window.location.pathname;
   const protectedPaths = ["/ict8/index.html"];
+  const publicPages = ["/ict8/login.html", "/ict8/profile-setup.html"];
+
+  // ถ้าอยู่ใน public pages ให้ข้ามไป
+  if (publicPages.includes(path)) return;
 
   if (!isLoggedIn() && protectedPaths.includes(path)) {
     window.location.href = "/ict8/site/home.html";
