@@ -2,7 +2,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/env.php';
-env_load(__DIR__ . '/../.env');
+$envPath = __DIR__ . '/../.env';
+env_load($envPath);
 
 ob_start(); // ✅ กัน header already sent
 
@@ -10,6 +11,11 @@ header('Content-Type: application/javascript; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
+// DEBUG: ตรวจสอบว่า env() ได้โหลดค่าไหม
+$debugInfo = [];
+$debugInfo['env_file_exists'] = file_exists($envPath);
+$debugInfo['getenv_liff_id'] = getenv('LIFF_ID');
+$debugInfo['env_liff_id'] = $_ENV['LIFF_ID'] ?? null;
 
 $appEnv   = env('APP_ENV', 'dev');
 $devKey   = env('DEV_API_KEY', '');
@@ -48,3 +54,5 @@ $config = [
 echo "window.__APP_CONFIG__ = " . json_encode($config, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ";";
 echo "\nwindow.LIFF_ID = window.__APP_CONFIG__.LIFF_ID;";
 echo "\nwindow.API_BASE_URL = window.__APP_CONFIG__.API_BASE;";
+echo "\n// DEBUG:";
+echo "\nwindow.__DEBUG_ENV__ = " . json_encode($debugInfo, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ";";
