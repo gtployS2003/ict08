@@ -69,6 +69,17 @@ if ($apiBase === '') {
   $apiBase = ($bp ? $bp : '') . '/backend/public';
 }
 
+// Local development should use the current XAMPP project instead of a production API base.
+$host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''));
+$isLocalHost = $host === 'localhost'
+  || str_starts_with($host, '127.0.0.1')
+  || str_starts_with($host, '[::1]')
+  || str_starts_with($host, '::1');
+if ($isLocalHost) {
+  $bp = rtrim((string) $basePath, '/');
+  $apiBase = ($bp ? $bp : '') . '/backend/public';
+}
+
 // If the current request is HTTPS but API_BASE is HTTP, upgrade to HTTPS.
 $isHttps = false;
 try {
@@ -92,11 +103,15 @@ $config = [
 echo "window.__APP_CONFIG__ = " . json_encode($config, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ";";
 echo "\nwindow.LIFF_ID = window.__APP_CONFIG__.LIFF_ID;";
 echo "\nwindow.API_BASE_URL = window.__APP_CONFIG__.API_BASE;";
-echo "\nwindow.__DEBUG_ENV__ = " . json_encode([
-  'liffId' => $liffId, 
-  'envPath' => $envPath,
-  'envFileExists' => $debugFileExists,
-  'envContentLength' => $debugContentLength,
+$debugEnv = [
+  'liffId' => $liffId,
+  'envFile' => $envFile,
+  'envFileExists' => (bool) $envFile,
+  'envContentLength' => strlen($envContent),
   'envDataCount' => count($envData),
-  'envData' => $envData
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ";";
+  'envData' => $envData,
+  'apiBase' => $apiBase,
+  'host' => $host,
+  'isLocalHost' => $isLocalHost,
+];
+echo "\nwindow.__DEBUG_ENV__ = " . json_encode($debugEnv, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ";";
