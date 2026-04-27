@@ -18,4 +18,5 @@ bot/deploy_richmenu.php
 ict8_ict8_db.sql
 
 deploy.php
-
+restore_uploads.php
+tools/package-uploads.sh
