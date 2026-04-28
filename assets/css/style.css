@@ -441,7 +441,6 @@ main.site-home .director {
 
 main.site-home .director-inner {
     position: relative;
-    grid-template-columns: 0.6fr 0.9fr;
     border: none;
     background: #532274;
     color: #ffffff;
