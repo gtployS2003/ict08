@@ -1849,7 +1849,7 @@ tr.is-dragging {
 @media (max-width: 992px) {
   .main-nav {
     position: fixed;
-    top: 80px;
+    top: 70px;
     z-index: 9998;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
     height: 50px;
