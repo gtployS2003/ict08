@@ -444,7 +444,6 @@ main.site-home .director-inner {
     grid-template-columns: 0.6fr 0.9fr;
     border: none;
     background: #532274;
-    border-radius: clamp(36px, 5vw, 88px);
     color: #ffffff;
 }
 
@@ -846,7 +845,7 @@ body {
     grid-template-columns: 1fr;
     align-items: center;
     gap: 24px;
-    padding: clamp(28px, 3.2vw, 42px);
+    padding: 10px 10px 10px;
     border: none;
     border-radius: 28px;
     background: #532274;
