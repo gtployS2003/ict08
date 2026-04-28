@@ -23,7 +23,7 @@ body {
 =========================== */
 
 .main-evnt-list {
-    padding-top: 105px;
+    padding-top: 99px;
     /* เผื่อ header fixed */
     padding-left: 16px;
     padding-right: 16px;
@@ -140,7 +140,7 @@ body {
 =========================== */
 
 .schedule-main {
-    padding-top: 175px;
+    padding-top: 169px;
     /* เผื่อพื้นที่ header + nav */
     padding-bottom: 20px;
     ;
@@ -1644,7 +1644,7 @@ body.modal-open {
 
 /* พื้นหลัง + ระยะห่างจาก header + nav */
 .notifications-main {
-    padding-top: 155px;          /* ให้เผื่อส่วน header + schedule-nav */
+    padding-top: 149px;          /* ให้เผื่อส่วน header + schedule-nav */
     padding-bottom: 40px;
     padding-left: 16px;
     padding-right: 16px;

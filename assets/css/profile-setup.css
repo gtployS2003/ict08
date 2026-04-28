@@ -30,7 +30,7 @@ body{
 
 /* Page layout */
 .profile-setup-page{
-  padding-top: 85px; /* เผื่อ header fixed */
+  padding-top: 99px; /* เผื่อ header fixed */
   padding-left: 16px;
   padding-right: 16px;
   padding-bottom: 24px;
@@ -201,7 +201,7 @@ body{
 /* Desktop / Tablet */
 @media (min-width: 768px){
   .profile-setup-page{
-    padding-top: 115px;
+    padding-top: 109px;
     padding-left: 20px;
     padding-right: 20px;
   }

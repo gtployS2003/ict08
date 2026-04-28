@@ -242,9 +242,6 @@ body {
    Tablet+ (>= 768px)
 ========================== */
 @media (min-width: 768px) {
-  .header {
-    padding: 18px 40px;
-  }
 
   .logo {
     width: 60px;

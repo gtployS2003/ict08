@@ -338,9 +338,6 @@ body.poster-page {
 
 @media (max-width: 900px) {
   /* Make the header more compact on tablets/phones */
-  .poster-page .header {
-    padding: 14px 16px;
-  }
 
   .poster-page .header-left {
     gap: 12px;
