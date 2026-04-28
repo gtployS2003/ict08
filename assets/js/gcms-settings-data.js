@@ -13035,6 +13035,14 @@ orgEls.tbody?.addEventListener("click", async (e) => {
 
   activateSection("default");
 
+  const initialSection = new URLSearchParams(window.location.search).get("section");
+  if (initialSection) {
+    const initialSectionLink = $$("a[data-section]").find(
+      (el) => el.getAttribute("data-section") === initialSection
+    );
+    initialSectionLink?.click();
+  }
+
   console.log("gcms-settings-data.js loaded");
 
   // ย้าย initNtsMultiSelectCheckbox เข้า IIFE เพื่อให้ access escapeHtml
