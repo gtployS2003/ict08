@@ -15,7 +15,7 @@ body {
 main.site-home {
     /* The fixed header + nav already reserve space via body padding-top.
        Keep site pages from adding extra top space (which caused big white gaps on mobile). */
-    padding-top: 100;
+    padding-top: 65;
 }
 
 *::before,
@@ -35,7 +35,7 @@ main.site-home {
     width: 100%;
     z-index: 9999;
     color: white;
-    padding: 20px 50px;
+    padding: 15px 50px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -43,7 +43,7 @@ main.site-home {
 }
 
 body {
-    padding-top: 140px;
+    padding-top: 105px;
 }
 
 .header-left {
@@ -53,17 +53,18 @@ body {
 }
 
 .logo {
-    width: 100px;
-    height: 100px;
+    width: 75px;
+    height: 75px;
+    border-radius: 50%;
 }
 
 .title-main {
-    font-size: 32px;
+    font-size: 24px;
     font-weight: 600;
 }
 
 .title-sub {
-    font-size: 22px;
+    font-size: 16px;
     opacity: 0.9;
 }
 
@@ -83,7 +84,7 @@ body {
 
 .main {
     flex: 1;
-    padding: 150px 16px 60px;
+    padding: 115px 16px 60px;
 }
 
 /* ===== ส่วนหัวของหน้า index (หัวข้อ + โปรไฟล์) ===== */
@@ -666,7 +667,7 @@ main.site-home .director-position {
 
 .main-nav {
     position: fixed;
-    top: 114px;
+    top: 79px;
     left: 0;
     width: 100%;
     z-index: 9998;
@@ -676,7 +677,7 @@ main.site-home .director-position {
 }
 
 body {
-    padding-top: 190px;
+    padding-top: 155px;
 }
 
 .nav-inner {
@@ -3354,7 +3355,7 @@ body {
 
 @media (max-width: 900px) {
     main.site-home {
-        padding-top: 100px;
+        padding-top: 60px;
     }
 
     .header {
@@ -3369,16 +3370,17 @@ body {
     }
 
     .logo {
-        width: 64px;
-        height: 64px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
     }
 
     .title-main {
-        font-size: 20px;
+        font-size: 18px;
     }
 
     .title-sub {
-        font-size: 14px;
+        font-size: 12px;
     }
 
     .login-btn {

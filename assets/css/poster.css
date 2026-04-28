@@ -7,7 +7,7 @@
 
 /* The global header is fixed; give enough top offset so content never sits under it */
 body.poster-page {
-  padding-top: var(--poster-header-h, 160px); /* dynamic: JS sets --poster-header-h based on real header height */
+  padding-top: var(--poster-header-h, 125px); /* dynamic: JS sets --poster-header-h based on real header height */
 }
 
 /* Prevent grid item overlap: style.css does not set global box-sizing for all elements */
@@ -347,8 +347,9 @@ body.poster-page {
   }
 
   .poster-page .logo {
-    width: 72px;
-    height: 72px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
   }
 
   .poster-page .title-main {

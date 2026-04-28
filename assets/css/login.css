@@ -33,7 +33,7 @@ body {
   background: #532274;
   color: #fff;
 
-  padding: 14px 20px;
+  padding: 12px 20px;
   display: flex;
   align-items: center;
 }
@@ -48,9 +48,9 @@ body {
 .brand { display: inline-flex; }
 
 .logo {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
   object-fit: contain;
   background: rgba(255,255,255,0.06);
   padding: 6px;
@@ -61,7 +61,7 @@ body {
 }
 
 .title-main {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.25;
   white-space: nowrap;
@@ -71,7 +71,7 @@ body {
 }
 
 .title-sub {
-  font-size: 12px;
+  font-size: 11px;
   opacity: 0.9;
   line-height: 1.2;
   white-space: nowrap;
@@ -85,7 +85,7 @@ body {
 ========================== */
 .login-main {
   flex: 1;
-  padding-top: 92px; /* ปรับตามความสูง header */
+  padding-top: 72px; /* ปรับตามความสูง header */
   padding-left: 16px;
   padding-right: 16px;
   padding-bottom: 64px;
@@ -247,9 +247,9 @@ body {
   }
 
   .logo {
-    width: 74px;
-    height: 74px;
-    border-radius: 18px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
   }
 
   .title-main {
@@ -263,7 +263,7 @@ body {
   }
 
   .login-main {
-    padding-top: 112px;
+    padding-top: 92px;
   }
 
   .login-main-title {

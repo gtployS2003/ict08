@@ -32,7 +32,7 @@ body{
 
 /* Page layout */
 .request-form-page{
-  padding-top: 120px; /* เผื่อ header fixed */
+  padding-top: 85px; /* เผื่อ header fixed */
   padding-left: 16px;
   padding-right: 16px;
   padding-bottom: 24px;
@@ -227,7 +227,7 @@ body{
 /* Desktop / Tablet */
 @media (min-width: 768px){
   .request-form-page{
-    padding-top: 180px;
+    padding-top: 145px;
     padding-left: 20px;
     padding-right: 20px;
   }
