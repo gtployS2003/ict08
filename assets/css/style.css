@@ -829,15 +829,15 @@ body {
 
 .hero {
     width: 100%;
-    background: #ffffff;
+    background: #f5f5f5;
     padding: 28px 0 40px;
 }
 
 .hero-layout {
     width: min(1250px, 92vw);
-    margin: 0 auto;
+    margin:auto;
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+    grid-template-columns: minmax(0, 3fr) minmax(320px, 1fr);
     gap: 24px;
     align-items: stretch;
 }
