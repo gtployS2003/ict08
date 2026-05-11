@@ -531,7 +531,6 @@ main.site-home .director-right {
 }
 
 main.site-home .director-portrait {
-    display: flex;
     align-items: center;
     gap: clamp(14px, 2vw, 22px);
 }
