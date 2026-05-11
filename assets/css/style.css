@@ -2526,6 +2526,7 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: clamp(18px, 3.8vw, 60px);
+    align-items: stretch;
     justify-items: center;
     padding: 30px clamp(16px, 8vw, 150px) 20px;
 }
@@ -2536,6 +2537,7 @@ body {
     align-items: center;
     width: 100%;
     max-width: 260px;
+    height: 100%;
 }
 
 .directors-photo-wrap {
@@ -2554,23 +2556,31 @@ body {
 
 .director-label {
     margin-top: 10px;
-    background: #ffffff;
+    background: #532274;
     border-radius: 12px;
-    padding: 8px 12px;
+    padding: 10px 12px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     width: 100%;
     max-width: 220px;
+    min-height: 78px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
-.director-name {
+.directors .director-name {
     margin: 0;
-    font-size: 16px;
+    color: #ffffff;
+    font-size: 14px;
     font-weight: 600;
+    line-height: 1.35;
 }
 
-.director-year {
+.directors .director-year {
     margin: 2px 0 0;
     font-size: 13px;
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1.35;
 }
 
 /* ==========================
