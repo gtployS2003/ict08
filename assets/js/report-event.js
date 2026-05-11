@@ -23,6 +23,7 @@
     directRequestType: null,
     directPictures: null,
     directFilePreview: null,
+    directImagePreview: null,
 
     filterProvince: null,
     filterRequestType: null,
@@ -46,6 +47,7 @@
 
     loadingEligible: false,
     loadingPosts: false,
+    directPreviewUrls: [],
   };
 
   function escapeHtml(str) {
@@ -643,8 +645,26 @@
     end.value = todayStr;
   }
 
+  function clearDirectImagePreview() {
+    state.directPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    state.directPreviewUrls = [];
+    if (els.directImagePreview) {
+      els.directImagePreview.innerHTML = "";
+      els.directImagePreview.classList.remove("has-items");
+    }
+  }
+
+  function formatBytes(bytes) {
+    const n = Number(bytes || 0);
+    if (!Number.isFinite(n) || n <= 0) return "0 KB";
+    if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+    return `${Math.max(1, Math.round(n / 1024))} KB`;
+  }
+
   function syncDirectFilesPreview() {
     if (!els.directFilePreview || !els.directPictures) return;
+    clearDirectImagePreview();
+
     const files = Array.from(els.directPictures.files || []);
     if (files.length === 0) {
       els.directFilePreview.textContent = "";
@@ -654,6 +674,45 @@
     const total = files.reduce((sum, f) => sum + Number(f.size || 0), 0);
     const mb = total / (1024 * 1024);
     els.directFilePreview.textContent = `เลือกแล้ว ${files.length} ไฟล์ (${mb.toFixed(2)} MB)`;
+
+    if (!els.directImagePreview) return;
+
+    const imageFiles = files.filter((file) => String(file.type || "").startsWith("image/"));
+    if (imageFiles.length === 0) return;
+
+    const frag = document.createDocumentFragment();
+    imageFiles.forEach((file) => {
+      const url = URL.createObjectURL(file);
+      state.directPreviewUrls.push(url);
+
+      const item = document.createElement("div");
+      item.className = "pe-image-preview-item";
+
+      const img = document.createElement("img");
+      img.className = "pe-image-preview-thumb";
+      img.src = url;
+      img.alt = file.name || "preview";
+
+      const meta = document.createElement("div");
+      meta.className = "pe-image-preview-meta";
+
+      const name = document.createElement("div");
+      name.className = "pe-image-preview-name";
+      name.textContent = file.name || "รูปภาพ";
+      name.title = file.name || "";
+
+      const size = document.createElement("div");
+      size.textContent = formatBytes(file.size);
+
+      meta.appendChild(name);
+      meta.appendChild(size);
+      item.appendChild(img);
+      item.appendChild(meta);
+      frag.appendChild(item);
+    });
+
+    els.directImagePreview.appendChild(frag);
+    els.directImagePreview.classList.add("has-items");
   }
 
   async function setupDirectCreateModal() {
@@ -674,6 +733,9 @@
 
     els.openDirectCreateBtn.addEventListener("click", async () => {
       try {
+        els.directForm?.reset();
+        clearDirectImagePreview();
+        if (els.directFilePreview) els.directFilePreview.textContent = "";
         openDirectCreateModal();
         setDirectDefaultDates();
         await ensureLookupsLoaded();
@@ -732,6 +794,7 @@
         closeDirectCreateModal();
         els.directForm.reset();
         syncDirectFilesPreview();
+        clearDirectImagePreview();
         await loadPosts();
         alert("สร้างกิจกรรมพร้อมภาพเรียบร้อย");
       } catch (err) {
@@ -766,6 +829,7 @@
     els.directRequestType = $("#pe-direct-request-type");
     els.directPictures = $("#pe-direct-pictures");
     els.directFilePreview = $("#pe-direct-file-preview");
+    els.directImagePreview = $("#pe-direct-image-preview");
 
     els.filterProvince = $("#pe-filter-province");
     els.filterRequestType = $("#pe-filter-request-type");

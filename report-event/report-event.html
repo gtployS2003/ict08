@@ -107,6 +107,47 @@
             background: #f9fafb;
             color: #111827;
         }
+
+        .pe-image-preview-grid {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .pe-image-preview-grid.has-items {
+            display: grid;
+        }
+
+        .pe-image-preview-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .pe-image-preview-thumb {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+            display: block;
+            background: #f3f4f6;
+        }
+
+        .pe-image-preview-meta {
+            padding: 8px;
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.35;
+        }
+
+        .pe-image-preview-name {
+            color: #111827;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
     </style>
 
     <!-- Page -->
@@ -282,6 +323,7 @@
                         <input id="pe-direct-pictures" name="pictures[]" type="file" accept="image/*" multiple required
                             style="width:100%;" />
                         <p class="task-add-hint" id="pe-direct-file-preview"></p>
+                        <div class="pe-image-preview-grid" id="pe-direct-image-preview"></div>
                     </div>
                 </form>
 
