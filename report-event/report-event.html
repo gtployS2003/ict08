@@ -229,14 +229,11 @@
         <div class="task-add-overlay" id="pe-direct-overlay" aria-hidden="true">
             <div class="task-add-modal" role="dialog" aria-modal="true" aria-labelledby="pe-direct-title">
                 <div class="task-add-header">
-                    <h3 class="task-add-title" id="pe-direct-title">สร้างกิจกรรมพร้อมภาพ</h3>
+                    <h3 class="task-add-title" id="pe-direct-title">สร้างกิจกรรมพร้อมแนบภาพ</h3>
                     <button type="button" class="task-add-close" data-pe-direct-close="1" aria-label="Close">×</button>
                 </div>
 
                 <form id="pe-direct-form" class="task-add-body">
-                    <p class="task-add-hint" style="margin-top:0;">
-                        ใช้สำหรับกิจกรรมที่ไม่ได้มาจากคำขอ ระบบจะสร้างกิจกรรมสถานะเสร็จสิ้นและเพิ่มภาพกิจกรรมให้ทันที
-                    </p>
 
                     <div class="task-add-row">
                         <label for="pe-direct-title-input">ชื่อกิจกรรม</label>
@@ -257,9 +254,9 @@
                             </select>
                         </div>
                         <div>
-                            <label for="pe-direct-request-type">กลุ่มสถานะเสร็จสิ้น</label>
+                            <label for="pe-direct-request-type">หมวดหมู่</label>
                             <select id="pe-direct-request-type" name="request_type_id">
-                                <option value="">-- ใช้สถานะเสร็จสิ้นอัตโนมัติ --</option>
+                                <option value="">-- สถานะจะเสร็จสิ้นอัตโนมัติ --</option>
                             </select>
                         </div>
                     </div>
@@ -271,12 +268,12 @@
 
                     <div class="task-add-row task-add-row-2col">
                         <div>
-                            <label for="pe-direct-start">วันที่เริ่ม</label>
-                            <input id="pe-direct-start" name="start_datetime" type="datetime-local" style="width:100%;" />
+                            <label for="pe-direct-start">วันที่เริ่มต้น</label>
+                            <input id="pe-direct-start" name="start_date" type="date" style="width:100%;" />
                         </div>
                         <div>
                             <label for="pe-direct-end">วันที่สิ้นสุด</label>
-                            <input id="pe-direct-end" name="end_datetime" type="datetime-local" style="width:100%;" />
+                            <input id="pe-direct-end" name="end_date" type="date" style="width:100%;" />
                         </div>
                     </div>
 

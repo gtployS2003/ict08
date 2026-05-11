@@ -638,13 +638,9 @@
     const end = $("#pe-direct-end");
     if (!start || !end || start.value || end.value) return;
 
-    const pad = (n) => String(n).padStart(2, "0");
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = pad(now.getMonth() + 1);
-    const d = pad(now.getDate());
-    start.value = `${y}-${m}-${d}T08:30`;
-    end.value = `${y}-${m}-${d}T16:30`;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    start.value = todayStr;
+    end.value = todayStr;
   }
 
   function syncDirectFilesPreview() {
@@ -706,15 +702,28 @@
 
       const fd = new FormData(els.directForm);
       const title = String(fd.get("title") || "").trim();
+      const startDate = String(fd.get("start_date") || "").trim();
+      const endDate = String(fd.get("end_date") || "").trim();
       const files = Array.from(els.directPictures?.files || []);
       if (!title) {
         alert("กรุณากรอกชื่อกิจกรรม");
+        return;
+      }
+      if (!startDate || !endDate) {
+        alert("กรุณาเลือกวันที่เริ่มต้นและวันที่สิ้นสุด");
+        return;
+      }
+      if (endDate < startDate) {
+        alert("วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น");
         return;
       }
       if (files.length === 0) {
         alert("กรุณาเลือกรูปภาพกิจกรรมอย่างน้อย 1 ไฟล์");
         return;
       }
+
+      fd.set("start_datetime", `${startDate} 00:00:00`);
+      fd.set("end_datetime", `${endDate} 23:59:59`);
 
       els.directSubmit && (els.directSubmit.disabled = true);
 
