@@ -15,7 +15,7 @@ body {
 main.site-home {
     /* The fixed header + nav already reserve space via body padding-top.
        Keep site pages from adding extra top space (which caused big white gaps on mobile). */
-    padding-top: 65;
+    padding-top: 65px;
 }
 
 *::before,
@@ -435,24 +435,22 @@ body {
     }
 
     .hero-inner-director .director-photo-wrap {
-        width: min(100%, 360px);
-        margin-top: 22px;
+        width: min(82%, 330px);
+        margin-top: 0;
     }
 
     .hero-inner-director .director-photo {
-        max-height: 430px;
+        max-height: 320px;
     }
 
     .hero-inner-director .director-info {
-        margin-top: -8px;
-        padding: 34px 18px 102px;
-        border-top-left-radius: 38px;
-        border-top-right-radius: 38px;
+        width: calc(100% - 32px);
+        margin-top: 0;
+        padding: 0 14px;
     }
 
     .hero-inner-director .director-btn {
         min-width: min(88%, 320px);
-        margin-bottom: 22px;
         padding: 16px 20px;
     }
 }
@@ -835,14 +833,12 @@ body {
 
 .hero {
     width: 100%;
-    max-height: 600px;
     background: #f5f5f5;
     padding: 28px 0 40px;
 }
 
 .hero-layout {
     width: min(1250px, 92vw);
-    max-height: 600px;
     margin:auto;
     display: grid;
     grid-template-columns: minmax(0, 3fr) minmax(320px, 1fr);
@@ -867,7 +863,6 @@ body {
 .hero-inner-director .director-inner {
     position: relative;
     width: 100%;
-    /* Match hero height on desktop for visual parity */
     height: 75vh;
     max-height: 600px;
     min-height: 380px;
@@ -917,11 +912,14 @@ body {
 
 .hero-inner-director .director-single {
     display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
     justify-items: center;
-    /* Center all content vertically within the column */
-    align-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    height: 100%;
     min-height: 100%;
-    gap: 18px;
+    gap: 16px;
+    padding: 26px 0 28px;
     text-align: center;
 }
 
@@ -931,8 +929,8 @@ body {
     justify-content: center;
     gap: 14px;
     min-width: min(86%, 360px);
-    margin: 0 auto 28px;
-    padding: 18px 26px;
+    margin: 0 auto;
+    padding: 16px 24px;
     background: rgba(255, 255, 255, 0.06);
     color: #ffffff;
     border: 4px solid rgba(255, 255, 255, 0.72);
@@ -957,16 +955,17 @@ body {
 
 .hero-inner-director .director-portrait {
     width: 100%;
-    min-height: 100%;
+    min-height: 0;
     display: grid;
-    align-content: end;
+    align-content: center;
     justify-items: center;
-    gap: 0;
+    gap: 12px;
+    overflow: hidden;
 }
 
 .hero-inner-director .director-photo-wrap {
-    width: min(100%, 420px);
-    margin: 28px auto 0;
+    width: min(86%, 360px);
+    margin: 0 auto;
     aspect-ratio: auto;
     border-radius: 0;
     background: transparent;
@@ -981,8 +980,8 @@ body {
 
 .hero-inner-director .director-photo {
     width: 100%;
-    height: 100%;
-    max-height: 520px;
+    height: auto;
+    max-height: min(360px, calc(75vh - 210px));
     object-fit: contain;
     object-position: center bottom;
     border-radius: 0;
@@ -994,31 +993,27 @@ body {
 .hero-inner-director .director-name {
     color: #ffffff;
     text-align: center;
-    font-size: clamp(28px, 2.7vw, 40px);
+    font-size: clamp(22px, 1.7vw, 30px);
     font-weight: 800;
-    line-height: 1.1;
+    line-height: 1.2;
 }
 
 .hero-inner-director .director-position {
     color: rgba(255, 255, 255, 0.86);
-    margin-top: 16px;
-    font-size: clamp(18px, 1.45vw, 24px);
+    margin-top: 8px;
+    font-size: clamp(15px, 1vw, 18px);
     font-weight: 500;
     line-height: 1.45;
-    max-width: 20ch;
+    max-width: 28ch;
     text-align: center;
 }
 
 .hero-inner-director .director-info {
-    width: 100%;
-    /* Remove negative margin so the block can center cleanly */
+    width: calc(100% - 36px);
+    box-sizing: border-box;
     margin-top: 0;
-    padding: 44px 22px 112px;
-    background:
-        radial-gradient(120% 140% at 0% 100%, rgba(255, 255, 255, 0.10), transparent 42%),
-        linear-gradient(180deg, rgba(92, 42, 134, 0.96) 0%, rgba(79, 28, 114, 0.98) 100%);
-    border-top-left-radius: 48px;
-    border-top-right-radius: 48px;
+    padding: 0 18px;
+    background: transparent;
 }
 
 .hero-slide {
@@ -4251,28 +4246,26 @@ body {
     }
 
     .hero-inner-director .director-photo-wrap {
-        width: min(100%, 300px);
-        margin-top: 18px;
+        width: min(82%, 280px);
+        margin-top: 0;
     }
 
     .hero-inner-director .director-photo {
-        max-height: 340px;
+        max-height: 260px;
     }
 
     .hero-inner-director .director-info {
-        padding: 28px 16px 92px;
-        border-top-left-radius: 30px;
-        border-top-right-radius: 30px;
+        padding: 0 12px;
     }
 
     .hero-inner-director .director-name {
-        font-size: clamp(24px, 7vw, 34px);
+        font-size: clamp(22px, 6vw, 30px);
     }
 
     .hero-inner-director .director-position {
-        margin-top: 12px;
+        margin-top: 8px;
         font-size: 16px;
-        max-width: 18ch;
+        max-width: 26ch;
     }
 
     .hero-inner-director .director-btn {

@@ -1,10 +1,11 @@
 // assets/js/home-director.js
 // เติมข้อมูลผู้อำนวยการ (หน้า site/home.html)
-// ดึงจากตาราง site_structure (site_structure = 1)
+// ดึงจากตาราง site_structure โดยเลือกตำแหน่ง "ผู้อำนวยการ"
 
 (() => {
   async function initHomeDirector() {
     const nameEl = document.querySelector(".director-name");
+    const positionEl = document.querySelector(".director-position");
     const imgEl = document.querySelector(".director-photo");
 
     // ถ้าไม่ได้อยู่หน้า home หรือไม่มี section นี้ ให้ข้าม
@@ -16,8 +17,7 @@
     }
 
     try {
-      const res = await window.SiteStructureAPI.get(1, { isPublic: true });
-      const row = res?.data?.row || null;
+      const row = await loadDirectorRow();
       if (!row) return;
 
       const prefix = String(row.prefix_th || "");
@@ -27,6 +27,11 @@
 
       if (nameEl && fullName) {
         nameEl.textContent = fullName;
+      }
+
+      const position = String(row.position_title || "").trim();
+      if (positionEl && position) {
+        positionEl.textContent = position;
       }
 
       const API_BASE = window.API_BASE_URL || window.__API_BASE__ || "/ict8/backend/public";
@@ -44,12 +49,28 @@
       const photoUrl = toPublicUrl(row.pic_path);
       if (imgEl && photoUrl) {
         imgEl.src = photoUrl;
-        if (!imgEl.getAttribute("alt")) imgEl.alt = fullName || "director";
+        imgEl.alt = fullName || "director";
       }
     } catch (e) {
       // เงียบ ๆ ไม่ให้หน้าเว็บพัง
       // console.warn("Home director load failed", e);
     }
+  }
+
+  async function loadDirectorRow() {
+    if (typeof window.SiteStructureAPI.list === "function") {
+      const res = await window.SiteStructureAPI.list({ page: 1, limit: 200, isPublic: true });
+      const items = Array.isArray(res?.data?.items) ? res.data.items : [];
+      const director = items.find((item) =>
+        String(item?.position_title || "").includes("ผู้อำนวยการ")
+      );
+
+      if (director) return director;
+      if (items[0]) return items[0];
+    }
+
+    const res = await window.SiteStructureAPI.get(1, { isPublic: true });
+    return res?.data?.row || null;
   }
 
   // defer scripts: DOM พร้อมแล้ว แต่เผื่อกรณี include.js ยังเปลี่ยน DOM บางส่วน
