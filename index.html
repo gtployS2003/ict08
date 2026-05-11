@@ -6,6 +6,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
   <title>ระบบศูนย์ควบคุมและรายงานผล</title>
+  <script>
+    (function () {
+      try {
+        var token =
+          localStorage.getItem("auth_token") ||
+          sessionStorage.getItem("auth_token") ||
+          localStorage.getItem("token") ||
+          sessionStorage.getItem("token") ||
+          localStorage.getItem("access_token") ||
+          sessionStorage.getItem("access_token");
+
+        if (!token) {
+          var redirect = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.replace("/ict8/login.html?redirect=" + redirect);
+        }
+      } catch (e) {
+        window.location.replace("/ict8/login.html?redirect=%2Fict8%2Findex.html");
+      }
+    })();
+  </script>
 
   <!-- include head -->
   <script src="/ict8/assets/js/include.js" defer></script>
