@@ -2,6 +2,7 @@ const downloadGridEl = document.querySelector('.download-grid');
 const searchFormEl = document.querySelector('.download-search');
 const searchInputEl = searchFormEl ? searchFormEl.querySelector('input') : null;
 const searchClearBtn = document.querySelector('.download-search-clear');
+const downloadCountEl = document.querySelector('.download-count');
 const filterBtn = document.querySelector('.download-filter-btn');
 const filterOverlay = document.querySelector('.download-filter-popup-overlay');
 const filterStartInput = document.getElementById('filter-start');
@@ -134,7 +135,13 @@ async function loadDocumentsFromApi() {
     setupCategoryLogic();
   } catch (err) {
     console.error('Error loading documents from API:', err);
-    downloadGridEl.innerHTML = `<p>ไม่สามารถโหลดข้อมูลเอกสารได้</p>`;
+    if (downloadCountEl) downloadCountEl.textContent = 'โหลดเอกสารไม่สำเร็จ';
+    downloadGridEl.innerHTML = `
+      <div class="download-empty">
+        <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
+        <p>ไม่สามารถโหลดข้อมูลเอกสารได้</p>
+      </div>
+    `;
   }
 }
 
@@ -200,8 +207,18 @@ function renderDownloads() {
   if (!downloadGridEl) return;
 
   if (filteredDocs.length === 0) {
-    downloadGridEl.innerHTML = `<p>ไม่พบเอกสารตามเงื่อนไขที่เลือก</p>`;
+    if (downloadCountEl) downloadCountEl.textContent = 'ไม่พบเอกสาร';
+    downloadGridEl.innerHTML = `
+      <div class="download-empty">
+        <i class="fa-regular fa-folder-open" aria-hidden="true"></i>
+        <p>ไม่พบเอกสารตามเงื่อนไขที่เลือก</p>
+      </div>
+    `;
     return;
+  }
+
+  if (downloadCountEl) {
+    downloadCountEl.textContent = `พบเอกสาร ${filteredDocs.length} รายการ`;
   }
 
   downloadGridEl.innerHTML = filteredDocs.map(doc => {
@@ -215,6 +232,9 @@ function renderDownloads() {
 
     return `
     <div class="download-card">
+      <div class="download-file-icon">
+        <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
+      </div>
       <div class="download-main-info">
         <h3 class="download-file-title">${title}</h3>
         <div class="download-meta">
@@ -226,8 +246,8 @@ function renderDownloads() {
       </div>
       <div class="download-actions">
         ${file
-          ? `<a href="${escapeHtml(file)}" class="btn-download" target="_blank" rel="noopener noreferrer">ดาวน์โหลด</a>`
-          : `<span class="muted">ไม่มีไฟล์แนบ</span>`
+          ? `<a href="${escapeHtml(file)}" class="btn-download" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-download" aria-hidden="true"></i><span>ดาวน์โหลด</span></a>`
+          : `<span class="download-muted">ไม่มีไฟล์แนบ</span>`
         }
       </div>
     </div>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 
 <head>
     <meta charset="UTF-8">
@@ -22,14 +22,19 @@
     <div id="navbar"></div>
     <main class="download-main">
         <div class="download-inner">
-            <h1 class="download-title">ดาวน์โหลดเอกสาร</h1>
+            <div class="download-heading">
+                <p class="download-eyebrow">เอกสารเผยแพร่</p>
+                <h1 class="download-title">ดาวน์โหลดเอกสาร</h1>
+            </div>
             <div class="download-divider"></div>
 
             <div class="download-toolbar">
                 <form class="download-search" action="#" onsubmit="return false;">
-                    <input type="text" placeholder="ค้นหา" />
-                    <button type="button" class="download-search-clear">x</button>
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <input type="text" placeholder="ค้นหาเอกสาร" aria-label="ค้นหาเอกสาร" />
+                    <button type="button" class="download-search-clear" aria-label="ล้างคำค้น">×</button>
                 </form>
+                <div class="download-count" aria-live="polite">กำลังโหลดเอกสาร...</div>
             </div>
 
             <div class="download-grid">
@@ -39,3 +44,6 @@
     </main>
 
     <div id="footer"></div>
+</body>
+
+</html>
