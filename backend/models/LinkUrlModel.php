@@ -50,6 +50,7 @@ final class LinkUrlModel
                 l.title,
                 l.content,
                 l.link_url,
+                l.img,
                 l.is_banner,
                 l.writer,
                 l.create_at
@@ -114,6 +115,7 @@ final class LinkUrlModel
                 l.title,
                 l.content,
                 l.link_url,
+                l.img,
                 l.is_banner,
                 l.writer,
                 l.create_at
@@ -137,6 +139,7 @@ final class LinkUrlModel
         $title = trim((string) ($data['title'] ?? ''));
         $content = (string) ($data['content'] ?? '');
         $linkUrl = trim((string) ($data['link_url'] ?? ''));
+        $img = trim((string) ($data['img'] ?? ''));
         $isBanner = (int) ($data['is_banner'] ?? 0);
 
         $sql = "
@@ -144,6 +147,7 @@ final class LinkUrlModel
                 title,
                 content,
                 link_url,
+                img,
                 is_banner,
                 writer,
                 create_at
@@ -151,6 +155,7 @@ final class LinkUrlModel
                 :title,
                 :content,
                 :link_url,
+                :img,
                 :is_banner,
                 :writer,
                 NOW()
@@ -161,6 +166,7 @@ final class LinkUrlModel
         $stmt->bindValue(':title', $title, PDO::PARAM_STR);
         $stmt->bindValue(':content', $content, PDO::PARAM_STR);
         $stmt->bindValue(':link_url', $linkUrl, PDO::PARAM_STR);
+        $stmt->bindValue(':img', $img, PDO::PARAM_STR);
         $stmt->bindValue(':is_banner', $isBanner, PDO::PARAM_INT);
         $stmt->bindValue(':writer', $writerId, PDO::PARAM_INT);
         $stmt->execute();
@@ -176,6 +182,7 @@ final class LinkUrlModel
         $title = trim((string) ($data['title'] ?? ''));
         $content = (string) ($data['content'] ?? '');
         $linkUrl = trim((string) ($data['link_url'] ?? ''));
+        $img = trim((string) ($data['img'] ?? ''));
         $isBanner = (int) ($data['is_banner'] ?? 0);
 
         $sql = "
@@ -184,6 +191,7 @@ final class LinkUrlModel
                 title = :title,
                 content = :content,
                 link_url = :link_url,
+                img = :img,
                 is_banner = :is_banner,
                 writer = :writer
             WHERE url_id = :id
@@ -194,6 +202,7 @@ final class LinkUrlModel
         $stmt->bindValue(':title', $title, PDO::PARAM_STR);
         $stmt->bindValue(':content', $content, PDO::PARAM_STR);
         $stmt->bindValue(':link_url', $linkUrl, PDO::PARAM_STR);
+        $stmt->bindValue(':img', $img, PDO::PARAM_STR);
         $stmt->bindValue(':is_banner', $isBanner, PDO::PARAM_INT);
         $stmt->bindValue(':writer', $writerId, PDO::PARAM_INT);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);

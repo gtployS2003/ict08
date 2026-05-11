@@ -1007,6 +1007,41 @@ tr.is-dragging {
   border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+#link-url-modal .photo-preview {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+#link-url-modal .photo-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+#link-url-modal .photo-preview__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.link-url-thumb {
+  display: block;
+  width: 96px;
+  height: 44px;
+  object-fit: contain;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 8px;
+  background: #fff;
+}
+
 /* =========================
    FIX: TEMPLATE TYPE modal (เทมเพลตโพสต์) ให้ใช้งานได้บนมือถือ/LINE OA
    - จำกัดความสูงของ dialog

@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/ict8/assets/css/style.css" />
     <link rel="stylesheet" href="/ict8/assets/css/schedule.css" />
     <link rel="stylesheet" href="/ict8/assets/css/device.css" />
-    <link rel="stylesheet" href="/ict8/assets/css/gcms.css?v=2026-03-04-1" />
+    <link rel="stylesheet" href="/ict8/assets/css/gcms.css?v=2026-05-11" />
     <link rel="stylesheet" href="/ict8/assets/css/login.css" />
     <link rel="stylesheet" href="/ict8/assets/css/profile-setup.css" />
 
@@ -64,7 +64,7 @@
     <script src="/ict8/assets/js/auth.js" defer></script>
     <script src="/ict8/assets/js/main.js" defer></script>
     <script src="/ict8/assets/js/gcms-dashboard.js" defer></script>
-    <script src="/ict8/assets/js/gcms-settings-data.js?v=2026-03-04-3" defer></script>
+    <script src="/ict8/assets/js/gcms-settings-data.js?v=2026-05-11" defer></script>
     <script defer src="/ict8/assets/js/gcms-nav.js"></script>
 </head>
 
@@ -2155,6 +2155,7 @@
                                         <th style="width: 90px">ID</th>
                                         <th style="width: 220px">ชื่อ</th>
                                         <th>URL</th>
+                                        <th style="width: 140px">รูปภาพ</th>
                                         <th style="width: 120px">Banner</th>
                                         <th style="width: 170px">จัดการ</th>
                                     </tr>
@@ -2162,7 +2163,7 @@
 
                                 <tbody id="link-url-tbody">
                                     <tr>
-                                        <td colspan="5" class="muted">ยังไม่มีข้อมูล (หรือยังไม่ได้โหลด)</td>
+                                        <td colspan="6" class="muted">ยังไม่มีข้อมูล (หรือยังไม่ได้โหลด)</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -3604,6 +3605,7 @@
 
             <form id="link-url-form" class="modal__body" autocomplete="off">
                 <input type="hidden" id="link-url-id" name="url_id" />
+                <input type="hidden" id="link-url-img" name="img" />
 
                 <div class="form-grid">
                     <div class="form-field full">
@@ -3619,6 +3621,22 @@
                     <div class="form-field full">
                         <label for="link-url-content">รายละเอียด</label>
                         <textarea id="link-url-content" name="content" rows="4" placeholder="คำอธิบายเพิ่มเติม (ถ้ามี)"></textarea>
+                    </div>
+
+                    <div class="form-field full">
+                        <label for="link-url-file">รูปภาพ</label>
+                        <input id="link-url-file" name="file" type="file" accept="image/jpeg,image/png,image/webp" />
+                        <div class="hint">รองรับ .jpg .png .webp (ขนาดไม่เกิน 10MB)</div>
+                    </div>
+
+                    <div class="form-field full">
+                        <div id="link-url-preview" class="photo-preview" hidden>
+                            <img id="link-url-preview-img" src="" alt="preview" />
+                            <div class="photo-preview__meta">
+                                <span id="link-url-preview-name">-</span>
+                                <button id="link-url-clear" type="button" class="btn btn-outline btn-sm">ล้างรูป</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-field form-field--toggle full">

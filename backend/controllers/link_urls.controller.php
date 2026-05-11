@@ -81,6 +81,7 @@ final class LinkUrlsController
         $writerId = (int)($user['user_id'] ?? 0);
 
         $body = $this->readBody();
+        $body = $this->withUploadedImage($body);
         $title = trim((string)($body['title'] ?? ''));
         $linkUrl = trim((string)($body['link_url'] ?? ''));
 
@@ -107,6 +108,7 @@ final class LinkUrlsController
         if (!$exists) fail('Link not found', 404);
 
         $body = $this->readBody();
+        $body = $this->withUploadedImage($body);
         $title = trim((string)($body['title'] ?? ''));
         $linkUrl = trim((string)($body['link_url'] ?? ''));
 
@@ -115,6 +117,9 @@ final class LinkUrlsController
         }
 
         $model->update($id, $body, $writerId);
+        if (trim((string)($body['img'] ?? '')) === '') {
+            $this->deleteUploadedImage((string)($exists['img'] ?? ''));
+        }
         $row = $model->find($id);
         ok($row, 'Updated');
     }
@@ -131,6 +136,9 @@ final class LinkUrlsController
         if (!$row) fail('Link not found', 404);
 
         $ok = $model->delete($id);
+        if ($ok) {
+            $this->deleteUploadedImage((string)($row['img'] ?? ''));
+        }
         ok(['deleted' => $ok, 'url_id' => $id], 'Deleted');
     }
 
@@ -149,5 +157,93 @@ final class LinkUrlsController
 
         parse_str($raw, $data);
         return is_array($data) ? $data : [];
+    }
+
+    /**
+     * @param array<string,mixed> $body
+     * @return array<string,mixed>
+     */
+    private function withUploadedImage(array $body): array
+    {
+        if (!isset($_FILES['file'])) {
+            $body['img'] = trim((string)($body['img'] ?? ''));
+            return $body;
+        }
+
+        $file = $_FILES['file'];
+        if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            $body['img'] = trim((string)($body['img'] ?? ''));
+            return $body;
+        }
+        if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            fail('Upload failed', 400, ['code' => (int)($file['error'] ?? UPLOAD_ERR_NO_FILE)]);
+        }
+
+        $tmp = (string)($file['tmp_name'] ?? '');
+        if ($tmp === '' || !is_uploaded_file($tmp)) {
+            fail('Invalid upload', 400);
+        }
+
+        $size = (int)($file['size'] ?? 0);
+        $max = 10 * 1024 * 1024;
+        if ($size <= 0 || $size > $max) {
+            fail('File too large (max 10MB)', 422);
+        }
+
+        $allow = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+        ];
+
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = $tmp !== '' ? (string)finfo_file($finfo, $tmp) : '';
+        finfo_close($finfo);
+
+        if (!isset($allow[$mime])) {
+            fail('File must be .jpg .png .webp only', 422, ['mime' => $mime]);
+        }
+
+        $ext = $allow[$mime];
+        $stored = 'link_' . date('Ymd_His') . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
+        $dir = __DIR__ . '/../public/uploads/link_url';
+        if (!is_dir($dir)) {
+            $ok = @mkdir($dir, 0775, true);
+            if (!$ok && !is_dir($dir)) {
+                $last = error_get_last();
+                fail('Upload directory cannot be created', 500, ['dir' => $dir, 'detail' => $last['message'] ?? null]);
+            }
+        }
+        @chmod($dir, 0775);
+        if (!is_writable($dir)) {
+            fail('Upload directory is not writable', 500, [
+                'dir' => $dir,
+                'perms' => substr(sprintf('%o', @fileperms($dir) ?: 0), -4),
+            ]);
+        }
+
+        $dest = $dir . '/' . $stored;
+        if (!@move_uploaded_file($tmp, $dest)) {
+            $last = error_get_last();
+            fail('Could not move uploaded file', 500, ['dest' => $dest, 'detail' => $last['message'] ?? null]);
+        }
+
+        $old = trim((string)($body['img'] ?? ''));
+        $body['img'] = '/uploads/link_url/' . $stored;
+        $this->deleteUploadedImage($old);
+
+        return $body;
+    }
+
+    private function deleteUploadedImage(string $path): void
+    {
+        $path = trim($path);
+        if ($path === '') return;
+        if (!str_starts_with($path, '/uploads/link_url/')) return;
+
+        $abs = __DIR__ . '/../public' . $path;
+        if (is_file($abs)) {
+            @unlink($abs);
+        }
     }
 }

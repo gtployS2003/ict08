@@ -16,6 +16,17 @@ function escapeHtml(str) {
     .replaceAll("'", '&#039;');
 }
 
+function toPublicImageUrl(path) {
+  const p = String(path || '').trim();
+  if (!p) return '';
+  if (/^https?:\/\//i.test(p)) return p;
+  const apiBase = String(window.__API_BASE__ || window.API_BASE_URL || '/ict8/backend/public').replace(/\/+$/, '');
+  if (p.startsWith('/uploads/')) return `${apiBase}${p}`;
+  if (p.startsWith('uploads/')) return `${apiBase}/${p}`;
+  if (p.startsWith('/')) return p;
+  return `/${p}`;
+}
+
 async function loadLinksFromApi(gridEl) {
   try {
     const qs = new URLSearchParams({ public: '1', page: '1', limit: '200' });
@@ -29,6 +40,7 @@ async function loadLinksFromApi(gridEl) {
       name: r.title || `ลิงก์ #${r.url_id}`,
       url: r.link_url || '',
       description: r.content || '',
+      img: r.img || '',
     }));
 
     renderLinks(gridEl, mapped);
@@ -46,16 +58,17 @@ function renderLinks(container, items) {
 
   container.innerHTML = items
     .map(link => `
-      <div class="link-card">
-        <h2 class="link-name">${escapeHtml(link.name)}</h2>
-        <a class="link-url"
-           href="${escapeHtml(link.url)}"
-           target="_blank"
-           rel="noopener noreferrer">
-          ${escapeHtml(link.url)}
-        </a>
-        ${link.description ? `<p class="link-desc">${escapeHtml(link.description)}</p>` : ''}
-      </div>
+      <a class="link-card"
+         href="${escapeHtml(link.url)}"
+         target="_blank"
+         rel="noopener noreferrer"
+         aria-label="${escapeHtml(link.name)}">
+        ${
+          link.img
+            ? `<img class="link-image" src="${escapeHtml(toPublicImageUrl(link.img))}" alt="${escapeHtml(link.name)}" loading="lazy">`
+            : `<span class="link-image link-image--empty">${escapeHtml(link.name)}</span>`
+        }
+      </a>
     `)
     .join('');
 }

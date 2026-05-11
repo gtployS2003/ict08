@@ -9884,9 +9884,15 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
     formError: $("#link-url-form-error"),
 
     inputId: $("#link-url-id"),
+    inputImg: $("#link-url-img"),
     inputTitle: $("#link-url-title"),
     inputUrl: $("#link-url-url"),
     inputContent: $("#link-url-content"),
+    inputFile: $("#link-url-file"),
+    previewWrap: $("#link-url-preview"),
+    previewImg: $("#link-url-preview-img"),
+    previewName: $("#link-url-preview-name"),
+    clearBtn: $("#link-url-clear"),
     inputIsBanner: $("#link-url-is-banner"),
     isBannerText: $("#link-url-is-banner-text"),
   };
@@ -9912,6 +9918,49 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
     linkUrlEls.formError.textContent = String(msg);
   }
 
+  function linkUrlToPublicUrl(path) {
+    const p = String(path || "").trim();
+    if (!p) return "";
+    if (/^https?:\/\//i.test(p)) return p;
+    if (p.startsWith("/uploads/")) return `${API_BASE}${p}`;
+    if (p.startsWith("uploads/")) return `${API_BASE}/${p}`;
+    if (p.startsWith("/")) return p;
+    return `/${p}`;
+  }
+
+  function linkUrlHidePreview() {
+    if (linkUrlEls.previewWrap) linkUrlEls.previewWrap.hidden = true;
+    if (linkUrlEls.previewImg) linkUrlEls.previewImg.removeAttribute("src");
+    if (linkUrlEls.previewName) linkUrlEls.previewName.textContent = "-";
+  }
+
+  function linkUrlShowPreviewFromFile(file) {
+    if (!linkUrlEls.previewWrap || !linkUrlEls.previewImg || !linkUrlEls.previewName) return;
+    const url = URL.createObjectURL(file);
+    linkUrlEls.previewImg.src = url;
+    linkUrlEls.previewName.textContent = `${file.name} (${Math.round((file.size || 0) / 1024)} KB)`;
+    linkUrlEls.previewWrap.hidden = false;
+    linkUrlEls.previewImg.onload = () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (_) {
+        // ignore
+      }
+    };
+  }
+
+  function linkUrlShowPreviewFromPath(path) {
+    const p = String(path || "").trim();
+    if (!p) {
+      linkUrlHidePreview();
+      return;
+    }
+    if (!linkUrlEls.previewWrap || !linkUrlEls.previewImg || !linkUrlEls.previewName) return;
+    linkUrlEls.previewImg.src = linkUrlToPublicUrl(p);
+    linkUrlEls.previewName.textContent = p;
+    linkUrlEls.previewWrap.hidden = false;
+  }
+
   function linkUrlSyncBannerText() {
     if (!linkUrlEls.inputIsBanner || !linkUrlEls.isBannerText) return;
     linkUrlEls.isBannerText.textContent = linkUrlEls.inputIsBanner.checked ? "เป็น Banner" : "ไม่เป็น Banner";
@@ -9920,10 +9969,13 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
   function linkUrlResetForm() {
     linkUrlSetError("");
     if (linkUrlEls.inputId) linkUrlEls.inputId.value = "";
+    if (linkUrlEls.inputImg) linkUrlEls.inputImg.value = "";
     if (linkUrlEls.inputTitle) linkUrlEls.inputTitle.value = "";
     if (linkUrlEls.inputUrl) linkUrlEls.inputUrl.value = "";
     if (linkUrlEls.inputContent) linkUrlEls.inputContent.value = "";
+    if (linkUrlEls.inputFile) linkUrlEls.inputFile.value = "";
     if (linkUrlEls.inputIsBanner) linkUrlEls.inputIsBanner.checked = false;
+    linkUrlHidePreview();
     linkUrlSyncBannerText();
   }
 
@@ -9936,9 +9988,12 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
       if (linkUrlEls.submitText) linkUrlEls.submitText.textContent = "บันทึกการแก้ไข";
 
       if (linkUrlEls.inputId) linkUrlEls.inputId.value = String(row.url_id ?? "");
+      if (linkUrlEls.inputImg) linkUrlEls.inputImg.value = String(row.img ?? "");
       if (linkUrlEls.inputTitle) linkUrlEls.inputTitle.value = String(row.title ?? "");
       if (linkUrlEls.inputUrl) linkUrlEls.inputUrl.value = String(row.link_url ?? "");
       if (linkUrlEls.inputContent) linkUrlEls.inputContent.value = String(row.content ?? "");
+      if (linkUrlEls.inputFile) linkUrlEls.inputFile.value = "";
+      linkUrlShowPreviewFromPath(row.img ?? "");
       if (linkUrlEls.inputIsBanner) linkUrlEls.inputIsBanner.checked = Number(row.is_banner ?? 0) === 1;
     } else {
       if (linkUrlEls.modalTitle) linkUrlEls.modalTitle.textContent = "เพิ่มลิงก์ที่เกี่ยวข้อง";
@@ -9967,7 +10022,7 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
   function linkUrlRenderRows(items = []) {
     if (!linkUrlEls.tbody) return;
     if (!items.length) {
-      linkUrlEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">ไม่พบข้อมูล</td></tr>`;
+      linkUrlEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">ไม่พบข้อมูล</td></tr>`;
       return;
     }
 
@@ -9976,10 +10031,14 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
         const id = r.url_id ?? "";
         const title = r.title ?? "";
         const url = r.link_url ?? "";
+        const img = r.img ?? "";
         const isBanner = Number(r.is_banner ?? 0) === 1;
 
         const urlCell = url
           ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`
+          : `<span class="muted">-</span>`;
+        const imgCell = img
+          ? `<img class="link-url-thumb" src="${escapeHtml(linkUrlToPublicUrl(img))}" alt="${escapeHtml(title)}" loading="lazy">`
           : `<span class="muted">-</span>`;
 
         return `
@@ -9987,6 +10046,7 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
             <td>${escapeHtml(id)}</td>
             <td>${escapeHtml(title)}</td>
             <td>${urlCell}</td>
+            <td>${imgCell}</td>
             <td>${isBanner ? "ใช่" : "ไม่"}</td>
             <td>
               <div class="table-actions">
@@ -9994,6 +10054,7 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
                   data-id="${escapeHtml(id)}"
                   data-title="${escapeHtml(title)}"
                   data-url="${escapeHtml(url)}"
+                  data-img="${escapeHtml(img)}"
                   data-content="${escapeHtml(r.content ?? "") }"
                   data-is_banner="${isBanner ? "1" : "0"}">
                   <i class="fa-solid fa-pen"></i> แก้ไข
@@ -10015,7 +10076,7 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
 
     linkUrlState.loading = true;
     try {
-      if (linkUrlEls.tbody) linkUrlEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">กำลังโหลด...</td></tr>`;
+      if (linkUrlEls.tbody) linkUrlEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">กำลังโหลด...</td></tr>`;
 
       linkUrlState.q = String(linkUrlEls.search?.value || "").trim();
       linkUrlState.limit = Number(linkUrlEls.limit?.value || 50) || 50;
@@ -10040,7 +10101,7 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
       if (linkUrlEls.total) linkUrlEls.total.textContent = `ทั้งหมด ${linkUrlState.total} รายการ`;
     } catch (err) {
       if (linkUrlEls.tbody) {
-        linkUrlEls.tbody.innerHTML = `<tr><td colspan="5" class="muted">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err?.message || String(err))}</td></tr>`;
+        linkUrlEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err?.message || String(err))}</td></tr>`;
       }
     } finally {
       linkUrlState.loading = false;
@@ -10089,6 +10150,27 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
       linkUrlSyncBannerText();
     });
 
+    linkUrlEls.inputFile?.addEventListener("change", () => {
+      const f = linkUrlEls.inputFile?.files?.[0];
+      if (!f) {
+        linkUrlShowPreviewFromPath(linkUrlEls.inputImg?.value || "");
+        return;
+      }
+      if (!/^image\//i.test(String(f.type || ""))) {
+        linkUrlSetError("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+        linkUrlEls.inputFile.value = "";
+        return;
+      }
+      linkUrlSetError("");
+      linkUrlShowPreviewFromFile(f);
+    });
+
+    linkUrlEls.clearBtn?.addEventListener("click", () => {
+      if (linkUrlEls.inputFile) linkUrlEls.inputFile.value = "";
+      if (linkUrlEls.inputImg) linkUrlEls.inputImg.value = "";
+      linkUrlHidePreview();
+    });
+
     // table actions
     linkUrlEls.tbody?.addEventListener("click", async (e) => {
       const btn = e.target.closest("button[data-action]");
@@ -10104,6 +10186,7 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
             url_id: id,
             title: btn.getAttribute("data-title") || "",
             link_url: btn.getAttribute("data-url") || "",
+            img: btn.getAttribute("data-img") || "",
             content: btn.getAttribute("data-content") || "",
             is_banner: btn.getAttribute("data-is_banner") || "0",
           },
@@ -10133,6 +10216,8 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
       const title = String(linkUrlEls.inputTitle?.value || "").trim();
       const link_url = String(linkUrlEls.inputUrl?.value || "").trim();
       const content = String(linkUrlEls.inputContent?.value || "");
+      const img = String(linkUrlEls.inputImg?.value || "").trim();
+      const file = linkUrlEls.inputFile?.files?.[0];
       const is_banner = linkUrlEls.inputIsBanner?.checked ? 1 : 0;
 
       if (!title || !link_url) {
@@ -10143,7 +10228,13 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
       try {
         linkUrlSetError("");
 
-        const payload = { title, link_url, content, is_banner };
+        const payload = new FormData();
+        payload.append("title", title);
+        payload.append("link_url", link_url);
+        payload.append("content", content);
+        payload.append("img", img);
+        payload.append("is_banner", String(is_banner));
+        if (file) payload.append("file", file);
 
         if (id) {
           await apiFetch(`/link-urls/${encodeURIComponent(id)}`, { method: "PUT", body: payload });
