@@ -239,7 +239,8 @@ body {
 =========================== */
 
 .request-menu-page {
-    min-height: calc(100vh - 96px);
+    flex: 1 0 auto;
+    min-height: 0;
     padding: 120px 18px 64px;
 }
 
@@ -3804,6 +3805,10 @@ main.site-home .directors .director-year {
     padding: 15px 0;
     margin-top: auto;
     font-size: 14px;
+}
+
+#footer-index {
+    margin-top: auto;
 }
 
 .footer-home {
