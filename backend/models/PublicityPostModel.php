@@ -265,4 +265,57 @@ final class PublicityPostModel
             throw new RuntimeException('PUBLICITY_POST_NOT_FOUND');
         return $row;
     }
+
+    public function deleteByEventId(int $eventId): bool
+    {
+        $row = $this->findByEventId($eventId);
+        if (!$row) {
+            throw new RuntimeException('PUBLICITY_POST_NOT_FOUND');
+        }
+
+        $postId = (int)($row['publicity_post_id'] ?? 0);
+        if ($postId <= 0) {
+            throw new RuntimeException('PUBLICITY_POST_NOT_FOUND');
+        }
+
+        $activityCol = $this->activityPublicityPostColumn();
+
+        $this->pdo->beginTransaction();
+        try {
+            $stmt = $this->pdo->prepare("DELETE FROM activity WHERE {$activityCol} = :pid");
+            $stmt->execute([':pid' => $postId]);
+
+            $stmt = $this->pdo->prepare('DELETE FROM publicity_post_media WHERE post_id = :pid');
+            $stmt->execute([':pid' => $postId]);
+
+            $stmt = $this->pdo->prepare('SELECT event_template_id FROM event_template WHERE publicity_post_id = :pid');
+            $stmt->execute([':pid' => $postId]);
+            $templateIds = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+            foreach ($templateIds as $templateId) {
+                $tid = (int)$templateId;
+                if ($tid <= 0) continue;
+
+                $stmt = $this->pdo->prepare('DELETE FROM event_template_export WHERE event_template_id = :tid');
+                $stmt->execute([':tid' => $tid]);
+
+                $stmt = $this->pdo->prepare('DELETE FROM event_template_asset WHERE event_template_id = :tid');
+                $stmt->execute([':tid' => $tid]);
+            }
+
+            $stmt = $this->pdo->prepare('DELETE FROM event_template WHERE publicity_post_id = :pid');
+            $stmt->execute([':pid' => $postId]);
+
+            $stmt = $this->pdo->prepare('DELETE FROM publicity_post WHERE publicity_post_id = :pid LIMIT 1');
+            $stmt->execute([':pid' => $postId]);
+
+            $this->pdo->commit();
+            return true;
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
 }

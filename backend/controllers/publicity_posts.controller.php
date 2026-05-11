@@ -228,6 +228,36 @@ final class PublicityPostsController
     }
 
     /**
+     * DELETE /publicity-posts/{eventId}
+     */
+    public function delete(int $eventId): void
+    {
+        try {
+            $this->requireStaffAccess();
+
+            $eventId = max(1, (int)$eventId);
+            $m = new PublicityPostModel($this->pdo);
+            $row = $m->findByEventId($eventId);
+            if (!$row) {
+                json_response(['error' => true, 'message' => 'Publicity post not found'], 404);
+                return;
+            }
+
+            $m->deleteByEventId($eventId);
+            json_response([
+                'error' => false,
+                'message' => 'Deleted',
+                'data' => [
+                    'event_id' => $eventId,
+                    'publicity_post_id' => (int)($row['publicity_post_id'] ?? 0),
+                ],
+            ]);
+        } catch (Throwable $e) {
+            json_response(['error' => true, 'message' => 'Failed to delete publicity post', 'detail' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * GET /publicity-posts/eligible-events?province_id=&request_type_id=&request_sub_type_id=&q=&limit=
      * Returns only finished events, and excludes ones that already have publicity_post.
      */

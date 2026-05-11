@@ -271,7 +271,7 @@
     if (!Array.isArray(rows) || rows.length === 0) {
       els.tbody.innerHTML = `
         <tr>
-          <td colspan="4" style="text-align:center; color:#6b7280;">ยังไม่มีข่าวสาร</td>
+          <td colspan="5" style="text-align:center; color:#6b7280;">ยังไม่มีข่าวสาร</td>
         </tr>
       `;
       return;
@@ -317,6 +317,16 @@
                 <span class="muted">banner</span>
               </label>
             </td>
+            <td>
+              <button
+                type="button"
+                class="btn btn-danger btn-sm rn-delete-btn"
+                data-news-id="${escapeHtml(String(id ?? ""))}"
+                data-news-title="${escapeHtml(title)}"
+              >
+                <i class="fa-solid fa-trash"></i> ลบ
+              </button>
+            </td>
           </tr>
         `;
       })
@@ -331,7 +341,7 @@
       if (els.tbody) {
         els.tbody.innerHTML = `
           <tr>
-            <td colspan="4" style="text-align:center; color:#6b7280;">กำลังโหลดข้อมูล...</td>
+            <td colspan="5" style="text-align:center; color:#6b7280;">กำลังโหลดข้อมูล...</td>
           </tr>
         `;
       }
@@ -349,7 +359,7 @@
       if (els.tbody) {
         els.tbody.innerHTML = `
           <tr>
-            <td colspan="4" style="text-align:center; color:#b91c1c;">โหลดข่าวสารไม่สำเร็จ</td>
+            <td colspan="5" style="text-align:center; color:#b91c1c;">โหลดข่าวสารไม่สำเร็จ</td>
           </tr>
         `;
       }
@@ -526,6 +536,28 @@
 
   function bindTableEvents() {
     if (!els.tbody) return;
+
+    els.tbody.addEventListener("click", async (e) => {
+      const btn = e.target?.closest?.(".rn-delete-btn");
+      if (!btn) return;
+
+      const newsId = btn.getAttribute("data-news-id");
+      const title = btn.getAttribute("data-news-title") || newsId || "";
+      if (!newsId) return;
+
+      const ok = confirm(`ยืนยันลบข่าวประชาสัมพันธ์นี้?\n\n- ${title}\n\nลบแล้วกู้คืนไม่ได้`);
+      if (!ok) return;
+
+      btn.disabled = true;
+      try {
+        await api(`/news/${encodeURIComponent(newsId)}`, { method: "DELETE" });
+        await loadNews();
+      } catch (err) {
+        console.error(err);
+        alert(err?.message || "ลบข่าวประชาสัมพันธ์ไม่สำเร็จ");
+        btn.disabled = false;
+      }
+    });
 
     els.tbody.addEventListener("change", async (e) => {
       const cb = e.target?.closest?.(".rn-banner-toggle");

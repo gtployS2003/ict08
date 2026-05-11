@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
-    <title>ประชาสัมพันธ์กิจกรรม</title>
+    <title>เพิ่มภาพกิจกรรม</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -121,13 +121,13 @@
         <div style="max-width: 1400px; margin: 0 auto; padding: 16px;">
             <section class="dashboard-content" style="min-height: auto;">
                 <div class="setting-head">
-                    <h1 class="setting-title" style="font-size: 20px;">ประชาสัมพันธ์กิจกรรม</h1>
+                    <h1 class="setting-title" style="font-size: 20px;">ภาพกิจกรรม</h1>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <button id="pe-refresh" class="btn btn-ghost" type="button">
                             <i class="fa-solid fa-rotate"></i> รีเฟรช
                         </button>
                         <button id="pe-open-create" class="btn btn-primary" type="button">
-                            <i class="fa-solid fa-plus"></i> เพิ่มการประชาสัมพันธ์
+                            <i class="fa-solid fa-plus"></i> เพิ่มภาพกิจกรรม
                         </button>
                     </div>
                 </div>
@@ -147,14 +147,15 @@
                             <tr>
                                 <th style="width: 140px;">รหัสกิจกรรม</th>
                                 <th>ชื่อกิจกรรม</th>
-                                <th style="width: 210px;">โปสเตอร์ประชาสัมพันธ์</th>
-                                <th style="width: 230px;">ประชาสัมพันธ์ผ่านเว็บไซต์</th>
+                                <th style="width: 210px;">โปสเตอร์กิจกรรม</th>
+                                <th style="width: 230px;">ภาพกิจกรรมบนเว็บไซต์</th>
                                 <th style="width: 160px;">เพิ่มในหน้าหลัก</th>
+                                <th style="width: 120px;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="pe-table-body">
                             <tr>
-                                <td colspan="5" style="text-align:center; color:#6b7280;">กำลังโหลดข้อมูล...</td>
+                                <td colspan="6" style="text-align:center; color:#6b7280;">กำลังโหลดข้อมูล...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -166,7 +167,7 @@
         <div class="task-add-overlay" id="pe-create-overlay" aria-hidden="true">
             <div class="task-add-modal" role="dialog" aria-modal="true" aria-labelledby="pe-create-title">
                 <div class="task-add-header">
-                    <h3 class="task-add-title" id="pe-create-title">เพิ่มการประชาสัมพันธ์</h3>
+                    <h3 class="task-add-title" id="pe-create-title">เพิ่มภาพกิจกรรม</h3>
                     <button type="button" class="task-add-close" data-pe-close="1" aria-label="Close">×</button>
                 </div>
 

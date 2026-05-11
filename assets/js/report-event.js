@@ -143,7 +143,7 @@
     if (!Array.isArray(rows) || rows.length === 0) {
       els.tbody.innerHTML = `
         <tr>
-          <td colspan="5" style="text-align:center; color:#6b7280;">ยังไม่มีรายการประชาสัมพันธ์</td>
+          <td colspan="6" style="text-align:center; color:#6b7280;">ยังไม่มีรายการประชาสัมพันธ์</td>
         </tr>
       `;
       return;
@@ -256,6 +256,16 @@
                 <span class="muted">banner</span>
               </label>
             </td>
+            <td>
+              <button
+                type="button"
+                class="btn btn-danger btn-sm pe-delete-btn"
+                data-event-id="${escapeHtml(String(eventId ?? ""))}"
+                data-title="${escapeHtml(title)}"
+              >
+                <i class="fa-solid fa-trash"></i> ลบ
+              </button>
+            </td>
           </tr>
         `;
       })
@@ -282,6 +292,28 @@
 
   function bindPostTableEvents() {
     if (!els.tbody) return;
+
+    els.tbody.addEventListener("click", async (e) => {
+      const btn = e.target?.closest?.(".pe-delete-btn");
+      if (!btn) return;
+
+      const eventId = btn.getAttribute("data-event-id");
+      const title = btn.getAttribute("data-title") || eventId || "";
+      if (!eventId) return;
+
+      const ok = confirm(`ยืนยันลบรายการภาพกิจกรรมนี้?\n\n- ${title}\n\nลบแล้วกู้คืนไม่ได้`);
+      if (!ok) return;
+
+      btn.disabled = true;
+      try {
+        await api(`/publicity-posts/${encodeURIComponent(eventId)}`, { method: "DELETE" });
+        await loadPosts();
+      } catch (err) {
+        console.error(err);
+        alert(err?.message || "ลบรายการภาพกิจกรรมไม่สำเร็จ");
+        btn.disabled = false;
+      }
+    });
 
     // banner checkbox (event delegation)
     els.tbody.addEventListener("change", async (e) => {
@@ -622,7 +654,7 @@
       if (els.tbody) {
         els.tbody.innerHTML = `
           <tr>
-            <td colspan="5" style="text-align:center; color:#b91c1c;">โหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่</td>
+            <td colspan="6" style="text-align:center; color:#b91c1c;">โหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่</td>
           </tr>
         `;
       }

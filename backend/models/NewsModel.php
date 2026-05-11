@@ -145,7 +145,24 @@ class NewsModel
 
     public function delete(int $id): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM news WHERE news_id = :id");
-        return $stmt->execute(['id' => $id]);
+        $this->pdo->beginTransaction();
+        try {
+            $stmt = $this->pdo->prepare("DELETE FROM news_document WHERE news_id = :id");
+            $stmt->execute(['id' => $id]);
+
+            $stmt = $this->pdo->prepare("UPDATE banner SET source_news_id = NULL WHERE source_news_id = :id");
+            $stmt->execute(['id' => $id]);
+
+            $stmt = $this->pdo->prepare("DELETE FROM news WHERE news_id = :id");
+            $ok = $stmt->execute(['id' => $id]);
+
+            $this->pdo->commit();
+            return $ok;
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 }

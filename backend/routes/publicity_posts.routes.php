@@ -11,6 +11,7 @@ require_once __DIR__ . '/../controllers/publicity_posts.controller.php';
  * - GET  /publicity-posts/eligible-events
  * - GET  /publicity-posts/{eventId}
  * - PUT  /publicity-posts/{eventId}
+ * - DELETE /publicity-posts/{eventId}
  */
 function publicity_posts_routes(string $method, array $segments, PDO $pdo): bool
 {
@@ -69,6 +70,10 @@ function publicity_posts_routes(string $method, array $segments, PDO $pdo): bool
         }
         if ($method === 'PUT' || $method === 'PATCH') {
             $ctl->update($eventId);
+            return true;
+        }
+        if ($method === 'DELETE') {
+            $ctl->delete($eventId);
             return true;
         }
     }

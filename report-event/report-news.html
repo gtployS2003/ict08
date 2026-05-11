@@ -5,7 +5,7 @@
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
-	<title>ประชาสัมพันธ์ข่าวสาร</title>
+	<title>เพิ่มข่าวประชาสัมพันธ์</title>
 
 	<!-- Fonts -->
 	<link rel="preconnect" href="https://fonts.googleapis.com">
@@ -176,7 +176,7 @@
 		<div style="max-width: 1400px; margin: 0 auto; padding: 16px;">
 			<section class="dashboard-content" style="min-height:auto;">
 				<div class="setting-head">
-					<h1 class="setting-title" style="font-size: 20px;">ประชาสัมพันธ์ข่าวสาร</h1>
+					<h1 class="setting-title" style="font-size: 20px;">ข่าวประชาสัมพันธ์</h1>
 					<div style="display:flex; gap:10px; align-items:center;">
 						<button id="rn-refresh" class="btn btn-ghost" type="button">
 							<i class="fa-solid fa-rotate"></i> รีเฟรช
@@ -199,15 +199,16 @@
 					<table class="data-table" aria-label="News table">
 						<thead>
 							<tr>
-								<th style="width: 160px;">รหัสข่าวสาร</th>
-								<th>ชื่อข่าวสาร</th>
-								<th style="width: 240px;">ประชาสัมพันธ์ผ่านเว็บไซต์</th>
+								<th style="width: 160px;">รหัสข่าวประชาสัมพันธ์</th>
+								<th>ชื่อข่าวประชาสัมพันธ์</th>
+								<th style="width: 240px;">ข่าวประชาสัมพันธ์บนเว็บไซต์</th>
 								<th style="width: 180px;">เพิ่มในหน้าหลัก</th>
+								<th style="width: 120px;">Action</th>
 							</tr>
 						</thead>
 						<tbody id="rn-table-body">
 							<tr>
-								<td colspan="4" style="text-align:center; color:#6b7280;">กำลังโหลดข้อมูล...</td>
+								<td colspan="5" style="text-align:center; color:#6b7280;">กำลังโหลดข้อมูล...</td>
 							</tr>
 						</tbody>
 					</table>
@@ -225,7 +226,7 @@
 
 				<form id="rn-create-form" class="task-add-body" autocomplete="off">
 					<div class="task-add-row">
-						<label for="rn-create-title-input">ชื่อข่าวสาร</label>
+						<label for="rn-create-title-input">ชื่อข่าวประชาสัมพันธ์</label>
 						<input id="rn-create-title-input" type="text" maxlength="255" required style="width:100%;" />
 					</div>
 
