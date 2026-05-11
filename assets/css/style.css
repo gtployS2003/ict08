@@ -564,7 +564,6 @@ main.site-home .director-info {
 
 main.site-home .director-name {
     color: #ffffff;
-    text-align: left;
     font-size: clamp(20px, 2.0vw, 28px);
 }
 
@@ -574,6 +573,7 @@ main.site-home .director-position {
     font-size: 15px;
     line-height: 1.55;
     max-width: 46ch;
+    margin-bottom: 10px;
 }
 
 @media (max-width: 900px) {
