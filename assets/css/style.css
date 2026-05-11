@@ -671,32 +671,18 @@ main.site-home .director-position {
 .download-search {
     display: flex;
     align-items: center;
-    gap: 10px;
-    width: min(460px, 100%);
-    min-height: 48px;
-    padding: 0 14px;
-    border: 2px solid rgba(83, 34, 116, 0.22);
+    border: 2px solid #532274;
     border-radius: 999px;
+    padding: 12px 12px;
+    max-width: 280px;
+    width: 100%;
     background: #ffffff;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.download-search:focus-within {
-    border-color: #532274;
-    box-shadow: 0 0 0 4px rgba(83, 34, 116, 0.10);
-}
-
-.download-search i {
-    color: #6f3b91;
-    font-size: 15px;
-    flex-shrink: 0;
 }
 
 .download-search input {
-    width: 100%;
-    min-width: 0;
     border: 0;
     outline: 0;
+    flex: 1;
     background: transparent;
     color: #1f1630;
     font-family: inherit;
@@ -708,22 +694,11 @@ main.site-home .director-position {
 }
 
 .download-search-clear {
-    width: 30px;
-    height: 30px;
-    padding: 0;
     border: 0;
-    border-radius: 50%;
-    background: #f0e9f5;
+    background: transparent;
     color: #532274;
     cursor: pointer;
-    font-size: 20px;
-    line-height: 1;
-    flex-shrink: 0;
-}
-
-.download-search-clear:hover {
-    background: #532274;
-    color: #ffffff;
+    font-size: 16px;
 }
 
 .download-count {
