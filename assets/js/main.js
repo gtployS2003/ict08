@@ -719,10 +719,9 @@ function initHomeActivities() {
     }
 
     function getCategory(item) {
+        const type = String(item?.request_type_name || "").trim();
         const sub = String(item?.request_sub_type_name || "").trim();
-        if (sub) return sub;
-        const t = String(item?.request_type_name || "").trim();
-        return t || "-";
+        return [type, sub].filter(Boolean).join(" / ") || "-";
     }
 
     function getDateText(item) {

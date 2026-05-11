@@ -111,7 +111,10 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!row) throw new Error("ไม่พบข้อมูล");
 
             const title = String(row?.title || "").trim() || "ไม่ระบุชื่อกิจกรรม";
-            const category = String(row?.request_sub_type_name || "").trim() || String(row?.request_type_name || "").trim() || "-";
+            const category = [
+                String(row?.request_type_name || "").trim(),
+                String(row?.request_sub_type_name || "").trim(),
+            ].filter(Boolean).join(" / ") || "-";
             const province = String(row?.province_name || "").trim() || "-";
             const writer = String(row?.writer_name || "").trim();
             const dt = row?.end_datetime || row?.start_datetime || row?.update_at || row?.create_at;
