@@ -2,7 +2,6 @@ const downloadGridEl = document.querySelector('.download-grid');
 const searchFormEl = document.querySelector('.download-search');
 const searchInputEl = searchFormEl ? searchFormEl.querySelector('input') : null;
 const searchClearBtn = document.querySelector('.download-search-clear');
-const downloadCountEl = document.querySelector('.download-count');
 const filterBtn = document.querySelector('.download-filter-btn');
 const filterOverlay = document.querySelector('.download-filter-popup-overlay');
 const filterStartInput = document.getElementById('filter-start');
@@ -135,7 +134,6 @@ async function loadDocumentsFromApi() {
     setupCategoryLogic();
   } catch (err) {
     console.error('Error loading documents from API:', err);
-    if (downloadCountEl) downloadCountEl.textContent = 'โหลดเอกสารไม่สำเร็จ';
     downloadGridEl.innerHTML = `
       <div class="download-empty">
         <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
@@ -207,7 +205,6 @@ function renderDownloads() {
   if (!downloadGridEl) return;
 
   if (filteredDocs.length === 0) {
-    if (downloadCountEl) downloadCountEl.textContent = 'ไม่พบเอกสาร';
     downloadGridEl.innerHTML = `
       <div class="download-empty">
         <i class="fa-regular fa-folder-open" aria-hidden="true"></i>
@@ -215,10 +212,6 @@ function renderDownloads() {
       </div>
     `;
     return;
-  }
-
-  if (downloadCountEl) {
-    downloadCountEl.textContent = `พบเอกสาร ${filteredDocs.length} รายการ`;
   }
 
   downloadGridEl.innerHTML = filteredDocs.map(doc => {
