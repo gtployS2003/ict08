@@ -111,8 +111,9 @@
     setMediaMeta(`ทั้งหมด ${avail.length} รูป • เลือกแล้ว ${state.selectedIds.length} รูป`);
 
     grid.innerHTML = avail
-      .map((m) => {
+      .map((m, idx) => {
         const id = Number(m?.event_media_id || 0);
+        const displayNo = idx + 1;
         const url = buildFileUrl(m?.filepath);
         const selected = isSelected(id);
         const chipClass = selected ? "wep-chip wep-chip--selected" : "wep-chip";
@@ -120,10 +121,10 @@
 
         return `
           <div class="wep-media-card" data-mid="${id}" title="คลิกเพื่อเลือก/ยกเลิก">
-            <img class="wep-media-thumb" src="${escapeHtml(url)}" alt="media-${id}" loading="lazy" />
+            <img class="wep-media-thumb" src="${escapeHtml(url)}" alt="media-${displayNo}" loading="lazy" />
             <div class="wep-media-meta">
               <span class="${chipClass}"><i class="${selected ? "fa-solid fa-check" : "fa-regular fa-circle"}"></i> ${chipText}</span>
-              <span class="muted" style="font-size:12px;">#${id}</span>
+              <span class="muted" style="font-size:12px;">#${displayNo}</span>
             </div>
           </div>
         `;
@@ -151,7 +152,7 @@
             <img src="${escapeHtml(x.url)}" alt="sel-${x.id}" />
             <div>
               <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <b>#${x.id}</b>
+                <b>#${idx + 1}</b>
                 <label class="wep-chip" style="cursor:pointer;">
                   <input type="radio" name="wep-cover" ${x.isCover ? "checked" : ""} data-cover-mid="${x.id}" />
                   หน้าปก

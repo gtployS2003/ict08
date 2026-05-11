@@ -286,8 +286,13 @@ final class PublicityPostsController
                 )
             ');
 
-            foreach ($flatFiles as $file) {
+            foreach ($flatFiles as $idx => $file) {
                 $meta = $this->saveEventReportPictureFile($reportId, $uid, $file);
+                $meta['original_filename'] = $this->buildSequencedOriginalFilename(
+                    $reportId,
+                    $idx + 1,
+                    (string)$meta['original_filename']
+                );
                 $savedAbsPaths[] = $meta['abs_path'];
 
                 $insPic->execute([
@@ -901,5 +906,13 @@ final class PublicityPostsController
             'file_size' => $size,
             'abs_path' => $dest,
         ];
+    }
+
+    private function buildSequencedOriginalFilename(int $reportId, int $sequence, string $originalFilename): string
+    {
+        $sequence = max(1, $sequence);
+        $ext = strtolower(pathinfo($originalFilename, PATHINFO_EXTENSION));
+        $safeExt = preg_match('/^[a-z0-9]{1,10}$/', $ext) ? $ext : 'jpg';
+        return 'imgi_' . max(1, $reportId) . '_' . $sequence . '.' . $safeExt;
     }
 }
