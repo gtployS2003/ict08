@@ -114,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const category = [
                 String(row?.request_type_name || "").trim(),
                 String(row?.request_sub_type_name || "").trim(),
-            ].filter(Boolean).join(" / ") || "-";
+            ].filter(Boolean).join(" / ");
             const province = String(row?.province_name || "").trim() || "-";
             const writer = String(row?.writer_name || "").trim();
             const dt = row?.end_datetime || row?.start_datetime || row?.update_at || row?.create_at;
@@ -123,7 +123,10 @@ document.addEventListener("DOMContentLoaded", () => {
             document.title = `${title} | ศูนย์เทคโนโลยีสารสนเทศฯ เขต 8`;
 
             titleEl.textContent = title;
-            if (catEl) catEl.textContent = category;
+            if (catEl) {
+                catEl.textContent = category;
+                catEl.hidden = !category;
+            }
             if (dateEl) dateEl.textContent = dateText;
             if (provEl) provEl.textContent = province;
             if (writerEl) writerEl.textContent = writer ? `ผู้เขียน: ${writer}` : "ผู้เขียน: -";
