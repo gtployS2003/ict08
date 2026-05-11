@@ -266,6 +266,7 @@
     hide($("#btn-add-mission-image"));
     hide($("#btn-add-structure"));
     hide($("#btn-add-banner"));
+    hide($("#btn-add-popup"));
 
     // เปิด section ตาม key
     switch (sectionKey) {
@@ -456,6 +457,12 @@
         setTitle("การตั้งค่า banner");
         break;
 
+      case "popup":
+        show($("#section-popup"));
+        show($("#btn-add-popup"));
+        setTitle("การตั้งค่า popup");
+        break;
+
       case "link-url":
         show($("#section-link-url"));
         show($("#btn-add-link-url"));
@@ -473,6 +480,445 @@
         setTitle("การตั้งค่าข้อมูล");
         break;
     }
+  }
+
+
+  /* =========================
+    POPUP
+  ========================= */
+  const popupEls = {
+    section: $("#section-popup"),
+    tbody: $("#popup-tbody"),
+    search: $("#popup-search"),
+    limit: $("#popup-limit"),
+    refresh: $("#popup-refresh"),
+    pagination: $("#popup-pagination"),
+    total: $("#popup-total"),
+
+    btnAdd: $("#btn-add-popup"),
+
+    modalId: "popup-modal",
+    modalTitle: $("#popup-modal-title"),
+    submitText: $("#popup-submit-text"),
+    modalStatus: $("#popup-modal-status"),
+    form: $("#popup-form"),
+    formError: $("#popup-form-error"),
+
+    inputId: $("#popup-id"),
+    inputTitle: $("#popup-title"),
+    inputDescription: $("#popup-description"),
+    inputUrl: $("#popup-url"),
+    inputIsActive: $("#popup-is-active"),
+    isActiveText: $("#popup-is-active-text"),
+    file: $("#popup-file"),
+
+    previewWrap: $("#popup-preview"),
+    previewImg: $("#popup-preview-img"),
+    previewName: $("#popup-preview-name"),
+    clearBtn: $("#popup-clear"),
+  };
+
+  const popupState = {
+    page: 1,
+    limit: 50,
+    q: "",
+    total: 0,
+    totalPages: 1,
+    loading: false,
+    inited: false,
+    byId: new Map(),
+  };
+
+  function popupSetError(msg) {
+    if (!popupEls.formError) return;
+    if (!msg) {
+      popupEls.formError.hidden = true;
+      popupEls.formError.textContent = "";
+      return;
+    }
+    popupEls.formError.hidden = false;
+    popupEls.formError.textContent = String(msg);
+  }
+
+  function popupSetModalStatus(msg, { isError = false } = {}) {
+    if (!popupEls.modalStatus) return;
+    popupEls.modalStatus.textContent = msg ? String(msg) : "";
+    popupEls.modalStatus.style.color = isError ? "#b42318" : "";
+  }
+
+  function popupSyncActiveText() {
+    if (!popupEls.inputIsActive || !popupEls.isActiveText) return;
+    popupEls.isActiveText.textContent = popupEls.inputIsActive.checked ? "ใช้งาน" : "ไม่ใช้งาน";
+  }
+
+  function popupToPublicUrl(path) {
+    if (window.PopupAPI && typeof window.PopupAPI.toPublicUrl === "function") {
+      return window.PopupAPI.toPublicUrl(path);
+    }
+    const p = String(path || "").trim();
+    if (!p) return "";
+    if (/^https?:\/\//i.test(p)) return p;
+    if (p.startsWith("/uploads/")) return `${API_BASE}${p}`;
+    if (p.startsWith("uploads/")) return `${API_BASE}/${p}`;
+    if (p.startsWith("./uploads/")) return `${API_BASE}/${p.replace(/^\.\//, "")}`;
+    if (p.startsWith("/")) return p;
+    return `/${p}`;
+  }
+
+  function popupHidePreview() {
+    if (popupEls.previewWrap) popupEls.previewWrap.hidden = true;
+    if (popupEls.previewImg) popupEls.previewImg.removeAttribute("src");
+    if (popupEls.previewName) popupEls.previewName.textContent = "-";
+  }
+
+  function popupShowPreviewFromFile(file) {
+    if (!popupEls.previewWrap || !popupEls.previewImg || !popupEls.previewName) return;
+    const url = URL.createObjectURL(file);
+    popupEls.previewImg.src = url;
+    popupEls.previewName.textContent = `${file.name} (${Math.round((file.size || 0) / 1024)} KB)`;
+    popupEls.previewWrap.hidden = false;
+    popupEls.previewImg.onload = () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (_) {
+        // ignore
+      }
+    };
+  }
+
+  function popupShowPreviewFromPath(path) {
+    const p = String(path || "").trim();
+    if (!p) {
+      popupHidePreview();
+      return;
+    }
+    if (!popupEls.previewWrap || !popupEls.previewImg || !popupEls.previewName) return;
+    popupEls.previewImg.src = popupToPublicUrl(p);
+    popupEls.previewName.textContent = p;
+    popupEls.previewWrap.hidden = false;
+  }
+
+  function popupResetForm() {
+    popupSetError("");
+    popupSetModalStatus("");
+    if (popupEls.inputId) popupEls.inputId.value = "";
+    if (popupEls.inputTitle) popupEls.inputTitle.value = "";
+    if (popupEls.inputDescription) popupEls.inputDescription.value = "";
+    if (popupEls.inputUrl) popupEls.inputUrl.value = "";
+    if (popupEls.inputIsActive) popupEls.inputIsActive.checked = true;
+    try {
+      if (popupEls.file) popupEls.file.value = "";
+    } catch (_) {
+      // ignore
+    }
+    popupHidePreview();
+    popupSyncActiveText();
+  }
+
+  function popupOpenModal({ mode = "create", row } = {}) {
+    if (!popupEls.form) return;
+    popupSetError("");
+    popupSetModalStatus("");
+
+    if (mode === "edit" && row) {
+      if (popupEls.modalTitle) popupEls.modalTitle.textContent = "แก้ไข Popup";
+      if (popupEls.submitText) popupEls.submitText.textContent = "บันทึกการแก้ไข";
+      if (popupEls.inputId) popupEls.inputId.value = String(row.popup_id ?? "");
+      if (popupEls.inputTitle) popupEls.inputTitle.value = String(row.title ?? "");
+      if (popupEls.inputDescription) popupEls.inputDescription.value = String(row.description ?? "");
+      if (popupEls.inputUrl) popupEls.inputUrl.value = String(row.url_link ?? "");
+      if (popupEls.inputIsActive) popupEls.inputIsActive.checked = Number(row.is_active ?? 1) === 1;
+      try {
+        if (popupEls.file) popupEls.file.value = "";
+      } catch (_) {
+        // ignore
+      }
+      popupShowPreviewFromPath(row.image_path ?? "");
+      popupSyncActiveText();
+    } else {
+      if (popupEls.modalTitle) popupEls.modalTitle.textContent = "เพิ่ม Popup";
+      if (popupEls.submitText) popupEls.submitText.textContent = "บันทึก";
+      popupResetForm();
+    }
+
+    openModal(popupEls.modalId);
+    setTimeout(() => popupEls.inputTitle?.focus(), 0);
+  }
+
+  function popupRenderPagination() {
+    if (!popupEls.pagination) return;
+    popupState.totalPages = calcTotalPages({
+      total: popupState.total,
+      limit: popupState.limit,
+      totalPages: popupState.totalPages,
+    });
+    renderPager(popupEls.pagination, {
+      page: popupState.page,
+      totalPages: popupState.totalPages,
+    });
+  }
+
+  function popupRenderRows(items = []) {
+    if (!popupEls.tbody) return;
+    if (!items.length) {
+      popupEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">ไม่พบข้อมูล</td></tr>`;
+      return;
+    }
+
+    popupEls.tbody.innerHTML = items
+      .map((r) => {
+        const id = r.popup_id ?? "";
+        const title = String(r.title ?? "");
+        const description = String(r.description ?? "");
+        const imagePath = String(r.image_path ?? "");
+        const url = String(r.url_link ?? "");
+        const isActive = Number(r.is_active ?? 1) === 1;
+        const img = imagePath ? popupToPublicUrl(imagePath) : "";
+        const imgCell = img
+          ? `<img class="popup-thumb" src="${escapeHtml(img)}" alt="${escapeHtml(title || "popup")}" loading="lazy">`
+          : `<span class="muted">-</span>`;
+        const urlCell = url
+          ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`
+          : `<span class="muted">-</span>`;
+
+        return `
+          <tr>
+            <td>${escapeHtml(id)}</td>
+            <td>
+              <div style="font-weight:600;">${escapeHtml(title || "-")}</div>
+              <div class="muted" style="margin-top:4px;">${escapeHtml(description || "-")}</div>
+            </td>
+            <td>${imgCell}</td>
+            <td>${urlCell}</td>
+            <td>
+              <label class="toggle-inline" style="justify-content:flex-start;">
+                <span class="toggle toggle--gcms">
+                  <input type="checkbox" data-action="toggle-active" data-id="${escapeHtml(id)}" ${isActive ? "checked" : ""} />
+                  <span class="toggle__track"><span class="toggle__thumb"></span></span>
+                </span>
+                <span class="toggle-inline__text">${isActive ? "ใช้งาน" : "ไม่ใช้งาน"}</span>
+              </label>
+            </td>
+            <td>
+              <div class="table-actions">
+                <button class="btn btn-outline btn-sm" type="button" data-action="edit" data-id="${escapeHtml(id)}">
+                  <i class="fa-solid fa-pen"></i> แก้ไข
+                </button>
+                <button class="btn btn-danger btn-sm" type="button" data-action="delete" data-id="${escapeHtml(id)}" data-title="${escapeHtml(title || id)}">
+                  <i class="fa-solid fa-trash"></i> ลบ
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  async function loadPopups() {
+    if (popupState.loading) return;
+    if (!popupEls.section) return;
+    if (!window.PopupAPI) {
+      if (popupEls.tbody) popupEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">ไม่พบ PopupAPI</td></tr>`;
+      return;
+    }
+
+    popupState.loading = true;
+    try {
+      if (popupEls.tbody) popupEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">กำลังโหลด...</td></tr>`;
+
+      popupState.q = String(popupEls.search?.value || "").trim();
+      popupState.limit = Number(popupEls.limit?.value || 50) || 50;
+
+      const res = await window.PopupAPI.list({
+        q: popupState.q,
+        page: popupState.page,
+        limit: popupState.limit,
+      });
+
+      const data = res?.data || {};
+      const items = Array.isArray(data.items) ? data.items : [];
+      const pg = data.pagination || {};
+
+      popupState.total = Number(pg.total || items.length || 0);
+      popupState.totalPages = Number(pg.total_pages || 1);
+      popupState.page = Number(pg.page || popupState.page);
+      popupState.limit = Number(pg.limit || popupState.limit);
+      popupState.byId = new Map(items.map((it) => [String(it.popup_id ?? ""), it]));
+
+      popupRenderRows(items);
+      popupRenderPagination();
+      if (popupEls.total) popupEls.total.textContent = `ทั้งหมด ${popupState.total} รายการ`;
+    } catch (err) {
+      if (popupEls.tbody) {
+        popupEls.tbody.innerHTML = `<tr><td colspan="6" class="muted">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err?.message || String(err))}</td></tr>`;
+      }
+    } finally {
+      popupState.loading = false;
+    }
+  }
+
+  function initPopupSection() {
+    if (!popupEls.section) return;
+    if (popupState.inited) return;
+    popupState.inited = true;
+
+    let t = null;
+    popupEls.search?.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        popupState.page = 1;
+        loadPopups();
+      }, 300);
+    });
+
+    popupEls.limit?.addEventListener("change", () => {
+      popupState.page = 1;
+      loadPopups();
+    });
+
+    popupEls.refresh?.addEventListener("click", () => {
+      loadPopups();
+    });
+
+    popupEls.pagination?.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-page]");
+      if (!btn || btn.disabled) return;
+      const next = toInt(btn.getAttribute("data-page"), 0);
+      if (!next || next < 1 || next > (popupState.totalPages || 1)) return;
+      if (next === popupState.page) return;
+      popupState.page = next;
+      loadPopups();
+    });
+
+    popupEls.btnAdd?.addEventListener("click", () => {
+      popupOpenModal({ mode: "create" });
+    });
+
+    popupEls.inputIsActive?.addEventListener("change", () => {
+      popupSyncActiveText();
+    });
+
+    popupEls.file?.addEventListener("change", () => {
+      const file = popupEls.file?.files?.[0];
+      if (!file) return;
+      if (!/^image\//i.test(String(file.type || ""))) {
+        popupSetError("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+        popupEls.file.value = "";
+        return;
+      }
+      popupSetError("");
+      popupShowPreviewFromFile(file);
+    });
+
+    popupEls.clearBtn?.addEventListener("click", () => {
+      try {
+        if (popupEls.file) popupEls.file.value = "";
+      } catch (_) {
+        // ignore
+      }
+      popupHidePreview();
+    });
+
+    popupEls.tbody?.addEventListener("click", async (e) => {
+      const toggle = e.target.closest("input[type=checkbox][data-action=toggle-active]");
+      if (toggle) {
+        const id = String(toggle.getAttribute("data-id") || "");
+        const row = popupState.byId.get(id);
+        if (!id || !row) return;
+
+        const newVal = toggle.checked ? 1 : 0;
+        const oldVal = newVal ? 0 : 1;
+        toggle.disabled = true;
+
+        try {
+          const fd = new FormData();
+          fd.append("title", String(row.title ?? ""));
+          fd.append("description", String(row.description ?? ""));
+          fd.append("url_link", String(row.url_link ?? ""));
+          fd.append("is_active", String(newVal));
+          await window.PopupAPI.update(Number(id), fd);
+          loadPopups();
+        } catch (err) {
+          toggle.checked = oldVal === 1;
+          alert(err?.message || String(err));
+        } finally {
+          toggle.disabled = false;
+        }
+        return;
+      }
+
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-action");
+      const id = btn.getAttribute("data-id");
+      if (!id) return;
+
+      if (action === "edit") {
+        const row = popupState.byId.get(String(id));
+        if (!row) {
+          alert("ไม่พบข้อมูลรายการนี้");
+          return;
+        }
+        popupOpenModal({ mode: "edit", row });
+        return;
+      }
+
+      if (action === "delete") {
+        const title = btn.getAttribute("data-title") || id;
+        const okDel = confirm(`ยืนยันลบ popup\n\n- ${title}`);
+        if (!okDel) return;
+
+        try {
+          await window.PopupAPI.remove(Number(id));
+          loadPopups();
+        } catch (err) {
+          alert(err?.message || String(err));
+        }
+      }
+    });
+
+    popupEls.form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!window.PopupAPI) return;
+
+      const id = String(popupEls.inputId?.value || "").trim();
+      const title = String(popupEls.inputTitle?.value || "").trim();
+      const description = String(popupEls.inputDescription?.value || "");
+      const url_link = String(popupEls.inputUrl?.value || "").trim();
+      const is_active = popupEls.inputIsActive?.checked ? 1 : 0;
+      const file = popupEls.file?.files?.[0] || null;
+
+      if (!id && !file) {
+        popupSetError("กรุณาแนบรูปภาพสำหรับ popup");
+        return;
+      }
+
+      try {
+        popupSetError("");
+        popupSetModalStatus("กำลังบันทึก...");
+
+        const fd = new FormData();
+        fd.append("title", title);
+        fd.append("description", description);
+        fd.append("url_link", url_link);
+        fd.append("is_active", String(is_active));
+        if (file) fd.append("file", file);
+
+        if (id) {
+          await window.PopupAPI.update(Number(id), fd);
+        } else {
+          await window.PopupAPI.create(fd);
+        }
+
+        closeModal(popupEls.modalId);
+        popupSetModalStatus("");
+        loadPopups();
+      } catch (err) {
+        popupSetModalStatus("");
+        popupSetError(err?.message || String(err));
+      }
+    });
   }
 
 
@@ -10628,6 +11074,7 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
   }
 
   // init new sections (safe even if sections not present)
+  initPopupSection();
   initBannerSection();
   initLinkUrlSection();
   initDocumentsSection();
@@ -10655,6 +11102,13 @@ if (orgContactEls.form) orgContactEls.form.addEventListener("submit", async (e) 
       bannerState.q = (bannerEls.search?.value || "").trim();
       bannerState.limit = Number(bannerEls.limit?.value || 50);
       loadBanners();
+    }
+
+    if (sectionKey === "popup") {
+      popupState.page = 1;
+      popupState.q = (popupEls.search?.value || "").trim();
+      popupState.limit = Number(popupEls.limit?.value || 50);
+      loadPopups();
     }
 
     if (sectionKey === "related-documents") {

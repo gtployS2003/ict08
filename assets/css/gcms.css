@@ -1066,6 +1066,65 @@ tr.is-dragging {
   background: #fff;
 }
 
+.popup-thumb {
+  display: block;
+  width: 96px;
+  max-height: 72px;
+  object-fit: contain;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 8px;
+  background: #fff;
+}
+
+#popup-modal .modal__dialog {
+  width: min(720px, calc(100% - 24px));
+  max-height: min(86vh, 820px);
+  display: flex;
+  flex-direction: column;
+}
+
+#popup-modal .modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#popup-modal .modal__footer {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 14px 0 0;
+  margin-top: 14px;
+}
+
+#popup-modal .photo-preview {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+#popup-modal .photo-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 360px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+#popup-modal .photo-preview__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 @media (max-height: 820px) {
   #link-url-modal .modal__dialog {
     margin-top: 3vh;
@@ -1074,6 +1133,15 @@ tr.is-dragging {
 
   #link-url-modal .photo-preview img {
     max-height: 160px;
+  }
+
+  #popup-modal .modal__dialog {
+    margin-top: 3vh;
+    max-height: 94vh;
+  }
+
+  #popup-modal .photo-preview img {
+    max-height: 220px;
   }
 }
 

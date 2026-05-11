@@ -335,6 +335,119 @@ async function initHomeMissionImages() {
     }
 }
 
+async function initHomePopup() {
+    if (!window.PopupAPI || typeof window.PopupAPI.listPublic !== "function") return;
+
+    try {
+        const res = await window.PopupAPI.listPublic({ limit: 50 });
+        const items = Array.isArray(res?.data?.items) ? res.data.items.filter((it) => it && it.image_path) : [];
+        if (!items.length) return;
+
+        const existing = document.getElementById("site-popup-overlay");
+        if (existing) existing.remove();
+
+        const escapeAttr = (value) => String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+        const normalizeHref = (value) => {
+            const raw = String(value || "").trim();
+            if (!raw) return "";
+            if (/^(javascript|data):/i.test(raw)) return "";
+            return raw;
+        };
+
+        const overlay = document.createElement("div");
+        overlay.id = "site-popup-overlay";
+        overlay.className = "site-popup-overlay";
+
+        const slides = items.map((item, index) => {
+            const title = String(item.title || "popup");
+            const url = normalizeHref(item.url_link);
+            const img = window.PopupAPI.toPublicUrl(item.image_path);
+            const hrefAttrs = url
+                ? `href="${escapeAttr(url)}" ${/^https?:\/\//i.test(url) ? 'target="_blank" rel="noopener noreferrer"' : ""}`
+                : "";
+            const media = url
+                ? `<a class="site-popup-media-link" ${hrefAttrs}><img class="site-popup-image" src="${escapeAttr(img)}" alt="${escapeAttr(title)}"></a>`
+                : `<img class="site-popup-image" src="${escapeAttr(img)}" alt="${escapeAttr(title)}">`;
+
+            return `<div class="site-popup-slide${index === 0 ? " is-active" : ""}" data-popup-slide="${index}">${media}</div>`;
+        }).join("");
+
+        const dots = items.length > 1
+            ? `<div class="site-popup-dots">${items.map((_, i) => `<button class="site-popup-dot${i === 0 ? " is-active" : ""}" type="button" data-popup-dot="${i}" aria-label="Popup ${i + 1}"></button>`).join("")}</div>`
+            : "";
+
+        const controls = items.length > 1
+            ? `
+                <button class="site-popup-arrow site-popup-arrow-left" type="button" data-popup-prev="1" aria-label="Previous">‹</button>
+                <button class="site-popup-arrow site-popup-arrow-right" type="button" data-popup-next="1" aria-label="Next">›</button>
+              `
+            : "";
+
+        overlay.innerHTML = `
+            <div class="site-popup-backdrop" data-popup-close="1"></div>
+            <div class="site-popup-dialog" role="dialog" aria-modal="true" aria-label="Popup">
+                <button class="site-popup-close" type="button" aria-label="Close" data-popup-close="1">×</button>
+                <div class="site-popup-track">
+                    ${slides}
+                </div>
+                ${controls}
+                ${dots}
+            </div>
+        `;
+
+        let current = 0;
+        const showSlide = (next) => {
+            const total = items.length;
+            if (total <= 0) return;
+            current = (next + total) % total;
+            overlay.querySelectorAll(".site-popup-slide").forEach((el, i) => {
+                el.classList.toggle("is-active", i === current);
+            });
+            overlay.querySelectorAll(".site-popup-dot").forEach((el, i) => {
+                el.classList.toggle("is-active", i === current);
+            });
+        };
+
+        const close = () => {
+            overlay.classList.remove("is-open");
+            setTimeout(() => overlay.remove(), 160);
+            document.body.style.overflow = "";
+        };
+
+        overlay.addEventListener("click", (e) => {
+            if (e.target?.getAttribute?.("data-popup-close") === "1") close();
+            if (e.target?.getAttribute?.("data-popup-prev") === "1") showSlide(current - 1);
+            if (e.target?.getAttribute?.("data-popup-next") === "1") showSlide(current + 1);
+            const dot = e.target?.closest?.("[data-popup-dot]");
+            if (dot) showSlide(Number(dot.getAttribute("data-popup-dot") || 0));
+        });
+
+        document.addEventListener("keydown", function onPopupKey(e) {
+            if (!document.getElementById("site-popup-overlay")) {
+                document.removeEventListener("keydown", onPopupKey);
+                return;
+            }
+            if (e.key === "Escape") {
+                document.removeEventListener("keydown", onPopupKey);
+                close();
+            }
+            if (e.key === "ArrowLeft") showSlide(current - 1);
+            if (e.key === "ArrowRight") showSlide(current + 1);
+        });
+
+        document.body.appendChild(overlay);
+        document.body.style.overflow = "hidden";
+        requestAnimationFrame(() => overlay.classList.add("is-open"));
+    } catch (err) {
+        console.warn("[popup] failed to load:", err);
+    }
+}
+
 // NEWS SLIDER
 function initNewsSlider() {
     const track = document.querySelector(".news-cards");
@@ -803,6 +916,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await initHomeHeroBanners();
     initHeroSlider();
     await initHomeMissionImages();
+    await initHomePopup();
     initHomeNews();
     initHomeActivities();
     initProfileDropdown();

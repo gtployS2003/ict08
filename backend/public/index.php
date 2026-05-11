@@ -58,6 +58,7 @@ require_once __DIR__ . '/../routes/site_diractor.routes.php';
 require_once __DIR__ . '/../routes/site_structure.routes.php';
 require_once __DIR__ . '/../routes/site_mission.routes.php';
 require_once __DIR__ . '/../routes/banners.routes.php';
+require_once __DIR__ . '/../routes/popups.routes.php';
 
 
 
@@ -209,6 +210,8 @@ try {
     if (site_mission_routes($method, $segments, $pdo))
         exit;
     if (banners_routes($method, $segments, $pdo))
+        exit;
+    if (popups_routes($method, $segments, $pdo))
         exit;
 
     fail("Route not found", 404, ["path" => $path, "method" => $method]);
