@@ -867,7 +867,10 @@ body {
 .hero-inner-director .director-inner {
     position: relative;
     width: 100%;
-    min-height: 640px;
+    /* Match hero height on desktop for visual parity */
+    height: 75vh;
+    max-height: 600px;
+    min-height: 380px;
     margin: 0;
     display: grid;
     grid-template-columns: 1fr;
@@ -915,9 +918,10 @@ body {
 .hero-inner-director .director-single {
     display: grid;
     justify-items: center;
-    align-content: space-between;
+    /* Center all content vertically within the column */
+    align-content: center;
     min-height: 100%;
-    gap: 0;
+    gap: 18px;
     text-align: center;
 }
 
@@ -1007,7 +1011,8 @@ body {
 
 .hero-inner-director .director-info {
     width: 100%;
-    margin-top: -18px;
+    /* Remove negative margin so the block can center cleanly */
+    margin-top: 0;
     padding: 44px 22px 112px;
     background:
         radial-gradient(120% 140% at 0% 100%, rgba(255, 255, 255, 0.10), transparent 42%),
