@@ -168,6 +168,7 @@ final class ActivityModel
 
                 pp.event_id,
                 pp.title,
+                pp.content,
                 pp.create_at,
                 pp.update_at,
 

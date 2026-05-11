@@ -73,10 +73,11 @@ document.addEventListener("DOMContentLoaded", () => {
         return [prov, dateText].filter((x) => String(x || "").trim() !== "").join(" · ") || "-";
     }
 
-    function getCategory(item) {
-        const type = String(item?.request_type_name || "").trim();
-        const sub = String(item?.request_sub_type_name || "").trim();
-        return [type, sub].filter(Boolean).join(" / ") || "-";
+    function getExcerpt(item, maxLength = 90) {
+        const raw = String(item?.content || "").replace(/<[^>]*>/g, " ");
+        const text = raw.replace(/\s+/g, " ").trim() || String(item?.title || "").trim();
+        if (!text) return "-";
+        return text.length > maxLength ? `${text.slice(0, maxLength).trim()}...` : text;
     }
 
     function setLoading(isLoading) {
@@ -95,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .map((item) => {
                 const id = Number(item?.activity_id || 0);
                 const title = String(item?.title || "").trim() || "(ไม่ระบุชื่อกิจกรรม)";
-                const category = getCategory(item);
+                const excerpt = getExcerpt(item, 95);
                 const meta = getMeta(item);
                 const cover = buildFileUrl(item?.cover_filepath) || "/ict8/assets/image/activities/01.png";
 
@@ -106,7 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         </div>
                         <div class="activity-card-body">
                             <h3 class="activity-card-title">${escapeHtml(title)}</h3>
-                            <span class="activity-card-category">${escapeHtml(category)}</span>
+                            <p class="activity-card-excerpt">${escapeHtml(excerpt)}</p>
                             <div class="activity-card-meta">${escapeHtml(meta)}</div>
                         </div>
                     </a>
@@ -300,6 +301,4 @@ document.addEventListener("DOMContentLoaded", () => {
     updateUrl();
     load().catch(console.error);
 });
-
-
 

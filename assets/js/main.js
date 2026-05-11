@@ -718,10 +718,11 @@ function initHomeActivities() {
         }
     }
 
-    function getCategory(item) {
-        const type = String(item?.request_type_name || "").trim();
-        const sub = String(item?.request_sub_type_name || "").trim();
-        return [type, sub].filter(Boolean).join(" / ") || "-";
+    function getExcerpt(item, maxLength = 90) {
+        const raw = String(item?.content || "").replace(/<[^>]*>/g, " ");
+        const text = raw.replace(/\s+/g, " ").trim() || String(item?.title || "").trim();
+        if (!text) return "-";
+        return text.length > maxLength ? `${text.slice(0, maxLength).trim()}...` : text;
     }
 
     function getDateText(item) {
@@ -773,7 +774,7 @@ function initHomeActivities() {
                     const img = buildFileUrl(item?.cover_filepath) || "/ict8/assets/image/activities/01.png";
                     const id = Number(item?.activity_id || 0);
                     const title = String(item?.title || "").trim();
-                    const category = getCategory(item);
+                    const excerpt = getExcerpt(item, 70);
                     const dateText = getDateText(item);
                     return `
                         <a href="/ict8/site/activity-detail.html?id=${encodeURIComponent(String(id || ""))}" target="_blank" rel="noopener noreferrer"
@@ -783,7 +784,7 @@ function initHomeActivities() {
                                 <h3 class="activity-side-title">
                                     ${escapeHtml(title)}
                                 </h3>
-                                <span class="activity-side-tag">${escapeHtml(category)}</span>
+                                <p class="activity-side-excerpt">${escapeHtml(excerpt)}</p>
                                 <div class="activity-side-date">${escapeHtml(dateText)}</div>
                             </div>
                         </a>
@@ -809,7 +810,7 @@ function initHomeActivities() {
                                 <h3 class="activity-main-title">
                                     ${escapeHtml(String(main?.title || "").trim())}
                                 </h3>
-                                <span class="activity-main-tag">${escapeHtml(getCategory(main))}</span>
+                                <p class="activity-main-excerpt">${escapeHtml(getExcerpt(main, 120))}</p>
                                 <div class="activity-main-date">${escapeHtml(getDateText(main))}</div>
                             </div>
                         </a>
