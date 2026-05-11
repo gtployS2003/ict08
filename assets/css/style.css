@@ -1057,14 +1057,23 @@ body {
     width: 100%;
     height: 100%;
     opacity: 0;
+    pointer-events: none;
     transition: opacity 0.8s ease-in-out;
 }
 
 .hero-slide.active {
     opacity: 1;
+    pointer-events: auto;
+}
+
+.hero-slide-link {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .hero-slide img {
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;

@@ -177,6 +177,21 @@ async function initHomeHeroBanners() {
             return `/${p}`;
         };
 
+        const SITE_BASE = "https://ict8.moi.go.th/ict8/site";
+        const buildBannerHref = (banner) => {
+            const actId = Number(banner?.source_activity_id || 0);
+            const newsId = Number(banner?.source_news_id || 0);
+            const linkUrl = String(banner?.source_link_url || "").trim();
+
+            if (actId > 0) {
+                return `${SITE_BASE}/activity-detail.html?id=${encodeURIComponent(String(actId))}`;
+            }
+            if (newsId > 0) {
+                return `${SITE_BASE}/news-detail.html?id=${encodeURIComponent(String(newsId))}`;
+            }
+            return linkUrl;
+        };
+
         // Remove existing slides (keep arrows and dots wrapper)
         heroInner.querySelectorAll(".hero-slide").forEach((el) => el.remove());
 
@@ -193,30 +208,14 @@ async function initHomeHeroBanners() {
                 const id = b.banner_id;
                 const title = String(b.title || "");
                 const img = toPublicUrl(b.image_path);
-
-                const actId = Number(b.source_activity_id || 0);
-                const newsId = Number(b.source_news_id || 0);
-                const url0 = String(b.source_link_url || "").trim();
-
-                let href = "";
-                let target = "";
-                let rel = "";
-
-                if (actId > 0) {
-                    href = `/ict8/site/activity-detail.html?id=${encodeURIComponent(String(actId))}`;
-                } else if (newsId > 0) {
-                    href = `/ict8/site/news-detail.html?id=${encodeURIComponent(String(newsId))}`;
-                } else if (url0) {
-                    href = url0;
-                    if (/^https?:\/\//i.test(url0)) {
-                        target = "_blank";
-                        rel = "noopener noreferrer";
-                    }
-                }
+                const href = buildBannerHref(b);
+                const isExternalLink = /^https?:\/\//i.test(href) && !href.startsWith(SITE_BASE);
+                const target = isExternalLink ? "_blank" : "";
+                const rel = isExternalLink ? "noopener noreferrer" : "";
 
                 const imgTag = `<img src="${String(img).replaceAll('"', '&quot;')}" alt="${title.replaceAll('"', '&quot;') || `banner ${id}`}">`;
                 const inner = href
-                    ? `<a href="${href.replaceAll('"', '&quot;')}" ${target ? `target="${target}"` : ""} ${rel ? `rel="${rel}"` : ""} style="display:block; width:100%; height:100%;">${imgTag}</a>`
+                    ? `<a class="hero-slide-link" href="${href.replaceAll('"', '&quot;')}" ${target ? `target="${target}"` : ""} ${rel ? `rel="${rel}"` : ""}>${imgTag}</a>`
                     : imgTag;
 
                 return `<div class="hero-slide${i === 0 ? " active" : ""}">${inner}</div>`;
