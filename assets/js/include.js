@@ -38,6 +38,34 @@ async function loadHtml(targetId, filePath) {
   if (el) el.innerHTML = html;
 }
 
+function getStoredAuthToken() {
+  try {
+    return (
+      localStorage.getItem("auth_token") ||
+      sessionStorage.getItem("auth_token") ||
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("token") ||
+      localStorage.getItem("access_token") ||
+      sessionStorage.getItem("access_token") ||
+      ""
+    );
+  } catch {
+    return "";
+  }
+}
+
+function applyIncludedAuthUI() {
+  const loggedIn = !!getStoredAuthToken();
+
+  document.querySelectorAll(".guest-only").forEach((el) => {
+    el.style.display = loggedIn ? "none" : "";
+  });
+
+  document.querySelectorAll(".member-only").forEach((el) => {
+    el.style.display = loggedIn ? "" : "none";
+  });
+}
+
 function patchAssetPaths(html) {
   // แปลง href/src="/assets/..." -> href="/ict8/assets/..." (ถ้า BASE_PATH="/ict8")
   if (!BASE_PATH) return html;
@@ -75,10 +103,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadHtml("report-nav", "/assets/include/nav-report.html");
   await loadHtml("header-report", "/assets/include/header-report.html");
 
+  applyIncludedAuthUI();
+
   // initNavbar หลัง inject nav ต่าง ๆ แล้ว (กันกรณี include โหลดช้ากว่า DOMContentLoaded)
   try {
     if (typeof window.initNavbar === "function") window.initNavbar();
   } catch (e) {
     console.warn("initNavbar failed", e);
+  }
+
+  try {
+    if (typeof window.applyAuthUI === "function") window.applyAuthUI();
+  } catch (e) {
+    console.warn("applyAuthUI failed", e);
   }
 });

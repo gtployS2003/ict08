@@ -33,6 +33,22 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDocumentsFromApi();
 });
 
+function getAuthToken() {
+  try {
+    return (
+      localStorage.getItem('auth_token') ||
+      sessionStorage.getItem('auth_token') ||
+      localStorage.getItem('token') ||
+      sessionStorage.getItem('token') ||
+      localStorage.getItem('access_token') ||
+      sessionStorage.getItem('access_token') ||
+      ''
+    );
+  } catch {
+    return '';
+  }
+}
+
 function escapeHtml(str) {
   return String(str ?? '')
     .replaceAll('&', '&amp;')
@@ -99,9 +115,19 @@ function setFilterControlsEnabled({ categories, dates }) {
 
 async function loadDocumentsFromApi() {
   try {
-    // public list: ไม่ต้องใช้ auth
-    const qs = new URLSearchParams({ public: '1', page: '1', limit: '200' });
-    const res = await fetch(`/ict8/backend/public/documents?${qs.toString()}`);
+    const token = getAuthToken();
+    const qs = token
+      ? new URLSearchParams({ page: '1', limit: '200', is_active: '1' })
+      : new URLSearchParams({ public: '1', page: '1', limit: '200' });
+
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    let res = await fetch(`/ict8/backend/public/documents?${qs.toString()}`, { headers });
+
+    if (res.status === 401 && token) {
+      const publicQs = new URLSearchParams({ public: '1', page: '1', limit: '200' });
+      res = await fetch(`/ict8/backend/public/documents?${publicQs.toString()}`);
+    }
+
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     const items = json?.data?.items || [];
