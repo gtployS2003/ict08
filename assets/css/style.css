@@ -50,6 +50,7 @@ body {
     display: flex;
     align-items: center;
     gap: 20px;
+    min-width: 0;
 }
 
 .logo {
@@ -69,6 +70,7 @@ body {
 }
 
 .login-btn {
+    flex-shrink: 0;
     background: white;
     color: #532274;
     padding: 12px 25px;
