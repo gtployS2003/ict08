@@ -1999,7 +1999,6 @@ body {
 
 .other_web .link-grid {
     padding-top: 0;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 24px;
 }
 
@@ -3558,7 +3557,7 @@ body {
     color: #fff;
 }
 
-.footer-member guest-only a {
+.footer-member a {
     font-size: 18px;
     font-weight: 600;
     margin-bottom: 15px;
