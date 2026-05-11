@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/validator.php';
+require_once __DIR__ . '/../models/EventModel.php';
 require_once __DIR__ . '/../models/PublicityPostModel.php';
 require_once __DIR__ . '/../models/EventMediaModel.php';
 require_once __DIR__ . '/../models/PublicityPostMediaModel.php';
@@ -171,6 +172,197 @@ final class PublicityPostsController
             json_response(['error' => false, 'data' => $row], 201);
         } catch (Throwable $e) {
             json_response(['error' => true, 'message' => 'Failed to create publicity post', 'detail' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * POST /publicity-posts/direct-event
+     * multipart/form-data:
+     * - title, detail?, location?, province_id?, start_datetime?, end_datetime?, request_type_id?
+     * - pictures[] (required)
+     *
+     * Creates an internal event that is already finished, its event_report,
+     * uploaded event_report_picture rows, event_media index, publicity_post,
+     * and publicity_post_media selection in one workflow.
+     */
+    public function createDirectEvent(): void
+    {
+        $savedAbsPaths = [];
+
+        try {
+            $me = $this->requireStaffAccess(true);
+
+            $contentType = (string)($_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '');
+            if (stripos($contentType, 'multipart/form-data') === false) {
+                json_response(['error' => true, 'message' => 'Expected multipart/form-data'], 415);
+                return;
+            }
+
+            $title = trim((string)($_POST['title'] ?? ''));
+            if ($title === '') {
+                json_response(['error' => true, 'message' => 'title is required'], 422);
+                return;
+            }
+            if (function_exists('mb_strlen') && mb_strlen($title) > 255) {
+                json_response(['error' => true, 'message' => 'title max length is 255'], 422);
+                return;
+            }
+
+            $files = $_FILES['pictures'] ?? $_FILES['attachments'] ?? null;
+            if (!$files) {
+                json_response(['error' => true, 'message' => 'No files uploaded (pictures[] expected)'], 422);
+                return;
+            }
+
+            $flatFiles = array_values(array_filter($this->flattenFilesArray($files), function ($f) {
+                return (int)($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+            }));
+            if (empty($flatFiles)) {
+                json_response(['error' => true, 'message' => 'No files uploaded'], 422);
+                return;
+            }
+
+            $uid = (int)($me['user_id'] ?? 0);
+            if ($uid <= 0) $uid = 0;
+
+            $detail = (string)($_POST['detail'] ?? '');
+            $location = trim((string)($_POST['location'] ?? ''));
+            $provinceId = (int)($_POST['province_id'] ?? 0);
+            $requestTypeId = (int)($_POST['request_type_id'] ?? 0);
+            $startDt = $this->normalizeDateTimeInput((string)($_POST['start_datetime'] ?? ''));
+            $endDt = $this->normalizeDateTimeInput((string)($_POST['end_datetime'] ?? ''));
+            if ($startDt === null) $startDt = date('Y-m-d 00:00:00');
+            if ($endDt === null) $endDt = date('Y-m-d 23:59:59');
+
+            $statusId = $this->findCompletedEventStatusId($requestTypeId);
+            if ($statusId <= 0) {
+                json_response(['error' => true, 'message' => 'Completed event status not found'], 422);
+                return;
+            }
+
+            $this->pdo->beginTransaction();
+
+            $eventYearBE = $this->computeEventYearBE($startDt);
+            $roundNo = $this->getNextEventRoundNo($eventYearBE);
+
+            $eventModel = new EventModel($this->pdo);
+            $eventId = $eventModel->create([
+                'request_id' => null,
+                'title' => $title,
+                'detail' => $detail,
+                'location' => ($location !== '' ? $location : null),
+                'province_id' => ($provinceId > 0 ? $provinceId : null),
+                'meeting_link' => null,
+                'round_no' => $roundNo,
+                'event_year' => $eventYearBE,
+                'note' => null,
+                'event_status_id' => $statusId,
+                'start_datetime' => $startDt,
+                'end_datetime' => $endDt,
+                'participant_user_ids' => '',
+                'updated_by' => $uid,
+            ]);
+
+            $reportId = $this->insertEventReport($eventId, $uid);
+
+            $pictureIds = [];
+            $insPic = $this->pdo->prepare('
+                INSERT INTO event_report_picture (
+                    event_report_id,
+                    filepath,
+                    original_filename,
+                    stored_filename,
+                    file_size,
+                    uploaded_by,
+                    uploaded_at
+                ) VALUES (
+                    :rid,
+                    :fp,
+                    :orig,
+                    :stored,
+                    :sz,
+                    :uby,
+                    NOW()
+                )
+            ');
+
+            foreach ($flatFiles as $file) {
+                $meta = $this->saveEventReportPictureFile($reportId, $uid, $file);
+                $savedAbsPaths[] = $meta['abs_path'];
+
+                $insPic->execute([
+                    ':rid' => $reportId,
+                    ':fp' => $meta['filepath'],
+                    ':orig' => $meta['original_filename'],
+                    ':stored' => $meta['stored_filename'],
+                    ':sz' => (int)$meta['file_size'],
+                    ':uby' => $uid,
+                ]);
+                $pictureIds[] = (int)$this->pdo->lastInsertId();
+            }
+
+            $pm = new PublicityPostModel($this->pdo);
+            $post = $pm->createFromEvent($eventId, $uid);
+            $postId = (int)($post['publicity_post_id'] ?? 0);
+            if ($postId <= 0) {
+                throw new RuntimeException('CREATE_PUBLICITY_POST_FAILED');
+            }
+
+            $eventMediaIds = [];
+            $insMedia = $this->pdo->prepare('
+                INSERT INTO event_media
+                    (event_id, source_type, source_id, sort_order, is_cover)
+                VALUES
+                    (:eid, "event_report_picture", :sid, :sort, :cover)
+            ');
+            foreach ($pictureIds as $idx => $pictureId) {
+                $insMedia->execute([
+                    ':eid' => $eventId,
+                    ':sid' => $pictureId,
+                    ':sort' => $idx + 1,
+                    ':cover' => $idx === 0 ? 1 : 0,
+                ]);
+                $eventMediaIds[] = (int)$this->pdo->lastInsertId();
+            }
+
+            $insPostMedia = $this->pdo->prepare('
+                INSERT INTO publicity_post_media
+                    (post_id, event_media_id, sort_order, is_cover, created_at)
+                VALUES
+                    (:pid, :mid, :sort, :cover, NOW())
+            ');
+            foreach ($eventMediaIds as $idx => $mediaId) {
+                $insPostMedia->execute([
+                    ':pid' => $postId,
+                    ':mid' => (int)$mediaId,
+                    ':sort' => $idx + 1,
+                    ':cover' => $idx === 0 ? 1 : 0,
+                ]);
+            }
+
+            $this->pdo->commit();
+
+            $row = $pm->findByEventId($eventId) ?: $post;
+            json_response([
+                'error' => false,
+                'data' => [
+                    'event_id' => $eventId,
+                    'event_report_id' => $reportId,
+                    'publicity_post' => $row,
+                    'picture_count' => count($pictureIds),
+                    'event_media_count' => count($eventMediaIds),
+                ],
+            ], 201);
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            foreach ($savedAbsPaths as $path) {
+                if (is_string($path) && $path !== '' && is_file($path)) {
+                    @unlink($path);
+                }
+            }
+            json_response(['error' => true, 'message' => 'Failed to create direct event publicity post', 'detail' => $e->getMessage()], 500);
         }
     }
 
@@ -542,5 +734,172 @@ final class PublicityPostsController
 
         fail('UNAUTHORIZED', 401, 'Unauthorized');
         exit;
+    }
+
+    private function insertEventReport(int $eventId, int $userId): int
+    {
+        $stmt = $this->pdo->prepare('
+            INSERT INTO event_report (
+                event_id,
+                summary_text,
+                submitted_by_id,
+                created_at,
+                submitted_at
+            ) VALUES (
+                :eid,
+                :summary,
+                :uid,
+                NOW(),
+                NOW()
+            )
+        ');
+        $stmt->execute([
+            ':eid' => $eventId,
+            ':summary' => '',
+            ':uid' => max(0, $userId),
+        ]);
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    private function findCompletedEventStatusId(int $requestTypeId = 0): int
+    {
+        $where = "(
+            status_name LIKE '%เสร็จสิ้น%'
+            OR UPPER(COALESCE(status_code,'')) LIKE '%DONE%'
+            OR UPPER(COALESCE(status_code,'')) LIKE '%FINISH%'
+            OR UPPER(COALESCE(status_code,'')) LIKE '%FINISHED%'
+            OR UPPER(COALESCE(status_code,'')) LIKE '%COMPLETE%'
+            OR UPPER(COALESCE(status_code,'')) LIKE '%COMPLETED%'
+        )";
+
+        if ($requestTypeId > 0) {
+            $stmt = $this->pdo->prepare("SELECT event_status_id FROM event_status WHERE request_type_id = :rt AND {$where} ORDER BY sort_order DESC, event_status_id DESC LIMIT 1");
+            $stmt->execute([':rt' => $requestTypeId]);
+            $id = (int)($stmt->fetchColumn() ?: 0);
+            if ($id > 0) return $id;
+        }
+
+        $stmt = $this->pdo->query("SELECT event_status_id FROM event_status WHERE {$where} ORDER BY sort_order DESC, event_status_id DESC LIMIT 1");
+        return (int)($stmt ? ($stmt->fetchColumn() ?: 0) : 0);
+    }
+
+    private function computeEventYearBE(?string $startDatetime): int
+    {
+        $year = 0;
+        $startDatetime = $startDatetime !== null ? trim($startDatetime) : '';
+        if ($startDatetime !== '') {
+            try {
+                $dt = new DateTimeImmutable($startDatetime);
+                $year = (int)$dt->format('Y');
+            } catch (Throwable $e) {
+                $year = 0;
+            }
+        }
+        if ($year <= 0) $year = (int)date('Y');
+        return $year + 543;
+    }
+
+    private function getNextEventRoundNo(int $eventYearBE): int
+    {
+        if ($eventYearBE <= 0) $eventYearBE = $this->computeEventYearBE(null);
+
+        $stmt = $this->pdo->prepare('
+            SELECT MAX(round_no) AS max_round
+            FROM event
+            WHERE event_year = :y
+              AND round_no > 0
+            FOR UPDATE
+        ');
+        $stmt->execute([':y' => $eventYearBE]);
+        $max = $stmt->fetchColumn();
+        return max(0, is_numeric($max) ? (int)$max : 0) + 1;
+    }
+
+    private function normalizeDateTimeInput(string $value): ?string
+    {
+        $value = trim($value);
+        if ($value === '') return null;
+        $value = str_replace('T', ' ', $value);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return $value . ' 00:00:00';
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $value)) {
+            return $value . ':00';
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $value)) {
+            return $value;
+        }
+        return null;
+    }
+
+    /**
+     * @return array<int,array<string,mixed>>
+     */
+    private function flattenFilesArray(array $files): array
+    {
+        if (!isset($files['name']) || !is_array($files['name'])) {
+            return [$files];
+        }
+
+        $out = [];
+        $count = count($files['name']);
+        for ($i = 0; $i < $count; $i++) {
+            $out[] = [
+                'name' => $files['name'][$i] ?? null,
+                'type' => $files['type'][$i] ?? null,
+                'tmp_name' => $files['tmp_name'][$i] ?? null,
+                'error' => $files['error'][$i] ?? null,
+                'size' => $files['size'][$i] ?? null,
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * @return array{filepath:string,original_filename:string,stored_filename:string,file_size:int,abs_path:string}
+     */
+    private function saveEventReportPictureFile(int $reportId, int $uploadedBy, array $file): array
+    {
+        $tmp = (string)($file['tmp_name'] ?? '');
+        $original = (string)($file['name'] ?? 'file');
+        $size = (int)($file['size'] ?? 0);
+        $err = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
+
+        if ($err !== UPLOAD_ERR_OK) {
+            throw new RuntimeException('Upload error code: ' . $err);
+        }
+        if ($tmp === '' || !is_uploaded_file($tmp)) {
+            throw new RuntimeException('Invalid uploaded temp file');
+        }
+
+        $ext = strtolower(pathinfo($original, PATHINFO_EXTENSION));
+        $safeExt = preg_match('/^[a-z0-9]{1,10}$/', $ext) ? $ext : 'bin';
+
+        $stamp = date('Ymd_His');
+        $rand = bin2hex(random_bytes(3));
+        $stored = "er_{$reportId}_u{$uploadedBy}_{$stamp}_{$rand}." . $safeExt;
+
+        $dir = __DIR__ . '/../public/uploads/event_reports';
+        if (!is_dir($dir)) {
+            if (!@mkdir($dir, 0775, true) && !is_dir($dir)) {
+                throw new RuntimeException('Cannot create directory: ' . $dir);
+            }
+        }
+        if (!is_writable($dir)) {
+            throw new RuntimeException('Upload directory not writable: ' . $dir);
+        }
+
+        $dest = $dir . '/' . $stored;
+        if (!@move_uploaded_file($tmp, $dest)) {
+            throw new RuntimeException('move_uploaded_file failed to: ' . $dest);
+        }
+
+        return [
+            'filepath' => 'uploads/event_reports/' . $stored,
+            'original_filename' => $original,
+            'stored_filename' => $stored,
+            'file_size' => $size,
+            'abs_path' => $dest,
+        ];
     }
 }

@@ -10,10 +10,19 @@
     search: null,
     refreshBtn: null,
     openCreateBtn: null,
+    openDirectCreateBtn: null,
 
     overlay: null,
     createForm: null,
     createSubmit: null,
+
+    directOverlay: null,
+    directForm: null,
+    directSubmit: null,
+    directProvince: null,
+    directRequestType: null,
+    directPictures: null,
+    directFilePreview: null,
 
     filterProvince: null,
     filterRequestType: null,
@@ -107,6 +116,20 @@
     if (!els.overlay) return;
     els.overlay.classList.remove("open");
     els.overlay.setAttribute("aria-hidden", "true");
+    setBodyModalOpen(false);
+  }
+
+  function openDirectCreateModal() {
+    if (!els.directOverlay) return;
+    els.directOverlay.classList.add("open");
+    els.directOverlay.setAttribute("aria-hidden", "false");
+    setBodyModalOpen(true);
+  }
+
+  function closeDirectCreateModal() {
+    if (!els.directOverlay) return;
+    els.directOverlay.classList.remove("open");
+    els.directOverlay.setAttribute("aria-hidden", "true");
     setBodyModalOpen(false);
   }
 
@@ -610,6 +633,107 @@
     });
   }
 
+  function setDirectDefaultDates() {
+    const start = $("#pe-direct-start");
+    const end = $("#pe-direct-end");
+    if (!start || !end || start.value || end.value) return;
+
+    const pad = (n) => String(n).padStart(2, "0");
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = pad(now.getMonth() + 1);
+    const d = pad(now.getDate());
+    start.value = `${y}-${m}-${d}T08:30`;
+    end.value = `${y}-${m}-${d}T16:30`;
+  }
+
+  function syncDirectFilesPreview() {
+    if (!els.directFilePreview || !els.directPictures) return;
+    const files = Array.from(els.directPictures.files || []);
+    if (files.length === 0) {
+      els.directFilePreview.textContent = "";
+      return;
+    }
+
+    const total = files.reduce((sum, f) => sum + Number(f.size || 0), 0);
+    const mb = total / (1024 * 1024);
+    els.directFilePreview.textContent = `เลือกแล้ว ${files.length} ไฟล์ (${mb.toFixed(2)} MB)`;
+  }
+
+  async function setupDirectCreateModal() {
+    if (!els.openDirectCreateBtn || !els.directOverlay) return;
+
+    els.directOverlay.querySelectorAll("[data-pe-direct-close='1'], [data-pe-direct-close]").forEach((btn) => {
+      btn.addEventListener("click", () => closeDirectCreateModal());
+    });
+
+    els.directOverlay.addEventListener("click", (e) => {
+      if (e.target === els.directOverlay) closeDirectCreateModal();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if (els.directOverlay.classList.contains("open")) closeDirectCreateModal();
+    });
+
+    els.openDirectCreateBtn.addEventListener("click", async () => {
+      try {
+        openDirectCreateModal();
+        setDirectDefaultDates();
+        await ensureLookupsLoaded();
+
+        fillSelectOptions(els.directProvince, state.provinces, {
+          getValue: (x) => x.province_id,
+          getLabel: (x) => x.nameTH ?? x.nameEN ?? x.province_id,
+          placeholderLabel: "-- เลือกจังหวัด --",
+        });
+
+        fillSelectOptions(els.directRequestType, state.requestTypes, {
+          getValue: (x) => x.request_type_id,
+          getLabel: (x) => x.type_name ?? x.request_type_id,
+          placeholderLabel: "-- ใช้สถานะเสร็จสิ้นอัตโนมัติ --",
+        });
+      } catch (err) {
+        console.error(err);
+        alert(err?.message || "ไม่สามารถเปิดหน้าต่างสร้างกิจกรรมพร้อมภาพได้");
+      }
+    });
+
+    els.directPictures?.addEventListener("change", syncDirectFilesPreview);
+
+    els.directForm?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const fd = new FormData(els.directForm);
+      const title = String(fd.get("title") || "").trim();
+      const files = Array.from(els.directPictures?.files || []);
+      if (!title) {
+        alert("กรุณากรอกชื่อกิจกรรม");
+        return;
+      }
+      if (files.length === 0) {
+        alert("กรุณาเลือกรูปภาพกิจกรรมอย่างน้อย 1 ไฟล์");
+        return;
+      }
+
+      els.directSubmit && (els.directSubmit.disabled = true);
+
+      try {
+        await api("/publicity-posts/direct-event", { method: "POST", body: fd });
+        closeDirectCreateModal();
+        els.directForm.reset();
+        syncDirectFilesPreview();
+        await loadPosts();
+        alert("สร้างกิจกรรมพร้อมภาพเรียบร้อย");
+      } catch (err) {
+        console.error(err);
+        alert(err?.message || "สร้างกิจกรรมพร้อมภาพไม่สำเร็จ");
+      } finally {
+        els.directSubmit && (els.directSubmit.disabled = false);
+      }
+    });
+  }
+
   function setupPostSearchUi() {
     els.search?.addEventListener("input", applyPostSearch);
   }
@@ -620,10 +744,19 @@
     els.search = $("#pe-search");
     els.refreshBtn = $("#pe-refresh");
     els.openCreateBtn = $("#pe-open-create");
+    els.openDirectCreateBtn = $("#pe-open-direct-create");
 
     els.overlay = $("#pe-create-overlay");
     els.createForm = $("#pe-create-form");
     els.createSubmit = $("#pe-create-submit");
+
+    els.directOverlay = $("#pe-direct-overlay");
+    els.directForm = $("#pe-direct-form");
+    els.directSubmit = $("#pe-direct-submit");
+    els.directProvince = $("#pe-direct-province");
+    els.directRequestType = $("#pe-direct-request-type");
+    els.directPictures = $("#pe-direct-pictures");
+    els.directFilePreview = $("#pe-direct-file-preview");
 
     els.filterProvince = $("#pe-filter-province");
     els.filterRequestType = $("#pe-filter-request-type");
@@ -636,6 +769,7 @@
     setupPostSearchUi();
     bindPostTableEvents();
     await setupCreateModal();
+    await setupDirectCreateModal();
 
     els.refreshBtn?.addEventListener("click", async () => {
       try {

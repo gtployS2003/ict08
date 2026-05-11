@@ -8,6 +8,7 @@ require_once __DIR__ . '/../controllers/publicity_posts.controller.php';
  * Routes:
  * - GET  /publicity-posts?page=&limit=&q=
  * - POST /publicity-posts
+ * - POST /publicity-posts/direct-event
  * - GET  /publicity-posts/eligible-events
  * - GET  /publicity-posts/{eventId}
  * - PUT  /publicity-posts/{eventId}
@@ -24,6 +25,12 @@ function publicity_posts_routes(string $method, array $segments, PDO $pdo): bool
     // GET /publicity-posts/eligible-events
     if ($method === 'GET' && count($segments) === 2 && $segments[1] === 'eligible-events') {
         $ctl->eligibleEvents();
+        return true;
+    }
+
+    // POST /publicity-posts/direct-event
+    if ($method === 'POST' && count($segments) === 2 && $segments[1] === 'direct-event') {
+        $ctl->createDirectEvent();
         return true;
     }
 

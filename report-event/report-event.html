@@ -126,6 +126,9 @@
                         <button id="pe-refresh" class="btn btn-ghost" type="button">
                             <i class="fa-solid fa-rotate"></i> รีเฟรช
                         </button>
+                        <button id="pe-open-direct-create" class="btn btn-ghost" type="button">
+                            <i class="fa-solid fa-calendar-plus"></i> สร้างกิจกรรมพร้อมภาพ
+                        </button>
                         <button id="pe-open-create" class="btn btn-primary" type="button">
                             <i class="fa-solid fa-plus"></i> เพิ่มภาพกิจกรรม
                         </button>
@@ -218,6 +221,77 @@
                     <button type="button" class="task-add-cancel" data-pe-close="1">ยกเลิก</button>
                     <button type="submit" class="task-add-save" form="pe-create-form"
                         id="pe-create-submit">สร้าง</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direct create modal -->
+        <div class="task-add-overlay" id="pe-direct-overlay" aria-hidden="true">
+            <div class="task-add-modal" role="dialog" aria-modal="true" aria-labelledby="pe-direct-title">
+                <div class="task-add-header">
+                    <h3 class="task-add-title" id="pe-direct-title">สร้างกิจกรรมพร้อมภาพ</h3>
+                    <button type="button" class="task-add-close" data-pe-direct-close="1" aria-label="Close">×</button>
+                </div>
+
+                <form id="pe-direct-form" class="task-add-body">
+                    <p class="task-add-hint" style="margin-top:0;">
+                        ใช้สำหรับกิจกรรมที่ไม่ได้มาจากคำขอ ระบบจะสร้างกิจกรรมสถานะเสร็จสิ้นและเพิ่มภาพกิจกรรมให้ทันที
+                    </p>
+
+                    <div class="task-add-row">
+                        <label for="pe-direct-title-input">ชื่อกิจกรรม</label>
+                        <input id="pe-direct-title-input" name="title" type="text" maxlength="255" required
+                            style="width:100%;" />
+                    </div>
+
+                    <div class="task-add-row">
+                        <label for="pe-direct-detail">รายละเอียด</label>
+                        <textarea id="pe-direct-detail" name="detail" rows="5" style="width:100%;"></textarea>
+                    </div>
+
+                    <div class="task-add-row task-add-row-2col">
+                        <div>
+                            <label for="pe-direct-province">จังหวัด</label>
+                            <select id="pe-direct-province" name="province_id">
+                                <option value="">-- เลือกจังหวัด --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="pe-direct-request-type">กลุ่มสถานะเสร็จสิ้น</label>
+                            <select id="pe-direct-request-type" name="request_type_id">
+                                <option value="">-- ใช้สถานะเสร็จสิ้นอัตโนมัติ --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="task-add-row">
+                        <label for="pe-direct-location">สถานที่</label>
+                        <input id="pe-direct-location" name="location" type="text" style="width:100%;" />
+                    </div>
+
+                    <div class="task-add-row task-add-row-2col">
+                        <div>
+                            <label for="pe-direct-start">วันที่เริ่ม</label>
+                            <input id="pe-direct-start" name="start_datetime" type="datetime-local" style="width:100%;" />
+                        </div>
+                        <div>
+                            <label for="pe-direct-end">วันที่สิ้นสุด</label>
+                            <input id="pe-direct-end" name="end_datetime" type="datetime-local" style="width:100%;" />
+                        </div>
+                    </div>
+
+                    <div class="task-add-row">
+                        <label for="pe-direct-pictures">รูปภาพกิจกรรม</label>
+                        <input id="pe-direct-pictures" name="pictures[]" type="file" accept="image/*" multiple required
+                            style="width:100%;" />
+                        <p class="task-add-hint" id="pe-direct-file-preview"></p>
+                    </div>
+                </form>
+
+                <div class="task-add-footer">
+                    <button type="button" class="task-add-cancel" data-pe-direct-close="1">ยกเลิก</button>
+                    <button type="submit" class="task-add-save" form="pe-direct-form"
+                        id="pe-direct-submit">สร้างพร้อมภาพ</button>
                 </div>
             </div>
         </div>
