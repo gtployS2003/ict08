@@ -1076,6 +1076,15 @@ tr.is-dragging {
   background: #fff;
 }
 
+.popup-url-link {
+  display: inline-block;
+  max-width: min(520px, 34vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 #popup-modal .modal__dialog {
   width: min(720px, calc(100% - 24px));
   max-height: min(86vh, 820px);

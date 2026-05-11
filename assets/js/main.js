@@ -336,6 +336,8 @@ async function initHomeMissionImages() {
 }
 
 async function initHomePopup() {
+    const path = String(window.location.pathname || "").replace(/\/+$/, "");
+    if (!path.endsWith("/site/home.html")) return;
     if (!window.PopupAPI || typeof window.PopupAPI.listPublic !== "function") return;
 
     try {

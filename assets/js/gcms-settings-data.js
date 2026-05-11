@@ -678,7 +678,7 @@
           ? `<img class="popup-thumb" src="${escapeHtml(img)}" alt="${escapeHtml(title || "popup")}" loading="lazy">`
           : `<span class="muted">-</span>`;
         const urlCell = url
-          ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`
+          ? `<a class="popup-url-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(url)}">${escapeHtml(url)}</a>`
           : `<span class="muted">-</span>`;
 
         return `
