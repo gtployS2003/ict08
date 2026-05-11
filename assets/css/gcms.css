@@ -1007,6 +1007,30 @@ tr.is-dragging {
   border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+#link-url-modal .modal__dialog {
+  max-height: min(86vh, 820px);
+  display: flex;
+  flex-direction: column;
+  width: min(760px, calc(100% - 24px));
+}
+
+#link-url-modal .modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#link-url-modal .modal__footer {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 14px 0 0;
+  margin-top: 14px;
+}
+
 #link-url-modal .photo-preview {
   border: 1px solid rgba(0, 0, 0, 0.10);
   border-radius: 12px;
@@ -1040,6 +1064,17 @@ tr.is-dragging {
   border: 1px solid rgba(0, 0, 0, 0.10);
   border-radius: 8px;
   background: #fff;
+}
+
+@media (max-height: 820px) {
+  #link-url-modal .modal__dialog {
+    margin-top: 3vh;
+    max-height: 94vh;
+  }
+
+  #link-url-modal .photo-preview img {
+    max-height: 160px;
+  }
 }
 
 /* =========================
