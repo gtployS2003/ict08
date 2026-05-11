@@ -435,12 +435,14 @@ body {
     }
 
     .hero-inner-director .director-photo-wrap {
-        width: min(82%, 330px);
+        width: min(82%, 300px);
+        max-height: 320px;
         margin-top: 0;
+        border-radius: 20px;
     }
 
     .hero-inner-director .director-photo {
-        max-height: 320px;
+        border-radius: 20px;
     }
 
     .hero-inner-director .director-info {
@@ -959,18 +961,21 @@ body {
     display: grid;
     align-content: center;
     justify-items: center;
-    gap: 12px;
-    overflow: hidden;
+    gap: 16px;
 }
 
 .hero-inner-director .director-photo-wrap {
-    width: min(86%, 360px);
+    width: min(84%, 340px);
+    max-height: 360px;
     margin: 0 auto;
-    aspect-ratio: auto;
-    border-radius: 0;
-    background: transparent;
+    aspect-ratio: 4 / 5;
+    border-radius: 22px;
+    background: #ffffff;
     border: none;
     box-shadow: none;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
     align-self: end;
 }
 
@@ -980,14 +985,14 @@ body {
 
 .hero-inner-director .director-photo {
     width: 100%;
-    height: auto;
-    max-height: min(360px, calc(75vh - 210px));
+    height: 100%;
+    max-height: none;
     object-fit: contain;
-    object-position: center bottom;
-    border-radius: 0;
+    object-position: center center;
+    border-radius: 22px;
     border: none;
     display: block;
-    filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.18));
+    filter: none;
 }
 
 .hero-inner-director .director-name {
@@ -4246,12 +4251,14 @@ body {
     }
 
     .hero-inner-director .director-photo-wrap {
-        width: min(82%, 280px);
+        width: min(82%, 250px);
+        max-height: 280px;
         margin-top: 0;
+        border-radius: 18px;
     }
 
     .hero-inner-director .director-photo {
-        max-height: 260px;
+        border-radius: 18px;
     }
 
     .hero-inner-director .director-info {

@@ -1,6 +1,6 @@
 // assets/js/home-director.js
 // เติมข้อมูลผู้อำนวยการ (หน้า site/home.html)
-// ดึงจากตาราง site_structure โดยเลือกตำแหน่ง "ผู้อำนวยการ"
+// ดึงจากตาราง site_structure แถว site_structure = 1
 
 (() => {
   async function initHomeDirector() {
@@ -17,21 +17,21 @@
     }
 
     try {
-      const row = await loadDirectorRow();
+      const res = await window.SiteStructureAPI.get(1, { isPublic: true });
+      const row = res?.data?.row || null;
       if (!row) return;
 
-      const prefix = String(row.prefix_th || "");
-      const fristname = String(row.fristname || "");
+      const prefix = String(row.prefix_th || "").trim();
+      const fristname = String(row.fristname || row.firstname || "").trim();
       const lastname = String(row.lastname || "");
-      const fullName = `${prefix}${fristname}${lastname ? " " + lastname : ""}`.trim();
+      const fullName = [prefix, fristname, lastname].filter(Boolean).join(" ");
 
       if (nameEl && fullName) {
         nameEl.textContent = fullName;
       }
 
-      const position = String(row.position_title || "").trim();
-      if (positionEl && position) {
-        positionEl.textContent = position;
+      if (positionEl) {
+        positionEl.textContent = "ผู้อำนวยการศูนย์เทคโนโลยีสารสนเทศและการสื่อสารเขต 8 (พิษณุโลก)";
       }
 
       const API_BASE = window.API_BASE_URL || window.__API_BASE__ || "/ict8/backend/public";
@@ -55,22 +55,6 @@
       // เงียบ ๆ ไม่ให้หน้าเว็บพัง
       // console.warn("Home director load failed", e);
     }
-  }
-
-  async function loadDirectorRow() {
-    if (typeof window.SiteStructureAPI.list === "function") {
-      const res = await window.SiteStructureAPI.list({ page: 1, limit: 200, isPublic: true });
-      const items = Array.isArray(res?.data?.items) ? res.data.items : [];
-      const director = items.find((item) =>
-        String(item?.position_title || "").includes("ผู้อำนวยการ")
-      );
-
-      if (director) return director;
-      if (items[0]) return items[0];
-    }
-
-    const res = await window.SiteStructureAPI.get(1, { isPublic: true });
-    return res?.data?.row || null;
   }
 
   // defer scripts: DOM พร้อมแล้ว แต่เผื่อกรณี include.js ยังเปลี่ยน DOM บางส่วน
