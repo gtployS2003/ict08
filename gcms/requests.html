@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/ict8/assets/image/logo_หน่วย8.png" />
+  <title>การขอสนับสนุน</title>
+
+  <script>
+    (function () {
+      try {
+        var token =
+          localStorage.getItem("auth_token") ||
+          sessionStorage.getItem("auth_token") ||
+          localStorage.getItem("token") ||
+          sessionStorage.getItem("token") ||
+          localStorage.getItem("access_token") ||
+          sessionStorage.getItem("access_token");
+
+        if (!token) {
+          var redirect = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.replace("/ict8/login.html?redirect=" + redirect);
+        }
+      } catch (e) {
+        window.location.replace("/ict8/login.html?redirect=%2Fict8%2Fgcms%2Frequests.html");
+      }
+    })();
+  </script>
+
+  <script src="/ict8/backend/public/config.js.php"></script>
+  <script src="/ict8/assets/js/api/request-types.api.js" defer></script>
+  <script src="/ict8/assets/js/include.js" defer></script>
+  <script src="/ict8/assets/js/auth.js" defer></script>
+  <script src="/ict8/assets/js/main.js" defer></script>
+  <script src="/ict8/assets/js/requests-menu.js" defer></script>
+</head>
+
+<body>
+  <header id="header-form"></header>
+
+  <main class="request-menu-page">
+    <section class="request-menu-inner" aria-labelledby="request-menu-title">
+      <div class="request-menu-heading">
+        <h1 id="request-menu-title" class="request-menu-title">การขอสนับสนุน</h1>
+        <div class="request-menu-divider"></div>
+      </div>
+
+      <div id="request-type-grid" class="request-type-grid" aria-live="polite">
+        <div class="request-type-status">กำลังโหลดข้อมูล...</div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer-index"></footer>
+</body>
+
+</html>
