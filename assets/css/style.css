@@ -2571,7 +2571,7 @@ body {
     box-sizing: border-box;
 }
 
-.directors .director-name {
+main.site-home .directors .director-name {
     margin: 0;
     color: #111111;
     font-size: 13px;
@@ -2579,7 +2579,7 @@ body {
     line-height: 1.35;
 }
 
-.directors .director-year {
+main.site-home .directors .director-year {
     margin: 4px 0 0;
     font-size: 13px;
     color: #111111;
