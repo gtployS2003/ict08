@@ -153,7 +153,7 @@ class RequestModel
         SELECT status_id
         FROM request_status
         WHERE request_type_id = :tid
-        ORDER BY sort_order ASC, status_id ASC
+        ORDER BY sort_order DESC, status_id DESC
         LIMIT 1
     ";
     $stmt = $this->pdo->prepare($sql);

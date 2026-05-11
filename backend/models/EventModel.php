@@ -141,7 +141,7 @@ final class EventModel
                 ON pPart.person_user_id = uPart.user_id
             {$whereSql}
             GROUP BY e.event_id
-            ORDER BY e.event_id ASC
+            ORDER BY e.event_id DESC
             LIMIT :limit OFFSET :offset
         ";
 
