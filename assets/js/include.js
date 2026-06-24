@@ -72,6 +72,46 @@ function applyCurrentYear() {
   });
 }
 
+function getConsentCookie(name) {
+  const key = `${encodeURIComponent(name)}=`;
+  return document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(key))
+    ?.slice(key.length) || "";
+}
+
+function setConsentCookie(name, value, days) {
+  const maxAge = Math.max(1, Number(days) || 365) * 24 * 60 * 60;
+  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; Max-Age=${maxAge}; Path=/ict8; SameSite=Lax`;
+}
+
+function initIncludedCookieConsent() {
+  if (getConsentCookie("ict8_cookie_consent") === "accepted") return;
+  if (document.getElementById("cookieConsent")) return;
+
+  const banner = document.createElement("div");
+  banner.className = "cookie-consent";
+  banner.id = "cookieConsent";
+  banner.setAttribute("role", "dialog");
+  banner.setAttribute("aria-live", "polite");
+  banner.innerHTML = `
+    <div class="cookie-consent__text">
+      เว็บไซต์นี้ใช้คุกกี้เพื่อจดจำการเข้าสู่ระบบ การตั้งค่าการใช้งาน และปรับปรุงประสบการณ์ใช้งานของคุณ
+    </div>
+    <button type="button" class="cookie-consent__btn" id="cookieConsentAccept">ยอมรับ</button>
+  `;
+
+  document.body.appendChild(banner);
+  document.getElementById("cookieConsentAccept")?.addEventListener("click", () => {
+    setConsentCookie("ict8_cookie_consent", "accepted", 365);
+    try {
+      localStorage.setItem("ict8_cookie_consent", "accepted");
+    } catch {}
+    banner.remove();
+  });
+}
+
 function patchAssetPaths(html) {
   // แปลง href/src="/assets/..." -> href="/ict8/assets/..." (ถ้า BASE_PATH="/ict8")
   if (!BASE_PATH) return html;
@@ -111,6 +151,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   applyIncludedAuthUI();
   applyCurrentYear();
+  initIncludedCookieConsent();
 
   // initNavbar หลัง inject nav ต่าง ๆ แล้ว (กันกรณี include โหลดช้ากว่า DOMContentLoaded)
   try {
