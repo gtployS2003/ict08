@@ -214,6 +214,7 @@
     setVal("first_name_en", p.first_name_en || "");
     setVal("last_name_en", p.last_name_en || "");
     setVal("display_name", p.display_name || "");
+    setVal("email", p.email || d.email || "");
 
     setVal("organization_id", p.organization_id || "");
     setVal("department_id", p.department_id || "");
@@ -258,6 +259,7 @@
     fd.set("first_name_en", getVal("first_name_en"));
     fd.set("last_name_en", getVal("last_name_en"));
     fd.set("display_name", getVal("display_name"));
+    fd.set("email", getVal("email"));
 
     const start = fromDatetimeLocal(getVal("start_date"));
     const end = fromDatetimeLocal(getVal("end_date"));

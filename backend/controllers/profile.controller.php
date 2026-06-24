@@ -289,6 +289,7 @@ final class ProfileController
             'last_name_th',
             'last_name_en',
             'display_name',
+            'email',
             'photo_path',
         ];
         foreach ($strFields as $f) {
@@ -311,7 +312,7 @@ final class ProfileController
                     $payload[$f] = $existing[$f];
                 }
             }
-            foreach (['first_name_th','first_name_en','last_name_th','last_name_en','display_name','photo_path','start_date','end_date'] as $f) {
+            foreach (['first_name_th','first_name_en','last_name_th','last_name_en','display_name','email','photo_path','start_date','end_date'] as $f) {
                 if (!array_key_exists($f, $payload) && array_key_exists($f, $existing)) {
                     $payload[$f] = $existing[$f];
                 }
@@ -324,6 +325,12 @@ final class ProfileController
         }
         if (array_key_exists('last_name_th', $payload) && trim((string)$payload['last_name_th']) === '') {
             fail('last_name_th cannot be empty', 422);
+        }
+        if (array_key_exists('email', $payload)) {
+            $payload['email'] = trim((string)$payload['email']);
+            if ($payload['email'] !== '' && !filter_var($payload['email'], FILTER_VALIDATE_EMAIL)) {
+                fail('email is invalid', 422);
+            }
         }
 
         return $payload;
@@ -376,6 +383,7 @@ final class ProfileController
                 last_name_th,
                 last_name_en,
                 display_name,
+                email,
                 organization_id,
                 department_id,
                 position_title_id,
@@ -392,6 +400,7 @@ final class ProfileController
                 :last_name_th,
                 :last_name_en,
                 :display_name,
+                :email,
                 :organization_id,
                 :department_id,
                 :position_title_id,
@@ -415,6 +424,7 @@ final class ProfileController
             ':last_name_th' => (string)($payload['last_name_th'] ?? ''),
             ':last_name_en' => (($payload['last_name_en'] ?? '') !== '') ? (string)($payload['last_name_en'] ?? '') : null,
             ':display_name' => (string)($payload['display_name'] ?? ''),
+            ':email' => (($payload['email'] ?? '') !== '') ? (string)($payload['email'] ?? '') : null,
             ':organization_id' => (int)($payload['organization_id'] ?? 0),
             ':department_id' => (int)($payload['department_id'] ?? 0),
             ':position_title_id' => (int)($payload['position_title_id'] ?? 0),
@@ -442,6 +452,7 @@ final class ProfileController
                 last_name_th = :last_name_th,
                 last_name_en = :last_name_en,
                 display_name = :display_name,
+                email = :email,
                 organization_id = :organization_id,
                 department_id = :department_id,
                 position_title_id = :position_title_id,
@@ -461,6 +472,7 @@ final class ProfileController
             ':last_name_th' => (string)($payload['last_name_th'] ?? ''),
             ':last_name_en' => ($payload['last_name_en'] ?? null) === '' ? null : ($payload['last_name_en'] ?? null),
             ':display_name' => (string)($payload['display_name'] ?? ''),
+            ':email' => ($payload['email'] ?? null) === '' ? null : ($payload['email'] ?? null),
             ':organization_id' => (int)($payload['organization_id'] ?? 0),
             ':department_id' => (int)($payload['department_id'] ?? 0),
             ':position_title_id' => (int)($payload['position_title_id'] ?? 0),
