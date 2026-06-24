@@ -13,6 +13,7 @@
 
     <!-- LIFF SDK (อย่า defer) -->
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <!-- api -->
     <script src="/ict8/assets/js/api/http.js?v=2026-03-04-2" defer></script>
@@ -22,7 +23,7 @@
     <script src="/ict8/assets/js/include.js" defer></script>
     <script src="/ict8/assets/js/auth.js" defer></script>
     <script src="/ict8/assets/js/main.js" defer></script>
-    <script src="/ict8/assets/js/line-login.js?v=20260129-21" defer></script>
+    <script src="/ict8/assets/js/line-login.js?v=20260624-1" defer></script>
 </head>
 
 <body>
@@ -60,19 +61,17 @@
                         เข้าสู่ระบบด้วย LINE
                     </button>
 
-                    <button id="btn-line-logout" type="button">Logout (DEV)</button>
+                    <div class="login-or">หรือ</div>
 
+                    <button type="button" class="btn-login btn-google" id="btn-google-login">
+                        เข้าสู่ระบบด้วย Email (Google)
+                    </button>
 
+                    <div class="login-status" id="login-status" role="status" aria-live="polite"></div>
                 </div>
             </section>
         </div>
     </main>
-
-    <script>
-        console.log("innerWidth=", window.innerWidth, "screenWidth=", screen.width);
-        console.log("API_BASE_URL=", window.API_BASE_URL || window.__API_BASE__ || window.API_BASE);
-        console.log("LIFF_ID=", window.LIFF_ID);
-    </script>
 
     <footer id="footer-index"></footer>
 </body>

@@ -50,6 +50,20 @@
   }
 
   /**
+   * POST /auth/google-login
+   * ใช้หลังจาก Google Identity Services คืน access_token หรือ credential
+   *
+   * @param {Object} data { access_token } หรือ { credential }
+   */
+  async function googleLogin(data) {
+    return apiFetch(`${AUTH_BASE}/google-login`, {
+      method: "POST",
+      body: data,
+      skipAuth: true,
+    });
+  }
+
+  /**
    * POST /auth/register
    * ใช้ตอนสมัครสมาชิกใหม่
    *
@@ -97,6 +111,7 @@
   window.AuthAPI = {
     login,
     lineLogin,
+    googleLogin,
     register,
     saveToken,
     getToken,

@@ -1,200 +1,241 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const btnLogin = document.getElementById("btn-line-login");
-  const btnLogout = document.getElementById("btn-line-logout");
-  const btnDebug = document.getElementById("btn-debug");
+  const btnLineLogin = document.getElementById("btn-line-login");
+  const btnGoogleLogin = document.getElementById("btn-google-login");
 
-  btnLogin?.addEventListener("click", handleLineLogin);
-  btnLogout?.addEventListener("click", handleLogoutDev);
-  btnDebug?.addEventListener("click", showDebug);
+  btnLineLogin?.addEventListener("click", handleLineLogin);
+  btnGoogleLogin?.addEventListener("click", handleGoogleLogin);
 
-  // debug panel จะโชว์ตลอด (กันเคส LINE ไม่มี console)
-  ensureDebugPanel();
-  logUI("DOM ready");
-  logUI("href=" + location.href);
-  logUI("LIFF_ID=" + (window.LIFF_ID || "(missing)"));
+  initGoogleLogin();
 
   autoResumeAfterRedirect().catch((e) => {
-    logUI("autoResume error", { message: e?.message || String(e) });
+    setLoginStatus("ไม่สามารถเข้าสู่ระบบด้วย LINE ต่อได้ กรุณาลองใหม่อีกครั้ง", true);
+    console.error("[login] auto resume failed", e);
   });
-
 });
+
+let googleTokenClient = null;
 
 async function autoResumeAfterRedirect() {
   if (!window.liff || !window.LIFF_ID) return;
 
   const hasOAuthParams =
     location.search.includes("code=") || location.search.includes("state=");
-
-  // ✅ Resume เฉพาะตอนกลับมาจาก OAuth
   if (!hasOAuthParams) return;
 
   await liff.init({ liffId: window.LIFF_ID });
 
-  logUI("AUTO: after init", {
-    hasOAuthParams,
-    isInClient: liff.isInClient(),
-    isLoggedIn: liff.isLoggedIn(),
-  });
-
   if (liff.isLoggedIn()) {
-    logUI("AUTO: logged in -> continue flow");
-    await continueAfterLogin();
+    await continueAfterLineLogin();
   }
 }
 
+async function continueAfterLineLogin() {
+  setLoginStatus("กำลังตรวจสอบบัญชี LINE...");
 
-async function continueAfterLogin() {
-  logUI("STEP 5: getProfile()");
   const profile = await liff.getProfile();
-  if (!profile?.userId) return logUI("ERROR: no userId from profile");
+  if (!profile?.userId) {
+    setLoginStatus("ไม่พบข้อมูลผู้ใช้จาก LINE กรุณาลองใหม่อีกครั้ง", true);
+    return;
+  }
 
-  logUI("profile", { userId: profile.userId, name: profile.displayName });
-
-  logUI("STEP 6: call backend /auth/line-login");
   const res = await AuthAPI.lineLogin({
     line_user_id: profile.userId,
     line_user_name: profile.displayName,
   });
 
   const data = res?.data || {};
-  logUI("backend response", data);
+  handleLoginResult(data, {
+    activeMessage: liff.isInClient()
+      ? "เข้าสู่ระบบสำเร็จ กำลังปิดหน้าต่าง..."
+      : "เข้าสู่ระบบสำเร็จ กำลังไปยังหน้าหลัก...",
+    onActive: () => {
+      if (liff.isInClient()) {
+        setTimeout(() => {
+          try { liff.closeWindow(); } catch {}
+        }, 300);
+        return;
+      }
 
-  if (data.status === "active") {
-    if (data.token) AuthAPI.saveToken(data.token);
-
-    if (liff.isInClient()) {
-      logUI("STEP 7: closeWindow()");
-      setTimeout(() => {
-        try { liff.closeWindow(); } catch {}
-      }, 300);
-      return;
-    }
-
-    alert("isInClient=false → ปิดหน้าต่าง LIFF ไม่ได้ (ตอนนี้ไม่ได้เปิดแบบ LIFF ในแอป LINE)");
-    location.href = "/ict8/index.html";
-    return;
-  }
-
-  if (data.status === "register") {
-    sessionStorage.setItem("line_user_id", profile.userId);
-    sessionStorage.setItem("line_user_name", profile.displayName);
-    location.href = "/ict8/profile-setup.html";
-    return;
-  }
-
-  if (data.status === "pending") {
-    alert("บัญชีของคุณอยู่ระหว่างรอการอนุมัติจากเจ้าหน้าที่");
-    return;
-  }
-
-  alert("ไม่สามารถเข้าสู่ระบบได้");
-}
-
-function ensureDebugPanel() {
-  if (document.getElementById("liff-debug-panel")) return;
-
-  const panel = document.createElement("pre");
-  panel.id = "liff-debug-panel";
-  panel.style.cssText =
-    "position:fixed;left:10px;right:10px;bottom:10px;max-height:42vh;overflow:auto;" +
-    "padding:10px;border-radius:12px;background:#111;color:#0f0;font-size:12px;" +
-    "z-index:99999;opacity:.92;white-space:pre-wrap;word-break:break-word;";
-  panel.textContent = "LIFF DEBUG\n";
-  document.body.appendChild(panel);
-}
-
-function logUI(msg, obj) {
-  const panel = document.getElementById("liff-debug-panel");
-  const line = obj ? `${msg} ${safeJson(obj)}` : String(msg);
-  console.log("[LIFF]", msg, obj || "");
-  if (panel) panel.textContent += line + "\n";
-}
-
-function safeJson(v) {
-  try { return JSON.stringify(v); } catch { return String(v); }
-}
-
-async function showDebug() {
-  try {
-    ensureDebugPanel();
-
-    if (!window.liff) return logUI("ERROR: LIFF SDK not loaded");
-    if (!window.LIFF_ID) return logUI("ERROR: LIFF_ID missing");
-
-    logUI("DEBUG: init()");
-    await liff.init({ liffId: window.LIFF_ID });
-
-    logUI("DEBUG status", {
-      isInClient: liff.isInClient(),
-      isLoggedIn: liff.isLoggedIn(),
-      os: liff.getOS?.() || "n/a",
-      language: liff.getLanguage?.() || "n/a",
-      version: liff.getVersion?.() || "n/a",
-      lineVersion: liff.getLineVersion?.() || "n/a",
-      href: location.href,
-    });
-  } catch (e) {
-    logUI("showDebug error", { message: e?.message || String(e) });
-  }
-}
-
-async function handleLogoutDev() {
-  try {
-    ensureDebugPanel();
-    if (window.liff && window.LIFF_ID) {
-      logUI("logout: init()");
-      await liff.init({ liffId: window.LIFF_ID });
-    }
-  } catch (e) {
-    logUI("logout init failed", { message: e?.message || String(e) });
-  }
-
-  try { AuthAPI.clearToken(); } catch {}
-  localStorage.removeItem("auth_token");
-  sessionStorage.removeItem("auth_token");
-  sessionStorage.removeItem("line_user_id");
-  sessionStorage.removeItem("line_user_name");
-
-  try {
-    if (window.liff && liff.isLoggedIn()) {
-      logUI("logout: liff.logout()");
-      liff.logout();
-    }
-  } catch (e) {
-    logUI("logout failed", { message: e?.message || String(e) });
-  }
-
-  location.href = "/ict8/login.html?ts=" + Date.now();
+      redirectAfterLogin();
+    },
+    onRegister: () => {
+      sessionStorage.setItem("line_user_id", profile.userId);
+      sessionStorage.setItem("line_user_name", profile.displayName || "");
+      location.href = "/ict8/profile-setup.html";
+    },
+  });
 }
 
 async function handleLineLogin() {
   try {
-    ensureDebugPanel();
-    logUI("STEP 1: click login");
+    setLoginStatus("กำลังเปิดหน้าต่างเข้าสู่ระบบ LINE...");
 
-    if (!window.liff) return logUI("ERROR: LIFF SDK not loaded");
-    if (!window.LIFF_ID) return logUI("ERROR: LIFF_ID missing");
-
-    logUI("STEP 2: liff.init()");
-    await liff.init({ liffId: window.LIFF_ID });
-
-    logUI("STEP 3: after init", {
-      isInClient: liff.isInClient(),
-      isLoggedIn: liff.isLoggedIn(),
-    });
-
-    // ยังไม่ login -> เริ่ม login
-    if (!liff.isLoggedIn()) {
-      logUI("STEP 4: liff.login()");
-      liff.login();
+    if (!window.liff) {
+      setLoginStatus("ไม่สามารถโหลดระบบ LINE Login ได้ กรุณารีเฟรชหน้าแล้วลองใหม่", true);
+      return;
+    }
+    if (!window.LIFF_ID) {
+      setLoginStatus("ยังไม่ได้ตั้งค่า LIFF ID สำหรับ LINE Login", true);
       return;
     }
 
-    // login แล้ว -> ทำต่อให้จบ
-    await continueAfterLogin();
+    await liff.init({ liffId: window.LIFF_ID });
+
+    if (!liff.isLoggedIn()) {
+      liff.login({ redirectUri: location.href });
+      return;
+    }
+
+    await continueAfterLineLogin();
   } catch (e) {
-    logUI("catch error", { message: e?.message || String(e) });
-    alert("เกิดข้อผิดพลาด: " + (e?.message || String(e)));
+    console.error("[login] LINE login failed", e);
+    setLoginStatus("เกิดข้อผิดพลาดระหว่างเข้าสู่ระบบด้วย LINE: " + (e?.message || String(e)), true);
   }
 }
 
+function initGoogleLogin() {
+  const clientId = getGoogleClientId();
+  if (!clientId) return;
+
+  waitForGoogleIdentity()
+    .then(() => {
+      googleTokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: "openid email profile",
+        callback: handleGoogleToken,
+      });
+    })
+    .catch((e) => {
+      console.error("[login] Google Identity Services unavailable", e);
+    });
+}
+
+async function handleGoogleLogin() {
+  const clientId = getGoogleClientId();
+  if (!clientId) {
+    setLoginStatus("ยังไม่ได้ตั้งค่า Google Client ID สำหรับเข้าสู่ระบบด้วย Email", true);
+    return;
+  }
+
+  try {
+    setLoginStatus("กำลังเปิดหน้าต่างเข้าสู่ระบบ Google...");
+    await waitForGoogleIdentity();
+
+    if (!googleTokenClient) {
+      googleTokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: "openid email profile",
+        callback: handleGoogleToken,
+      });
+    }
+
+    googleTokenClient.requestAccessToken({
+      prompt: "select_account",
+    });
+  } catch (e) {
+    console.error("[login] Google login failed", e);
+    setLoginStatus("ไม่สามารถเปิด Google Login ได้ กรุณาลองใหม่อีกครั้ง", true);
+  }
+}
+
+async function handleGoogleCredential(response) {
+  try {
+    const credential = response?.credential || "";
+    if (!credential) {
+      setLoginStatus("ไม่พบข้อมูลยืนยันตัวตนจาก Google", true);
+      return;
+    }
+
+    setLoginStatus("กำลังตรวจสอบ Email กับระบบ...");
+    const res = await AuthAPI.googleLogin({ credential });
+    handleLoginResult(res?.data || {}, {
+      activeMessage: "เข้าสู่ระบบสำเร็จ กำลังไปยังหน้าหลัก...",
+      onActive: redirectAfterLogin,
+    });
+  } catch (e) {
+    console.error("[login] Google credential failed", e);
+    const msg = e?.payload?.message || e?.message || "ไม่สามารถเข้าสู่ระบบด้วย Google ได้";
+    setLoginStatus(msg, true);
+  }
+}
+
+async function handleGoogleToken(response) {
+  try {
+    const accessToken = response?.access_token || "";
+    if (!accessToken) {
+      setLoginStatus("ไม่พบข้อมูลยืนยันตัวตนจาก Google", true);
+      return;
+    }
+
+    setLoginStatus("กำลังตรวจสอบ Email กับระบบ...");
+    const res = await AuthAPI.googleLogin({ access_token: accessToken });
+    handleLoginResult(res?.data || {}, {
+      activeMessage: "เข้าสู่ระบบสำเร็จ กำลังไปยังหน้าหลัก...",
+      onActive: redirectAfterLogin,
+    });
+  } catch (e) {
+    console.error("[login] Google token failed", e);
+    const msg = e?.payload?.message || e?.message || "ไม่สามารถเข้าสู่ระบบด้วย Google ได้";
+    setLoginStatus(msg, true);
+  }
+}
+
+function handleLoginResult(data, options = {}) {
+  if (data.status === "active") {
+    if (data.token) AuthAPI.saveToken(data.token);
+    setLoginStatus(options.activeMessage || "เข้าสู่ระบบสำเร็จ");
+    if (typeof options.onActive === "function") options.onActive();
+    return;
+  }
+
+  if (data.status === "register") {
+    if (typeof options.onRegister === "function") {
+      options.onRegister();
+      return;
+    }
+    setLoginStatus("ไม่พบอีเมลนี้ในระบบ กรุณาติดต่อเจ้าหน้าที่เพื่อเพิ่มข้อมูลผู้ใช้", true);
+    return;
+  }
+
+  if (data.status === "pending") {
+    setLoginStatus("บัญชีของคุณอยู่ระหว่างรอการอนุมัติจากเจ้าหน้าที่", true);
+    return;
+  }
+
+  setLoginStatus("ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง", true);
+}
+
+function redirectAfterLogin() {
+  const params = new URLSearchParams(location.search);
+  const redirect = params.get("redirect");
+  location.href = redirect || "/ict8/index.html";
+}
+
+function setLoginStatus(message, isError = false) {
+  const el = document.getElementById("login-status");
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.toggle("is-error", Boolean(isError));
+}
+
+function getGoogleClientId() {
+  return String(window.__APP_CONFIG__?.GOOGLE_CLIENT_ID || window.GOOGLE_CLIENT_ID || "").trim();
+}
+
+function waitForGoogleIdentity() {
+  return new Promise((resolve, reject) => {
+    const started = Date.now();
+    const timer = setInterval(() => {
+      if (window.google?.accounts?.id) {
+        clearInterval(timer);
+        resolve();
+        return;
+      }
+
+      if (Date.now() - started > 5000) {
+        clearInterval(timer);
+        reject(new Error("Google Identity Services not loaded"));
+      }
+    }, 100);
+  });
+}

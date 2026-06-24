@@ -10,6 +10,7 @@ require_once __DIR__ . '/../controllers/auth.controller.php';
  * รองรับ:
  *  - POST /auth/login
  *  - POST /auth/line-login
+ *  - POST /auth/google-login
  *  - POST /auth/register
  */
 function auth_routes(string $method, array $segments, PDO $pdo): bool
@@ -30,6 +31,12 @@ function auth_routes(string $method, array $segments, PDO $pdo): bool
     // POST /auth/line-login
     if ($method === 'POST' && $action === 'line-login') {
         $controller->lineLogin();
+        return true;
+    }
+
+    // POST /auth/google-login
+    if ($method === 'POST' && $action === 'google-login') {
+        $controller->googleLogin();
         return true;
     }
 

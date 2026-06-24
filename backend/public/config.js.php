@@ -59,6 +59,7 @@ $appEnv   = $envData['APP_ENV'] ?? 'dev';
 $devKey   = $envData['DEV_API_KEY'] ?? '';
 $basePath = $envData['BASE_PATH'] ?? '/ict8';
 $liffId   = $envData['LIFF_ID'] ?? '';
+$googleClientId = $envData['GOOGLE_CLIENT_ID'] ?? '';
 
 // API_BASE:
 // - Prefer .env, but allow empty (then fall back to BASE_PATH/backend/public)
@@ -98,20 +99,10 @@ $config = [
   "API_BASE" => $apiBase,
   "BASE_PATH" => $basePath,
   "LIFF_ID" => $liffId,
+  "GOOGLE_CLIENT_ID" => $googleClientId,
 ];
 
 echo "window.__APP_CONFIG__ = " . json_encode($config, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ";";
 echo "\nwindow.LIFF_ID = window.__APP_CONFIG__.LIFF_ID;";
 echo "\nwindow.API_BASE_URL = window.__APP_CONFIG__.API_BASE;";
-$debugEnv = [
-  'liffId' => $liffId,
-  'envFile' => $envFile,
-  'envFileExists' => (bool) $envFile,
-  'envContentLength' => strlen($envContent),
-  'envDataCount' => count($envData),
-  'envData' => $envData,
-  'apiBase' => $apiBase,
-  'host' => $host,
-  'isLocalHost' => $isLocalHost,
-];
-echo "\nwindow.__DEBUG_ENV__ = " . json_encode($debugEnv, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ";";
+echo "\nwindow.GOOGLE_CLIENT_ID = window.__APP_CONFIG__.GOOGLE_CLIENT_ID;";

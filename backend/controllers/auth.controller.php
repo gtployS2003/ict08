@@ -198,6 +198,92 @@ class AuthController
         $this->lineLogin();
     }
 
+    /**
+     * POST /auth/google-login
+     * body: { access_token } หรือ { credential }
+     *
+     * ใช้ Google token ที่ยืนยันแล้วเพื่อหา person.email และออก token ของระบบ
+     */
+    public function googleLogin(): void
+    {
+        $body = read_json_body();
+        $accessToken = trim((string) ($body['access_token'] ?? ''));
+        $credential = trim((string) ($body['credential'] ?? ''));
+
+        if ($accessToken === '' && $credential === '') {
+            fail('Missing Google credential', 422);
+        }
+
+        $clientId = trim((string) (getenv('GOOGLE_CLIENT_ID') ?: ''));
+        if ($clientId === '') {
+            fail('Google Login is not configured', 500);
+        }
+
+        try {
+            $googleProfile = $credential !== ''
+                ? $this->verifyGoogleIdToken($credential, $clientId)
+                : $this->verifyGoogleAccessToken($accessToken, $clientId);
+        } catch (Throwable $e) {
+            fail('Google token verification failed', 401);
+        }
+
+        $email = strtolower(trim((string) ($googleProfile['email'] ?? '')));
+        $emailVerified = $googleProfile['email_verified'] ?? false;
+
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            fail('Google account email is invalid', 422);
+        }
+
+        if (!$this->truthy($emailVerified)) {
+            fail('Google account email is not verified', 401);
+        }
+
+        $personModel = new PersonModel($this->pdo);
+        $person = $personModel->findByEmail($email);
+
+        if (!$person) {
+            ok([
+                'status' => 'register',
+                'email' => $email,
+            ], 'Email not found in person');
+            return;
+        }
+
+        $userId = (int) ($person['person_user_id'] ?? 0);
+        if ($userId <= 0) {
+            fail('Person account is not linked to a user', 409);
+        }
+
+        if ((int) ($person['is_active'] ?? 0) !== 1) {
+            ok([
+                'status' => 'pending',
+                'email' => $email,
+                'person' => $person,
+            ], 'Pending approval');
+            return;
+        }
+
+        $userModel = new UserModel($this->pdo);
+        $user = $userModel->findById($userId);
+        if (!$user) {
+            fail('Linked user was not found', 409);
+        }
+
+        $token = auth_sign((string) $userId);
+
+        ok([
+            'status' => 'active',
+            'token' => $token,
+            'user' => $user,
+            'person' => $person,
+            'google' => [
+                'email' => $email,
+                'name' => (string) ($googleProfile['name'] ?? ''),
+                'picture' => (string) ($googleProfile['picture'] ?? ''),
+            ],
+        ], 'Login with Google success');
+    }
+
 
     /**
      * POST /auth/register
@@ -362,6 +448,75 @@ class AuthController
     {
         $v = getenv('APP_DEBUG') ?: '';
         return $v === '1' || strtolower($v) === 'true';
+    }
+
+    private function verifyGoogleIdToken(string $idToken, string $clientId): array
+    {
+        $payload = $this->googleGetJson('https://oauth2.googleapis.com/tokeninfo?id_token=' . rawurlencode($idToken));
+        $aud = (string) ($payload['aud'] ?? '');
+
+        if ($aud !== $clientId) {
+            throw new RuntimeException('Invalid Google token audience');
+        }
+
+        return $payload;
+    }
+
+    private function verifyGoogleAccessToken(string $accessToken, string $clientId): array
+    {
+        $tokenInfo = $this->googleGetJson('https://oauth2.googleapis.com/tokeninfo?access_token=' . rawurlencode($accessToken));
+        $aud = (string) ($tokenInfo['aud'] ?? '');
+
+        if ($aud !== $clientId) {
+            throw new RuntimeException('Invalid Google token audience');
+        }
+
+        $userInfo = $this->googleGetJson('https://www.googleapis.com/oauth2/v3/userinfo', [
+            'Authorization: Bearer ' . $accessToken,
+        ]);
+
+        return array_merge($tokenInfo, $userInfo);
+    }
+
+    private function googleGetJson(string $url, array $headers = []): array
+    {
+        $ch = curl_init($url);
+        if (!$ch) {
+            throw new RuntimeException('Unable to initialize cURL');
+        }
+
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        if ($headers) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        }
+
+        $raw = curl_exec($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($raw === false || $httpCode < 200 || $httpCode >= 300) {
+            throw new RuntimeException($error ?: 'Google request failed');
+        }
+
+        $data = json_decode((string) $raw, true);
+        if (!is_array($data)) {
+            throw new RuntimeException('Google response is not JSON');
+        }
+
+        return $data;
+    }
+
+    private function truthy($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        $normalized = strtolower(trim((string) $value));
+        return in_array($normalized, ['1', 'true', 'yes'], true);
     }
 
     /**

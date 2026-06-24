@@ -44,6 +44,44 @@ class PersonModel
     }
 
     /**
+     * ใช้กับ Google login: หา person จาก email ที่ยืนยันแล้วกับ Google
+     */
+    public function findByEmail(string $email): ?array
+    {
+        $sql = "
+            SELECT
+                person_id,
+                person_user_id,
+                person_prefix_id,
+                first_name_th,
+                first_name_en,
+                last_name_th,
+                last_name_en,
+                display_name,
+                email,
+                department_id,
+                position_title_id,
+                organization_id,
+                photo_path,
+                is_active,
+                start_date,
+                end_date,
+                create_at
+            FROM person
+            WHERE LOWER(email) = LOWER(:email)
+            LIMIT 1
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            ':email' => $email
+        ]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    /**
      * ✅ ดึงรายละเอียด person แบบ JOIN ชื่อ (สำหรับ modal รายละเอียดผู้ใช้งาน)
      * - ใช้ person_user_id เป็น key
      */
