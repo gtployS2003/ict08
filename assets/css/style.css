@@ -149,6 +149,7 @@ body {
     background: #e0e0e0;
     cursor: pointer;
     padding: 0;
+    object-fit: cover;
 }
 
 /* กล่อง dropdown */
@@ -184,9 +185,55 @@ body {
     background: #f5f5f5;
 }
 
+.admin-only[hidden],
+.card[hidden] {
+    display: none !important;
+}
+
 /* เวลาเปิด dropdown ให้ wrapper มี class .open */
 .profile-wrapper.open .profile-menu {
     display: block;
+}
+
+.cookie-consent {
+    position: fixed;
+    left: 18px;
+    right: 18px;
+    bottom: 18px;
+    z-index: 10000;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 14px 16px;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #24212a;
+    box-shadow: 0 18px 45px rgba(23, 18, 30, 0.20);
+    border: 1px solid rgba(83, 34, 116, 0.16);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.cookie-consent__text {
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.cookie-consent__btn {
+    flex: 0 0 auto;
+    min-width: 88px;
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 16px;
+    background: #532274;
+    color: #ffffff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.cookie-consent__btn:hover {
+    background: #3f185a;
 }
 
 

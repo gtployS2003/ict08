@@ -183,6 +183,10 @@ async function handleGoogleToken(response) {
 function handleLoginResult(data, options = {}) {
   if (data.status === "active") {
     if (data.token) AuthAPI.saveToken(data.token);
+    try {
+      if (data.user) localStorage.setItem("ict8_current_user", JSON.stringify(data.user));
+      if (data.person) localStorage.setItem("ict8_current_person", JSON.stringify(data.person));
+    } catch {}
     setLoginStatus(options.activeMessage || "เข้าสู่ระบบสำเร็จ");
     if (typeof options.onActive === "function") options.onActive();
     return;

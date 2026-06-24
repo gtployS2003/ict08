@@ -66,6 +66,12 @@ function applyIncludedAuthUI() {
   });
 }
 
+function applyCurrentYear() {
+  document.querySelectorAll("[data-current-year]").forEach((el) => {
+    el.textContent = String(new Date().getFullYear());
+  });
+}
+
 function patchAssetPaths(html) {
   // แปลง href/src="/assets/..." -> href="/ict8/assets/..." (ถ้า BASE_PATH="/ict8")
   if (!BASE_PATH) return html;
@@ -104,6 +110,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadHtml("header-report", "/assets/include/header-report.html");
 
   applyIncludedAuthUI();
+  applyCurrentYear();
 
   // initNavbar หลัง inject nav ต่าง ๆ แล้ว (กันกรณี include โหลดช้ากว่า DOMContentLoaded)
   try {
