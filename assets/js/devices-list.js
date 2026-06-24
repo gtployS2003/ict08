@@ -1,7 +1,7 @@
 // assets/js/devices-list.js
 // ต้องเรียกผ่าน <script type="module" ...>
 
-import { listDevices, getDevice, createDevice, updateDevice, deleteDevice } from "./api/devices.api.js";
+import { listDevices, getDevice, createDevice, updateDevice, deleteDevice, monitorPingDevices } from "./api/devices.api.js";
 import { http } from "./api/http.esm.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -294,7 +294,7 @@ function renderEmpty() {
   if (!els.tbody) return;
   els.tbody.innerHTML = `
     <tr>
-      <td colspan="9" style="text-align:center; color:#777; padding:12px 0;">
+      <td colspan="7" style="text-align:center; color:#777; padding:12px 0;">
         ไม่มีข้อมูลอุปกรณ์
       </td>
     </tr>
@@ -313,29 +313,26 @@ function renderTable(items) {
     .map((row) => {
       const id = toInt(row.device_id);
       const statusOnline = isTruthyOnline(row.is_online);
-      const statusText = statusOnline ? "ออนไลน์" : "ออฟไลน์";
-
-      const mainTitle = row.main_type_of_device_title ?? "";
-      const typeTitle = row.type_of_device_title ?? "";
+      const statusText = statusOnline ? "Online" : "Offline";
       const ip = row.ip ?? "-";
       const orgName = row.organization_name ?? "";
       const province = row.province_name_th ?? row.province_nameEN ?? row.province_name_en ?? row.province_nameTH ?? row.province_name ?? "";
 
       return `
         <tr>
-          <td>${id}</td>
-          <td>${escapeHtml(row.device_name ?? "")}</td>
-          <td>${escapeHtml(mainTitle)}</td>
-          <td>${escapeHtml(typeTitle)}</td>
-          <td>${escapeHtml(ip || "-")}</td>
-          <td>${escapeHtml(orgName)}</td>
-          <td>${escapeHtml(province)}</td>
-          <td>
-            <span class="status-pill ${statusOnline ? "status-online" : "status-offline"}">
-              ${statusText}
-            </span>
+          <td data-label="ID">${id}</td>
+          <td data-label="ชื่ออุปกรณ์">${escapeHtml(row.device_name ?? "")}</td>
+          <td data-label="IP">${escapeHtml(ip || "-")}</td>
+          <td data-label="หน่วยงาน">${escapeHtml(orgName)}</td>
+          <td data-label="จังหวัด">${escapeHtml(province)}</td>
+          <td data-label="สถานะ">
+            <span
+              class="legend-icon ${statusOnline ? "legend-online" : "legend-offline"} device-status-dot"
+              title="${statusText}"
+              aria-label="${statusText}"
+            ></span>
           </td>
-          <td>
+          <td data-label="จัดการ">
             <div class="row-actions">
               <button class="btn btn-ghost btn-sm" data-action="edit" data-id="${id}">แก้ไข</button>
               <button class="btn btn-danger btn-sm" data-action="delete" data-id="${id}">ลบ</button>
@@ -410,6 +407,16 @@ async function fetchAndRender() {
     if (els.total) els.total.textContent = "โหลดข้อมูลไม่สำเร็จ";
   } finally {
     setLoading(false);
+  }
+}
+
+async function refreshMonitorStatus({ silent = true } = {}) {
+  try {
+    await monitorPingDevices();
+    await fetchAndRender();
+  } catch (e) {
+    console.error("[devices] monitor ping failed:", e);
+    if (!silent) alert("ตรวจสอบสถานะอุปกรณ์ไม่สำเร็จ");
   }
 }
 
@@ -618,7 +625,7 @@ function bindEvents() {
 
   // refresh
   els.refresh?.addEventListener("click", () => {
-    fetchAndRender();
+    refreshMonitorStatus({ silent: false });
   });
 
   // pagination clicks (event delegation)
@@ -695,6 +702,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     await Promise.allSettled(tasks);
 
     await fetchAndRender();
+
+    window.setInterval(() => {
+      refreshMonitorStatus({ silent: true });
+    }, 5 * 60 * 1000);
   } catch (e) {
     console.error(e);
     renderEmpty();

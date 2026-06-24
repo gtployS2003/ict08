@@ -314,6 +314,61 @@ final class DevicesController
         }
     }
 
+    // POST /devices/monitor-ping
+    // ใช้สำหรับ cron ทุก 5 นาทีจาก https://ict8.moi.go.th/
+    public function monitorPing(): void
+    {
+        try {
+            $model = new DeviceModel($this->pdo);
+            $devices = $model->listNetworkDevicesForPing();
+            $items = [];
+            $online = 0;
+            $offline = 0;
+
+            foreach ($devices as $device) {
+                $id = (int)($device['device_id'] ?? 0);
+                $ip = trim((string)($device['ip'] ?? ''));
+                if ($id <= 0 || $ip === '') {
+                    continue;
+                }
+
+                $ok = $this->pingHost($ip);
+                $isOnline = $ok ? 1 : 0;
+                $model->updateOnlineStatus($id, $isOnline);
+
+                if ($ok) {
+                    $online++;
+                } else {
+                    $offline++;
+                }
+
+                $items[] = [
+                    'device_id' => $id,
+                    'device_name' => $device['device_name'] ?? '',
+                    'ip' => $ip,
+                    'is_online' => $isOnline,
+                ];
+            }
+
+            json_response([
+                'error' => false,
+                'message' => 'Device monitor ping completed',
+                'data' => [
+                    'total' => count($items),
+                    'online' => $online,
+                    'offline' => $offline,
+                    'items' => $items,
+                ],
+            ]);
+        } catch (Throwable $e) {
+            json_response([
+                'error' => true,
+                'message' => 'Failed to ping devices',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     private function getJsonBody(): array
     {
         $raw = file_get_contents('php://input');
@@ -326,5 +381,27 @@ final class DevicesController
         }
 
         return $data;
+    }
+
+    private function pingHost(string $host): bool
+    {
+        if (!preg_match('/^[a-zA-Z0-9_.:-]+$/', $host)) {
+            return false;
+        }
+
+        $disabled = array_map('trim', explode(',', (string)ini_get('disable_functions')));
+        if (in_array('exec', $disabled, true)) {
+            throw new RuntimeException('PHP exec() is disabled; cannot run system ping');
+        }
+
+        $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+        $cmd = $isWindows
+            ? 'ping -n 1 -w 1000 ' . escapeshellarg($host)
+            : 'ping -c 1 -W 1 ' . escapeshellarg($host);
+
+        $output = [];
+        $code = 1;
+        exec($cmd, $output, $code);
+        return $code === 0;
     }
 }

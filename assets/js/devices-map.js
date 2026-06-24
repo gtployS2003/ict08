@@ -128,6 +128,31 @@ async function apiGet(path) {
   return json;
 }
 
+async function apiPost(path, body = {}) {
+  const url = joinUrl(getApiBase(), path);
+  const res = await fetch(url, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  let json = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    json = null;
+  }
+  if (!res.ok) {
+    const detail = json?.detail || json?.message || text || `HTTP ${res.status}`;
+    throw new Error(detail);
+  }
+  return json;
+}
+
 function debounce(fn, ms = 300) {
   let t = null;
   return (...args) => {
@@ -171,6 +196,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const markersLayer = L.layerGroup().addTo(map);
   let didFitOnce = false;
+
+  window.setTimeout(() => map.invalidateSize(), 120);
+  window.addEventListener("load", () => map.invalidateSize());
+  window.addEventListener("resize", debounce(() => map.invalidateSize(), 150));
 
   const state = {
     q: "",
@@ -354,6 +383,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const items = res?.data?.items || [];
       setSummary(items);
       renderMarkers(items, { fit });
+      window.setTimeout(() => map.invalidateSize(), 80);
     } catch (e) {
       console.error("❌ โหลดข้อมูลอุปกรณ์สำหรับแผนที่ไม่สำเร็จ:", e);
       setSummary([]);
@@ -364,6 +394,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const loadDevicesDebounced = debounce(() => loadDevices({ fit: false }), 350);
+
+  async function refreshMonitorStatus({ silent = true, fit = false } = {}) {
+    try {
+      await apiPost("devices/monitor-ping", {});
+      await loadDevices({ fit });
+    } catch (e) {
+      console.error("[map] monitor ping failed:", e);
+      if (!silent) alert("ตรวจสอบสถานะอุปกรณ์ไม่สำเร็จ");
+    }
+  }
 
   // Events
   if (els.search) {
@@ -420,7 +460,7 @@ document.addEventListener("DOMContentLoaded", () => {
     els.refresh.addEventListener("click", () => {
       // ให้ fitBounds ใหม่เมื่อกดรีเฟรช
       didFitOnce = false;
-      loadDevices({ fit: true });
+      refreshMonitorStatus({ silent: false, fit: true });
     });
   }
 
@@ -429,5 +469,8 @@ document.addEventListener("DOMContentLoaded", () => {
     await loadDropdowns();
     await loadDevices({ fit: !didFitOnce });
     didFitOnce = true;
+    window.setInterval(() => {
+      refreshMonitorStatus({ silent: true, fit: false });
+    }, 5 * 60 * 1000);
   })();
 });

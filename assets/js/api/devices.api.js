@@ -74,3 +74,8 @@ export async function deleteDevice(id) {
   if (!id) throw new Error("device id is required");
   return http.delete(`/devices/${id}`);
 }
+
+// POST /devices/monitor-ping
+export async function monitorPingDevices() {
+  return http.post("/devices/monitor-ping", {});
+}

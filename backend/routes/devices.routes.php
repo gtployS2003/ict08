@@ -10,6 +10,7 @@ require_once __DIR__ . '/../controllers/devices.controller.php';
  *
  * รองรับ:
  *  - GET    /devices?q=&page=&limit=&province_id=
+ *  - POST   /devices/monitor-ping
  *  - GET    /devices/{id}
  *  - POST   /devices
  *  - PUT    /devices/{id}    (หรือ PUT /devices?id=1)
@@ -22,6 +23,16 @@ function devices_routes(string $method, array $segments, PDO $pdo): bool
     }
 
     $controller = new DevicesController($pdo);
+
+    // /devices/monitor-ping
+    if (($segments[1] ?? '') === 'monitor-ping') {
+        if ($method === 'POST') {
+            $controller->monitorPing();
+            return true;
+        }
+        fail('Method Not Allowed', 405);
+        return true;
+    }
 
     // /devices/map
     if (($segments[1] ?? '') === 'map') {

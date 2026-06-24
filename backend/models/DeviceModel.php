@@ -92,8 +92,8 @@ final class DeviceModel
                 d.ip,
                 d.detail,
                 d.contact_info_id,
-                ci.map_lat,
-                ci.map_lng,
+                COALESCE(NULLIF(ci.map_lat, ''), office_ci.map_lat) AS map_lat,
+                COALESCE(NULLIF(ci.map_lng, ''), office_ci.map_lng) AS map_lng,
                 org.organization_id,
                 org.name AS organization_name,
                 org.province_id,
@@ -106,8 +106,21 @@ final class DeviceModel
             LEFT JOIN contact_info ci ON ci.contact_info_id = d.contact_info_id
             LEFT JOIN organization org ON org.organization_id = ci.organization_id
             LEFT JOIN province p ON p.province_id = org.province_id
+            LEFT JOIN contact_info office_ci ON office_ci.contact_info_id = (
+                SELECT ci2.contact_info_id
+                FROM contact_info ci2
+                INNER JOIN organization org2 ON org2.organization_id = ci2.organization_id
+                WHERE org2.province_id = org.province_id
+                  AND (org2.name LIKE '%สำนักงานจังหวัด%' OR org2.name LIKE '%ศาลากลาง%')
+                  AND ci2.map_lat IS NOT NULL AND ci2.map_lat <> ''
+                  AND ci2.map_lng IS NOT NULL AND ci2.map_lng <> ''
+                ORDER BY
+                  CASE WHEN org2.name LIKE '%สำนักงานจังหวัด%' THEN 0 ELSE 1 END,
+                  ci2.contact_info_id ASC
+                LIMIT 1
+            )
             $whereSql
-            ORDER BY d.device_id ASC
+            ORDER BY d.is_online ASC, CASE WHEN d.is_online = 0 THEN d.device_id END DESC, d.device_id ASC
             LIMIT :limit
         ";
 
@@ -234,7 +247,7 @@ final class DeviceModel
             LEFT JOIN organization org ON org.organization_id = ci.organization_id
             LEFT JOIN province p ON p.province_id = org.province_id
             $whereSql
-            ORDER BY d.device_id ASC
+            ORDER BY d.is_online ASC, CASE WHEN d.is_online = 0 THEN d.device_id END DESC, d.device_id ASC
             LIMIT :limit OFFSET :offset
         ";
         $stmt = $this->pdo->prepare($sql);
@@ -341,6 +354,40 @@ final class DeviceModel
         $sql = "DELETE FROM device WHERE device_id = :id LIMIT 1";
         $stmt = $this->pdo->prepare($sql);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->rowCount() > 0;
+    }
+
+    public function listNetworkDevicesForPing(): array
+    {
+        $sql = "
+            SELECT
+                d.device_id,
+                d.device_name,
+                d.ip,
+                d.is_online
+            FROM device d
+            INNER JOIN type_of_device tod ON tod.type_of_device_id = d.type_of_device_id
+            WHERE tod.has_network = 1
+              AND d.ip IS NOT NULL
+              AND TRIM(d.ip) <> ''
+            ORDER BY d.device_id ASC
+        ";
+        $stmt = $this->pdo->query($sql);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function updateOnlineStatus(int $id, int $isOnline): bool
+    {
+        $sql = "
+            UPDATE device
+            SET is_online = :is_online
+            WHERE device_id = :id
+            LIMIT 1
+        ";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->bindValue(':is_online', $isOnline === 1 ? 1 : 0, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->rowCount() > 0;
     }

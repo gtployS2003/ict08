@@ -542,7 +542,7 @@ main {
 .device-limit-select {
   height: 46px;
   padding: 0 12px;
-  border:  solid rgba(0, 0, 0, 0.10);
+  border: 1px solid rgba(0, 0, 0, 0.10);
   border-radius: 999px;
   background: #fff;
   font-size: 0.9rem;
@@ -640,7 +640,7 @@ main {
 .device-list-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 980px;
+  min-width: 820px;
   table-layout: auto;
   font-size: 14px;
 }
@@ -682,53 +682,39 @@ main {
   word-break: break-word;
 }
 
-/* ประเภทหลัก */
+/* ip */
 .device-list-table th:nth-child(3),
 .device-list-table td:nth-child(3) {
-  width: 180px;
-  white-space: nowrap;
-}
-
-/* ประเภทอุปกรณ์ */
-.device-list-table th:nth-child(4),
-.device-list-table td:nth-child(4) {
-  width: 180px;
-  white-space: nowrap;
-}
-
-/* ip */
-.device-list-table th:nth-child(5),
-.device-list-table td:nth-child(5) {
   width: 140px;
   white-space: nowrap;
 }
 
 /* หน่วยงาน */
-.device-list-table th:nth-child(6),
-.device-list-table td:nth-child(6) {
+.device-list-table th:nth-child(4),
+.device-list-table td:nth-child(4) {
   width: 260px;
   white-space: normal;
   word-break: break-word;
 }
 
 /* จังหวัด */
-.device-list-table th:nth-child(7),
-.device-list-table td:nth-child(7) {
+.device-list-table th:nth-child(5),
+.device-list-table td:nth-child(5) {
   width: 140px;
   white-space: nowrap;
 }
 
 /* สถานะ */
-.device-list-table th:nth-child(8),
-.device-list-table td:nth-child(8) {
+.device-list-table th:nth-child(6),
+.device-list-table td:nth-child(6) {
   width: 120px;
   text-align: center;
   white-space: nowrap;
 }
 
 /* จัดการ */
-.device-list-table th:nth-child(9),
-.device-list-table td:nth-child(9) {
+.device-list-table th:nth-child(7),
+.device-list-table td:nth-child(7) {
   width: 160px;
   text-align: center;
   white-space: nowrap;
@@ -942,3 +928,101 @@ main {
   border: 1px solid #b91c1c;
 }
 
+.device-status-dot {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.04);
+}
+
+@media (max-width: 720px) {
+  .device-list {
+    padding: 24px 12px 32px;
+    padding-top: 28px;
+  }
+
+  .device-list-title {
+    font-size: 22px;
+  }
+
+  .device-titlebar .add-device {
+    width: 46px;
+    min-width: 46px;
+    overflow: hidden;
+    color: transparent;
+    gap: 0;
+  }
+
+  .device-titlebar .add-device i {
+    color: #ffffff;
+    margin: 0;
+  }
+
+  .device-list-table-container {
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .device-list-table {
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0 10px;
+    font-size: 14px;
+  }
+
+  .device-list-table thead {
+    display: none;
+  }
+
+  .device-list-table,
+  .device-list-table tbody,
+  .device-list-table tr,
+  .device-list-table td {
+    display: block;
+    width: 100% !important;
+  }
+
+  .device-list-table tbody tr {
+    background: #ffffff;
+    border: 1px solid #e8e8ee;
+    border-radius: 8px;
+    padding: 10px 12px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  }
+
+  .device-list-table tbody tr:hover {
+    background: #ffffff;
+  }
+
+  .device-list-table tbody td {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid #f1f1f1;
+    text-align: left !important;
+    white-space: normal !important;
+    word-break: break-word;
+  }
+
+  .device-list-table tbody td::before {
+    content: attr(data-label);
+    color: rgba(0, 0, 0, 0.56);
+    font-weight: 600;
+  }
+
+  .device-list-table tbody td:last-child {
+    border-bottom: 0;
+  }
+
+  .device-list-table tbody td[data-label="สถานะ"] {
+    align-items: center;
+  }
+
+  .device-list-table tbody td[data-label="จัดการ"] .row-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
