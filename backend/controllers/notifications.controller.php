@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../middleware/auth.php';
+$devAuthPath = __DIR__ . '/../middleware/dev_auth.php';
+if (file_exists($devAuthPath)) {
+    require_once $devAuthPath;
+}
 require_once __DIR__ . '/../config/env.php';
 
 env_load(__DIR__ . '/../.env');
@@ -11,6 +15,7 @@ env_load(__DIR__ . '/../.env');
 require_once __DIR__ . '/../models/NotificationModel.php';
 require_once __DIR__ . '/../models/NotificationTypeStaffModel.php';
 require_once __DIR__ . '/../models/UserNotificationChannelModel.php';
+require_once __DIR__ . '/../services/NotificationService.php';
 
 final class NotificationsController
 {
@@ -111,5 +116,100 @@ final class NotificationsController
                 'detail' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * POST /notifications/dispatch-due
+     * Dispatch scheduled event reminders that are due now.
+     */
+    public function dispatchDue(): void
+    {
+        try {
+            $this->requireAdminOrDev();
+
+            $nm = new NotificationModel($this->pdo);
+            $items = $nm->listDueEventNotifications([11, 12], 100);
+            $svc = new NotificationService($this->pdo);
+
+            $sent = 0;
+            $errors = [];
+            foreach ($items as $n) {
+                $eventId = (int) ($n['event_id'] ?? 0);
+                $notificationId = (int) ($n['notification_id'] ?? 0);
+                $message = trim((string) ($n['message'] ?? ''));
+                if ($eventId <= 0 || $notificationId <= 0 || $message === '') {
+                    continue;
+                }
+
+                $uids = $this->activeParticipantIds($eventId);
+                if (empty($uids)) {
+                    $nm->markScheduledDispatched($notificationId);
+                    continue;
+                }
+
+                $resp = $svc->dispatchToUsersAdvanced($uids, $message, [
+                    'ack_url' => $this->buildEventEditUrl($eventId),
+                    'email' => false,
+                ]);
+                $sent += (int) ($resp['sent_line'] ?? 0);
+                if (!empty($resp['errors'])) {
+                    $errors[] = ['notification_id' => $notificationId, 'errors' => $resp['errors']];
+                }
+                $nm->markScheduledDispatched($notificationId);
+            }
+
+            json_response([
+                'error' => false,
+                'data' => [
+                    'due' => count($items),
+                    'sent_line' => $sent,
+                    'errors' => $errors,
+                ],
+            ]);
+        } catch (Throwable $e) {
+            json_response([
+                'error' => true,
+                'message' => 'Failed to dispatch due notifications',
+                'detail' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function activeParticipantIds(int $eventId): array
+    {
+        $stmt = $this->pdo->prepare('
+            SELECT DISTINCT user_id
+            FROM event_participant
+            WHERE event_id = :eid
+              AND (is_active = 1 OR is_active IS NULL)
+              AND (is_notification_recipient = 1 OR is_notification_recipient IS NULL)
+        ');
+        $stmt->execute([':eid' => max(1, $eventId)]);
+        return array_values(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []));
+    }
+
+    private function buildEventEditUrl(int $eventId): string
+    {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
+        $basePath = env('BASE_PATH', '/ict8') ?: '/ict8';
+        if ($basePath[0] !== '/') {
+            $basePath = '/' . $basePath;
+        }
+        $path = rtrim($basePath, '/') . '/schedule/event-edit.html?event_id=' . max(1, $eventId);
+        return $host !== '' ? ($scheme . '://' . $host . $path) : $path;
+    }
+
+    private function requireAdminOrDev(): void
+    {
+        if (function_exists('get_bearer_token') && get_bearer_token() !== null) {
+            require_admin($this->pdo);
+            return;
+        }
+        if (function_exists('require_dev_staff')) {
+            require_dev_staff();
+            return;
+        }
+        require_admin($this->pdo);
     }
 }

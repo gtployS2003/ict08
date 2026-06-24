@@ -39,6 +39,9 @@ class NotificationModel
             throw new InvalidArgumentException('message is required');
         }
 
+        $scheduleAt = isset($data['schedule_at']) ? trim((string) $data['schedule_at']) : '';
+        $scheduleAt = $scheduleAt !== '' ? $scheduleAt : null;
+
         $sql = "
             INSERT INTO notification (
                 request_id,
@@ -61,7 +64,7 @@ class NotificationModel
             ':event_id' => $eventId,
             ':notification_type_id' => $notificationTypeId,
             ':message' => $message,
-            ':schedule_at' => null,
+            ':schedule_at' => $scheduleAt,
         ]);
 
         return (int)$this->pdo->lastInsertId();
@@ -367,6 +370,7 @@ class NotificationModel
                 LEFT JOIN notification_type nt
                     ON nt.notification_type_id = n.notification_type_id
                 WHERE n.notification_type_id IN ($in)
+                  AND (n.schedule_at IS NULL OR n.schedule_at <= NOW())
             ";
         }
 
@@ -391,6 +395,7 @@ class NotificationModel
               AND ep.user_id = :uid
               AND (ep.is_active = 1 OR ep.is_active IS NULL)
               AND (ep.is_notification_recipient = 1 OR ep.is_notification_recipient IS NULL)
+              AND (n.schedule_at IS NULL OR n.schedule_at <= NOW())
         ";
 
         $union = implode("\nUNION\n", $parts);
@@ -452,6 +457,7 @@ class NotificationModel
                 SELECT n.notification_id
                 FROM notification n
                 WHERE n.notification_type_id IN ($in)
+                  AND (n.schedule_at IS NULL OR n.schedule_at <= NOW())
             ";
         }
 
@@ -464,6 +470,7 @@ class NotificationModel
               AND ep.user_id = :uid
               AND (ep.is_active = 1 OR ep.is_active IS NULL)
               AND (ep.is_notification_recipient = 1 OR ep.is_notification_recipient IS NULL)
+              AND (n.schedule_at IS NULL OR n.schedule_at <= NOW())
         ";
 
         $union = implode("\nUNION\n", $parts);
@@ -510,5 +517,60 @@ class NotificationModel
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
         return (int)($row['cnt'] ?? 0);
+    }
+
+    /**
+     * @param array<int,int> $typeIds
+     * @return array<int,array<string,mixed>>
+     */
+    public function listDueEventNotifications(array $typeIds, int $limit = 100): array
+    {
+        $limit = max(1, min(500, $limit));
+        $clean = [];
+        foreach ($typeIds as $id) {
+            $id = (int) $id;
+            if ($id > 0) $clean[] = $id;
+        }
+        $clean = array_values(array_unique($clean));
+        if (empty($clean)) return [];
+
+        $placeholders = [];
+        $params = [];
+        foreach ($clean as $i => $id) {
+            $k = ':t' . $i;
+            $placeholders[] = $k;
+            $params[$k] = $id;
+        }
+        $in = implode(',', $placeholders);
+
+        $sql = "
+            SELECT notification_id, event_id, notification_type_id, message, schedule_at
+            FROM notification
+            WHERE event_id IS NOT NULL
+              AND notification_type_id IN ($in)
+              AND schedule_at IS NOT NULL
+              AND schedule_at <= NOW()
+            ORDER BY schedule_at ASC, notification_id ASC
+            LIMIT :lim
+        ";
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, (int) $v, PDO::PARAM_INT);
+        }
+        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function markScheduledDispatched(int $notificationId): bool
+    {
+        $stmt = $this->pdo->prepare("
+            UPDATE notification
+            SET schedule_at = '9999-12-31 23:59:59'
+            WHERE notification_id = :id
+            LIMIT 1
+        ");
+        $stmt->execute([':id' => max(1, $notificationId)]);
+        return $stmt->rowCount() > 0;
     }
 }

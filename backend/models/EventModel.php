@@ -141,7 +141,14 @@ final class EventModel
                 ON pPart.person_user_id = uPart.user_id
             {$whereSql}
             GROUP BY e.event_id
-            ORDER BY e.event_id DESC
+            ORDER BY
+                CASE
+                    WHEN COALESCE(es.status_name, '') LIKE '%รอ%' OR COALESCE(es.status_code, '') LIKE '%PENDING%' OR COALESCE(es.status_code, '') LIKE '%WAIT%' THEN 0
+                    WHEN COALESCE(es.status_name, '') LIKE '%เสร็จ%' OR COALESCE(es.status_code, '') LIKE '%COMPLETED%' OR COALESCE(es.status_code, '') LIKE '%DONE%' THEN 2
+                    ELSE 1
+                END ASC,
+                COALESCE(e.start_datetime, e.end_datetime) DESC,
+                e.event_id DESC
             LIMIT :limit OFFSET :offset
         ";
 

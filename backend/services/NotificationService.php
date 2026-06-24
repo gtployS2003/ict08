@@ -151,6 +151,15 @@ final class NotificationService
      */
     public function dispatchToUsers(array $userIds, string $message): array
     {
+        return $this->dispatchToUsersAdvanced($userIds, $message, []);
+    }
+
+    /**
+     * @param array<int,int> $userIds
+     * @param array<string,mixed> $options
+     */
+    public function dispatchToUsersAdvanced(array $userIds, string $message, array $options = []): array
+    {
         $message = trim($message);
         if ($message === '') {
             return ['ok' => false, 'error' => 'Empty message'];
@@ -172,7 +181,12 @@ final class NotificationService
         $token = env('LINE_CHANNEL_ACCESS_TOKEN');
         $line = ($token !== null && $token !== '') ? new LineService($token) : null;
 
+        $ackUrl = trim((string) ($options['ack_url'] ?? ''));
+        $emailSubject = trim((string) ($options['email_subject'] ?? ''));
+        $sendEmail = (bool) ($options['email'] ?? false);
+
         $sentLine = 0;
+        $sentEmail = 0;
         $skipped = 0;
         $errors = [];
 
@@ -217,9 +231,10 @@ final class NotificationService
                 }
 
                 try {
-                    $resp = $line->pushMessage($lineUserId, [
-                        ['type' => 'text', 'text' => $message]
-                    ]);
+                    $messages = $ackUrl !== ''
+                        ? [$this->buildLineAckTemplate($message, $ackUrl)]
+                        : [['type' => 'text', 'text' => $message]];
+                    $resp = $line->pushMessage($lineUserId, $messages);
                     if (($resp['ok'] ?? false) === true) {
                         $sentLine++;
                     } else {
@@ -232,12 +247,25 @@ final class NotificationService
                 // LINE channel disabled for this user
                 $skipped++;
             }
+
+            if ($sendEmail) {
+                $email = $this->getUserEmail($uid);
+                if ($email !== '') {
+                    $subject = $emailSubject !== '' ? $emailSubject : 'แจ้งเตือนงาน';
+                    if ($this->sendEmail($email, $subject, $message . ($ackUrl !== '' ? "\n\nรับทราบงาน: {$ackUrl}" : ''))) {
+                        $sentEmail++;
+                    } else {
+                        $errors[] = ['user_id' => $uid, 'step' => 'email', 'error' => 'mail() failed'];
+                    }
+                }
+            }
         }
 
         return [
             'ok' => true,
             'recipients' => count($clean),
             'sent_line' => $sentLine,
+            'sent_email' => $sentEmail,
             'skipped' => $skipped,
             'errors' => $errors,
         ];
@@ -260,6 +288,47 @@ final class NotificationService
         $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
         $stmt->execute();
         return trim((string) ($stmt->fetchColumn() ?? ''));
+    }
+
+    private function getUserEmail(int $userId): string
+    {
+        $stmt = $this->pdo->prepare('SELECT email FROM person WHERE person_user_id = :uid LIMIT 1');
+        $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+        $email = trim((string) ($stmt->fetchColumn() ?? ''));
+        return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
+    }
+
+    private function sendEmail(string $to, string $subject, string $body): bool
+    {
+        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+        $headers = [
+            'MIME-Version: 1.0',
+            'Content-Type: text/plain; charset=UTF-8',
+            'From: ' . (env('MAIL_FROM', 'no-reply@localhost') ?: 'no-reply@localhost'),
+        ];
+        return @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, implode("\r\n", $headers));
+    }
+
+    private function buildLineAckTemplate(string $message, string $ackUrl): array
+    {
+        return [
+            'type' => 'template',
+            'altText' => $message,
+            'template' => [
+                'type' => 'buttons',
+                'text' => mb_substr($message, 0, 160),
+                'actions' => [
+                    [
+                        'type' => 'uri',
+                        'label' => 'รับทราบงาน',
+                        'uri' => $ackUrl,
+                    ],
+                ],
+            ],
+        ];
     }
 
     private function resolveRequestNotificationTypeId(int $requestTypeId): int

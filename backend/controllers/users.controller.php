@@ -45,7 +45,31 @@ class UsersController
         try {
             $this->requireStaffAccess();
 
-            $stmt = $this->pdo->query("SELECT user_id, line_user_id, line_user_name, user_role_id FROM `user` WHERE user_role_id IN (2,3) ORDER BY user_role_id DESC, line_user_name ASC, user_id ASC");
+            $stmt = $this->pdo->query("
+                SELECT
+                    u.user_id,
+                    u.line_user_id,
+                    u.line_user_name,
+                    u.user_role_id,
+                    p.display_name,
+                    p.organization_id,
+                    o.province_id,
+                    prov.nameTH AS province_name_th,
+                    prov.nameEN AS province_name_en
+                FROM `user` u
+                LEFT JOIN person p
+                    ON p.person_user_id = u.user_id
+                LEFT JOIN organization o
+                    ON o.organization_id = p.organization_id
+                LEFT JOIN province prov
+                    ON prov.province_id = o.province_id
+                WHERE u.user_role_id = 2
+                ORDER BY
+                    prov.nameTH ASC,
+                    u.user_role_id DESC,
+                    COALESCE(p.display_name, u.line_user_name, '') ASC,
+                    u.user_id ASC
+            ");
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
             json_response(['error' => false, 'data' => $rows], 200);
@@ -76,11 +100,20 @@ class UsersController
                     u.line_user_name,
                     p.display_name,
                     p.first_name_th,
-                    p.last_name_th
+                    p.last_name_th,
+                    p.organization_id,
+                    o.province_id,
+                    prov.nameTH AS province_name_th,
+                    prov.nameEN AS province_name_en
                 FROM `user` u
                 LEFT JOIN person p
                     ON p.person_user_id = u.user_id
+                LEFT JOIN organization o
+                    ON o.organization_id = p.organization_id
+                LEFT JOIN province prov
+                    ON prov.province_id = o.province_id
                 ORDER BY
+                    prov.nameTH ASC,
                     u.user_role_id DESC,
                     COALESCE(p.display_name, u.line_user_name, '') ASC,
                     u.user_id ASC

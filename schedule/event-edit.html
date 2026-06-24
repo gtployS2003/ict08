@@ -98,6 +98,28 @@
             gap: 8px;
         }
 
+        .ee-checklist-provinces {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .ee-check-province {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: #ffffff;
+            padding: 10px;
+        }
+
+        .ee-check-province-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 900;
+            color: #532274;
+            margin-bottom: 10px;
+        }
+
         @media (min-width: 768px) {
             .ee-checklist-grid {
                 grid-template-columns: 1fr 1fr;
@@ -139,6 +161,28 @@
         .request-form-btn-danger:disabled {
             opacity: .6;
             cursor: not-allowed;
+        }
+
+        body:not(.is-staff) .staff-only-action {
+            display: none !important;
+        }
+
+        .ee-actions-inline {
+            flex-wrap: nowrap;
+            align-items: center;
+        }
+
+        .ee-actions-inline .request-form-btn {
+            width: auto;
+            white-space: nowrap;
+            flex: 0 0 auto;
+        }
+
+        @media (max-width: 520px) {
+            .ee-actions-inline {
+                overflow-x: auto;
+                justify-content: flex-start;
+            }
         }
 
         .request-form-info-box.error {
@@ -399,7 +443,7 @@
 
                     <!-- Section: participants -->
                     <div class="ee-section">
-                        <div class="ee-muted" style="margin-bottom:10px;">เลือกผู้เข้าร่วม (checkbox) จากตาราง user ทุก role</div>
+                        <div class="ee-muted" style="margin-bottom:10px;">เลือกผู้เข้าร่วม role staff</div>
                         <div class="ee-checklist" id="ee-participants">
                             <div class="ee-muted">กำลังโหลดรายชื่อ...</div>
                         </div>
@@ -440,11 +484,11 @@
 
                     <div class="request-form-divider"></div>
 
-                    <div class="request-form-actions">
-                        <button type="button" class="request-form-btn request-form-btn-danger" id="ee-delete-btn" style="display:none;">ลบ</button>
-                        <button type="button" class="request-form-btn request-form-btn-ghost" id="ee-accept-btn" style="display:none;">รับงาน</button>
-                        <button type="button" class="request-form-btn request-form-btn-ghost" id="ee-finish-btn">เสร็จสิ้น</button>
-                        <button type="submit" class="request-form-btn request-form-btn-primary" id="ee-save-btn">บันทึก</button>
+                    <div class="request-form-actions ee-actions-inline">
+                        <button type="button" class="request-form-btn request-form-btn-danger staff-only-action" id="ee-delete-btn" style="display:none;">ลบ</button>
+                        <button type="button" class="request-form-btn request-form-btn-ghost staff-only-action" id="ee-accept-btn" style="display:none;">รับงาน</button>
+                        <button type="button" class="request-form-btn request-form-btn-ghost staff-only-action" id="ee-finish-btn">เสร็จสิ้น</button>
+                        <button type="submit" class="request-form-btn request-form-btn-primary staff-only-action" id="ee-save-btn">บันทึก</button>
                     </div>
                 </form>
             </div>

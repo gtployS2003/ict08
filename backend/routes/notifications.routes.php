@@ -22,5 +22,11 @@ function notifications_routes(string $method, array $segments, PDO $pdo): bool
         return true;
     }
 
+    // POST /notifications/dispatch-due
+    if ($method === 'POST' && count($segments) === 2 && $segments[1] === 'dispatch-due') {
+        $ctl->dispatchDue();
+        return true;
+    }
+
     return false;
 }

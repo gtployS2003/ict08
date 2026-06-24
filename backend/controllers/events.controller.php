@@ -670,7 +670,7 @@ final class EventsController
                 }
             }
 
-            // participants: array of user_id where role_id in (2,3)
+            // participants: array of staff user_id only (role_id = 2)
             $participantIds = $body['participant_user_ids'] ?? $body['participants'] ?? [];
             if (!is_array($participantIds)) {
                 json_response(['error' => true, 'message' => 'participant_user_ids must be an array'], 422);
@@ -683,7 +683,7 @@ final class EventsController
             // Validate participant roles (if any)
             if (!empty($participantIds)) {
                 $in = implode(',', array_fill(0, count($participantIds), '?'));
-                $sql = "SELECT user_id FROM `user` WHERE user_id IN ($in) AND user_role_id IN (2,3)";
+                $sql = "SELECT user_id FROM `user` WHERE user_id IN ($in) AND user_role_id = 2";
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->execute($participantIds);
                 $found = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
@@ -797,6 +797,7 @@ final class EventsController
                     'notification_type_id' => 8,
                     'message' => $msg,
                 ]);
+                $this->scheduleEventReminderNotifications($eventId, $title, $startDt);
 
                 // prepare LINE dispatch (best effort) after commit
                 $dispatchUserIds = $participantIds;
@@ -810,7 +811,11 @@ final class EventsController
             if (!empty($dispatchUserIds) && trim($dispatchMessage) !== '') {
                 try {
                     $svc = new NotificationService($this->pdo);
-                    $resp = $svc->dispatchToUsers($dispatchUserIds, $dispatchMessage);
+                    $resp = $svc->dispatchToUsersAdvanced($dispatchUserIds, $dispatchMessage, [
+                        'ack_url' => $this->buildEventEditUrl($eventId),
+                        'email' => true,
+                        'email_subject' => 'แจ้งเตือนงาน: ' . $title,
+                    ]);
                     $dispatchMeta = [
                         'ok' => (bool) ($resp['ok'] ?? false),
                         'recipients' => (int) ($resp['recipients'] ?? 0),
@@ -875,13 +880,105 @@ final class EventsController
         return $scheme . '://' . $host . $basePath . '/schedule/event-edit.html?id=' . $eventId;
     }
 
+    private function ensureNotificationType(int $notificationTypeId, string $type, string $meaning): void
+    {
+        try {
+            $chk = $this->pdo->prepare('SELECT 1 FROM notification_type WHERE notification_type_id = :id LIMIT 1');
+            $chk->execute([':id' => $notificationTypeId]);
+            if ($chk->fetchColumn()) {
+                return;
+            }
+
+            $ins = $this->pdo->prepare('
+                INSERT INTO notification_type (notification_type_id, notification_type, meaning)
+                VALUES (:id, :type, :meaning)
+            ');
+            $ins->execute([
+                ':id' => $notificationTypeId,
+                ':type' => $type,
+                ':meaning' => $meaning,
+            ]);
+        } catch (Throwable $e) {
+            error_log('[EVENTS] ensureNotificationType failed: ' . $e->getMessage());
+        }
+    }
+
+    private function scheduleEventReminderNotifications(int $eventId, string $title, ?string $startDatetime): void
+    {
+        $eventId = max(1, $eventId);
+        $startDatetime = trim((string) $startDatetime);
+        if ($startDatetime === '') {
+            return;
+        }
+
+        try {
+            $start = new DateTimeImmutable($startDatetime);
+        } catch (Throwable $e) {
+            return;
+        }
+
+        $this->ensureNotificationType(11, 'event_reminder_day_before', 'แจ้งเตือนก่อนถึงวันงานเวลา 16.00');
+        $this->ensureNotificationType(12, 'event_reminder_one_hour', 'แจ้งเตือนก่อนเริ่มงาน 1 ชั่วโมง');
+
+        try {
+            $del = $this->pdo->prepare("
+                DELETE FROM notification
+                WHERE event_id = :eid
+                  AND notification_type_id IN (11, 12)
+                  AND schedule_at IS NOT NULL
+                  AND schedule_at < '9999-01-01 00:00:00'
+            ");
+            $del->execute([':eid' => $eventId]);
+        } catch (Throwable $e) {
+            error_log('[EVENTS] clear reminder notifications failed: ' . $e->getMessage());
+        }
+
+        $dayBefore1600 = $start->modify('-1 day')->setTime(16, 0, 0);
+        $oneHourBefore = $start->modify('-1 hour');
+        $now = new DateTimeImmutable('now');
+        $url = $this->buildEventEditUrl($eventId);
+        $linkLine = $url !== '' ? ("\nรับทราบงาน: " . $url) : '';
+
+        $rows = [
+            [
+                'type_id' => 11,
+                'at' => $dayBefore1600,
+                'message' => "แจ้งเตือนก่อนถึงวันงาน: {$title}{$linkLine}",
+            ],
+            [
+                'type_id' => 12,
+                'at' => $oneHourBefore,
+                'message' => "แจ้งเตือนก่อนเริ่มงาน 1 ชั่วโมง: {$title}{$linkLine}",
+            ],
+        ];
+
+        $notifModel = new NotificationModel($this->pdo);
+        foreach ($rows as $row) {
+            /** @var DateTimeImmutable $at */
+            $at = $row['at'];
+            if ($at <= $now) {
+                continue;
+            }
+            try {
+                $notifModel->createEventNotification([
+                    'event_id' => $eventId,
+                    'notification_type_id' => (int) $row['type_id'],
+                    'message' => (string) $row['message'],
+                    'schedule_at' => $at->format('Y-m-d H:i:s'),
+                ]);
+            } catch (Throwable $e) {
+                error_log('[EVENTS] create reminder notification failed: ' . $e->getMessage());
+            }
+        }
+    }
+
     /**
      * GET /events/{id}
      */
     public function show(int $id): void
     {
         try {
-            $this->requireStaffAccess();
+            $me = $this->requireStaffAccess(true);
 
             $id = max(1, (int) $id);
             $m = new EventModel($this->pdo);
@@ -902,6 +999,7 @@ final class EventsController
             ));
             $row['participants'] = $participants;
             $row['participant_user_ids'] = $participantUserIds;
+            $row['can_edit'] = $this->canEditEvent($me, $id, $row);
 
             json_response(['error' => false, 'data' => $row]);
         } catch (Throwable $e) {
@@ -946,6 +1044,11 @@ final class EventsController
             $existing = $m->findById($id);
             if (!$existing) {
                 json_response(['error' => true, 'message' => 'Event not found'], 404);
+                return;
+            }
+
+            if (!$this->canEditEvent($me, $id, $existing)) {
+                json_response(['error' => true, 'message' => 'FORBIDDEN: เฉพาะ staff ที่เกี่ยวข้องกับงานหรือ admin เท่านั้นที่แก้ไขได้'], 403);
                 return;
             }
 
@@ -1179,7 +1282,7 @@ final class EventsController
             $notificationIds = [];
 
             if ($participantIds !== null) {
-                // Validate user ids (internal: role 2,3 only; request-based: any existing user)
+                // Validate user ids (internal: role 2 staff only; request-based: any existing user)
                 if (!empty($participantIds)) {
                     $in = implode(',', array_fill(0, count($participantIds), '?'));
 
@@ -1187,7 +1290,7 @@ final class EventsController
                     $isInternal = ($reqId <= 0);
 
                     $sql = $isInternal
-                        ? ("SELECT user_id FROM `user` WHERE user_id IN ($in) AND user_role_id IN (2,3)")
+                        ? ("SELECT user_id FROM `user` WHERE user_id IN ($in) AND user_role_id = 2")
                         : ("SELECT user_id FROM `user` WHERE user_id IN ($in)");
 
                     $stmt = $this->pdo->prepare($sql);
@@ -1447,6 +1550,10 @@ final class EventsController
                 }
             }
 
+            if ($eventChanged === true) {
+                $this->scheduleEventReminderNotifications($id, $eventTitleForMsg, $startVal ?? (string) ($existing['start_datetime'] ?? ''));
+            }
+
             $this->pdo->commit();
 
             // Dispatch LINE notifications (best effort) after commit
@@ -1459,7 +1566,11 @@ final class EventsController
                         $msg = (string) ($job['message'] ?? '');
                         if (!is_array($uids) || trim($msg) === '')
                             continue;
-                        $resp = $svc->dispatchToUsers($uids, $msg);
+                        $resp = $svc->dispatchToUsersAdvanced($uids, $msg, [
+                            'ack_url' => $this->buildEventEditUrl($id),
+                            'email' => true,
+                            'email_subject' => 'แจ้งเตือนงาน: ' . $eventTitleForMsg,
+                        ]);
 
                         // Keep lightweight debug info for API response when APP_DEBUG=1
                         $dispatchResults[] = [
@@ -1883,6 +1994,66 @@ final class EventsController
         }
 
         return null;
+    }
+
+    /**
+     * Admin can edit every event. Staff can edit only events they are involved in.
+     *
+     * @param array<string,mixed>|null $me
+     * @param array<string,mixed> $event
+     */
+    private function canEditEvent(?array $me, int $eventId, array $event): bool
+    {
+        // Dev auth fallback has no user payload; keep existing dev workflow usable.
+        if ($me === null) {
+            return true;
+        }
+
+        $uid = isset($me['user_id']) && is_numeric($me['user_id']) ? (int) $me['user_id'] : 0;
+        $roleId = isset($me['user_role_id']) && is_numeric($me['user_role_id']) ? (int) $me['user_role_id'] : 0;
+        if ($uid <= 0) {
+            return false;
+        }
+
+        if ($roleId === 3) {
+            return true;
+        }
+
+        if ($roleId !== 2) {
+            return false;
+        }
+
+        $stmt = $this->pdo->prepare('
+            SELECT 1
+            FROM event e
+            LEFT JOIN event_participant ep
+                ON ep.event_id = e.event_id
+               AND ep.user_id = :uid_ep
+               AND (ep.is_active = 1 OR ep.is_active IS NULL)
+            LEFT JOIN request r
+                ON r.request_id = e.request_id
+            LEFT JOIN head_of_request hor
+                ON hor.id = r.head_of_request_id
+               AND hor.staff_id = :uid_hor
+            LEFT JOIN event_log el
+                ON el.event_id = e.event_id
+               AND el.updated_by = :uid_log
+            WHERE e.event_id = :eid
+              AND (
+                ep.user_id IS NOT NULL
+                OR hor.staff_id IS NOT NULL
+                OR el.updated_by IS NOT NULL
+              )
+            LIMIT 1
+        ');
+        $stmt->execute([
+            ':eid' => $eventId,
+            ':uid_ep' => $uid,
+            ':uid_hor' => $uid,
+            ':uid_log' => $uid,
+        ]);
+
+        return (bool) $stmt->fetchColumn();
     }
 
     /**

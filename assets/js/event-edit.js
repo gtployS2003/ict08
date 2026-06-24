@@ -15,6 +15,20 @@
     return base.replace(/\/+$/, "");
   }
 
+  async function applyStaffRoleUi() {
+    try {
+      if (typeof window.apiFetch !== "function") return false;
+      const res = await window.apiFetch("/profile/me", { method: "GET" });
+      const user = res?.data?.user || res?.user || {};
+      const isStaff = Number(user?.user_role_id || 0) === 2;
+      document.body.classList.toggle("is-staff", isStaff);
+      return isStaff;
+    } catch (err) {
+      document.body.classList.remove("is-staff");
+      return false;
+    }
+  }
+
   function buildFileUrl(filepath) {
     const fp = String(filepath || "").trim();
     if (!fp) return "";
@@ -479,7 +493,15 @@
     const l2 = String(u.last_name_th || "").trim();
     const full = `${fn} ${l2}`.trim();
     if (full) return full;
-    return `user#${u.user_id}`;
+    return "ไม่ระบุชื่อ";
+  }
+
+  function userProvinceId(u) {
+    return String(u?.province_id ?? u?.organization_province_id ?? u?.person_province_id ?? "").trim();
+  }
+
+  function userProvinceName(u) {
+    return String(u?.province_name_th ?? u?.province_nameTH ?? u?.province_name ?? u?.province_name_en ?? "").trim();
   }
 
   function buildUserMap(users) {
@@ -517,7 +539,7 @@
     const m = userMap instanceof Map ? userMap : new Map();
     const clean = Array.isArray(ids) ? ids.slice() : [];
     clean.sort((a, b) => Number(a) - Number(b));
-    const names = clean.map((id) => m.get(Number(id)) || `user#${id}`);
+    const names = clean.map((id) => m.get(Number(id)) || "ไม่ระบุชื่อ");
     return names.join(", ");
   }
 
@@ -525,7 +547,9 @@
     const el = document.getElementById(containerId);
     if (!el) return;
 
-    if (!Array.isArray(users) || !users.length) {
+    const staffUsers = (Array.isArray(users) ? users : []).filter((u) => Number(u?.user_role_id || 0) === 2);
+
+    if (!staffUsers.length) {
       el.innerHTML = `<div class="ee-muted">ไม่พบรายชื่อผู้ใช้</div>`;
       return;
     }
@@ -533,38 +557,80 @@
     const selected = new Set((Array.isArray(selectedUserIds) ? selectedUserIds : []).map((x) => Number(x)));
 
     const grid = document.createElement("div");
-    grid.className = "ee-checklist-grid";
+    grid.className = "ee-checklist-provinces";
 
-    users.forEach((u) => {
-      const uid = Number(u.user_id || 0);
-      if (!uid) return;
+    const groups = new Map();
+    staffUsers.forEach((u) => {
+      const pid = userProvinceId(u) || "none";
+      if (!groups.has(pid)) {
+        groups.set(pid, {
+          provinceId: pid,
+          provinceName: userProvinceName(u) || "ไม่ระบุจังหวัด",
+          users: [],
+        });
+      }
+      groups.get(pid).users.push(u);
+    });
 
-      const wrap = document.createElement("label");
-      wrap.className = "ee-check-item";
+    Array.from(groups.values()).sort((a, b) => a.provinceName.localeCompare(b.provinceName, "th")).forEach((group) => {
+      const section = document.createElement("div");
+      section.className = "ee-check-province";
 
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.value = String(uid);
-      cb.checked = selected.has(uid);
-      cb.setAttribute("data-ee-participant", "1");
+      const head = document.createElement("label");
+      head.className = "ee-check-province-head";
+      const provinceCb = document.createElement("input");
+      provinceCb.type = "checkbox";
+      provinceCb.setAttribute("data-ee-province", "1");
+      head.appendChild(provinceCb);
+      head.appendChild(document.createTextNode(` ${group.provinceName} (เลือกทุกคนในจังหวัด)`));
+      section.appendChild(head);
 
-      const textWrap = document.createElement("div");
+      const userGrid = document.createElement("div");
+      userGrid.className = "ee-checklist-grid";
 
-      const name = document.createElement("div");
-      name.className = "ee-check-name";
-      name.textContent = getDisplayName(u);
+      group.users.forEach((u) => {
+        const uid = Number(u.user_id || 0);
+        if (!uid) return;
 
-      const meta = document.createElement("div");
-      meta.className = "ee-check-meta";
-      const roleId = u.user_role_id !== undefined && u.user_role_id !== null ? `role=${u.user_role_id}` : "";
-      meta.textContent = [roleId, `user_id=${uid}`].filter(Boolean).join(" • ");
+        const wrap = document.createElement("label");
+        wrap.className = "ee-check-item";
 
-      textWrap.appendChild(name);
-      textWrap.appendChild(meta);
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.value = String(uid);
+        cb.checked = selected.has(uid);
+        cb.setAttribute("data-ee-participant", "1");
 
-      wrap.appendChild(cb);
-      wrap.appendChild(textWrap);
-      grid.appendChild(wrap);
+        const textWrap = document.createElement("div");
+
+        const name = document.createElement("div");
+        name.className = "ee-check-name";
+        name.textContent = getDisplayName(u);
+
+        textWrap.appendChild(name);
+
+        wrap.appendChild(cb);
+        wrap.appendChild(textWrap);
+        userGrid.appendChild(wrap);
+      });
+
+      const syncProvince = () => {
+        const boxes = Array.from(userGrid.querySelectorAll('[data-ee-participant="1"]'));
+        const checked = boxes.filter((cb) => cb.checked).length;
+        provinceCb.checked = boxes.length > 0 && checked === boxes.length;
+        provinceCb.indeterminate = checked > 0 && checked < boxes.length;
+      };
+
+      provinceCb.addEventListener("change", () => {
+        userGrid.querySelectorAll('[data-ee-participant="1"]').forEach((cb) => {
+          cb.checked = provinceCb.checked;
+        });
+      });
+      userGrid.addEventListener("change", syncProvince);
+      syncProvince();
+
+      section.appendChild(userGrid);
+      grid.appendChild(section);
     });
 
     el.innerHTML = "";
@@ -579,6 +645,28 @@
       .filter((cb) => cb.checked)
       .map((cb) => Number(cb.value))
       .filter((v) => Number.isFinite(v) && v > 0);
+  }
+
+  function setEditLocked(locked) {
+    const isLocked = !!locked;
+    const form = document.getElementById("event-edit-form");
+    if (!form) return;
+
+    form.querySelectorAll("input, textarea, select").forEach((el) => {
+      el.disabled = isLocked;
+    });
+
+    ["ee-save-btn", "ee-finish-btn", "ee-accept-btn", "ee-delete-btn"].forEach((id) => {
+      const btn = document.getElementById(id);
+      if (btn) btn.disabled = isLocked;
+    });
+
+    if (isLocked) {
+      window.__eventEditLocked = true;
+      setInfo("งานนี้ถูกล็อก: เฉพาะ staff ที่เกี่ยวข้องกับงานหรือ admin เท่านั้นที่แก้ไขได้", { isError: true });
+    } else {
+      window.__eventEditLocked = false;
+    }
   }
 
   function renderAttachments({ containerId, atts }) {
@@ -984,6 +1072,7 @@
     // show form
     const form = document.getElementById("event-edit-form");
     if (form) form.style.display = "block";
+    setEditLocked(e.can_edit === false);
 
     // store for later
     window.__eventEdit = {
@@ -1331,8 +1420,9 @@
       bindHandlers(eventId);
       wireNewAttachmentsPreview();
       wireNewEventPicturesPreview();
+      await applyStaffRoleUi();
       await loadEvent(eventId);
-      setInfo("");
+      if (!window.__eventEditLocked) setInfo("");
     } catch (err) {
       console.error(err);
       setInfo(err?.message || "โหลดข้อมูลไม่สำเร็จ", { isError: true });

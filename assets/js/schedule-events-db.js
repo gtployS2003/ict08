@@ -7,6 +7,7 @@
 
   let __provincesLoaded = false;
   let __participantsLoaded = false;
+  let todayOnly = false;
 
   function getStoredToken() {
     return (
@@ -118,6 +119,20 @@
     throw new Error("ไม่สามารถเข้าสู่ระบบได้");
   }
 
+  async function applyStaffRoleUi() {
+    try {
+      if (typeof window.apiFetch !== "function") return false;
+      const res = await window.apiFetch("/profile/me", { method: "GET" });
+      const user = res?.data?.user || res?.user || {};
+      const isStaff = Number(user?.user_role_id || 0) === 2;
+      document.body.classList.toggle("is-staff", isStaff);
+      return isStaff;
+    } catch (err) {
+      document.body.classList.remove("is-staff");
+      return false;
+    }
+  }
+
   function escapeHtml(str) {
     if (str == null) return "";
     return String(str)
@@ -150,6 +165,48 @@
 
   function statusLabel(row) {
     return row?.event_status_name || row?.event_status_code || "-";
+  }
+
+  function statusKind(row) {
+    const name = String(row?.event_status_name || "").trim();
+    const code = String(row?.event_status_code || "").toUpperCase();
+    if (name.includes("เสร็จ") || code.includes("COMPLETED") || code.includes("DONE")) return "done";
+    if (name.includes("รอ") || code.includes("WAIT") || code.includes("PENDING")) return "pending";
+    return "accepted";
+  }
+
+  function statusSortWeight(row) {
+    const kind = statusKind(row);
+    if (kind === "pending") return 0;
+    if (kind === "accepted") return 1;
+    return 2;
+  }
+
+  function toDateOnly(v) {
+    const s = String(v || "").trim();
+    return s ? s.slice(0, 10) : "";
+  }
+
+  function todayIso() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  function isTodayRow(row) {
+    const today = todayIso();
+    const start = toDateOnly(row?.start_datetime);
+    const end = toDateOnly(row?.end_datetime) || start;
+    return !!start && today >= start && today <= end;
+  }
+
+  function sortRows(rows) {
+    return (Array.isArray(rows) ? rows.slice() : []).sort((a, b) => {
+      const sw = statusSortWeight(a) - statusSortWeight(b);
+      if (sw !== 0) return sw;
+      const byDate = String(b?.start_datetime || b?.end_datetime || "").localeCompare(String(a?.start_datetime || a?.end_datetime || ""));
+      if (byDate !== 0) return byDate;
+      return Number(b?.event_id || 0) - Number(a?.event_id || 0);
+    });
   }
 
   function participantsLabel(row) {
@@ -196,9 +253,10 @@
       return;
     }
 
-    rows.forEach((row) => {
+    sortRows(rows).forEach((row) => {
       const eventId = row?.event_id;
       const tr = document.createElement("tr");
+      const kind = statusKind(row);
 
       tr.innerHTML = `
         <td class="evnt-cell evnt-cell-id" data-label="รหัสงาน"><span class="evnt-cell-value">${escapeHtml(
@@ -232,9 +290,11 @@
         <td class="evnt-cell evnt-cell-end" data-label="สิ้นสุด"><span class="evnt-cell-value">${escapeHtml(
           fmt(row?.end_datetime)
         )}</span></td>
-        <td class="evnt-cell evnt-cell-status" data-label="สถานะ"><span class="evnt-cell-value">${escapeHtml(
-          statusLabel(row)
-        )}</span></td>
+        <td class="evnt-cell evnt-cell-status" data-label="สถานะ">
+          <span class="legend-status legend-status-${kind}">
+            <span class="legend-icon" aria-hidden="true"></span>${escapeHtml(statusLabel(row))}
+          </span>
+        </td>
       `;
 
       // Click row -> open edit (except clicking a link)
@@ -307,25 +367,92 @@
     const res = await apiFetch("/users/participants", { method: "GET" });
     const items = Array.isArray(res?.data) ? res.data : [];
 
-    grid.innerHTML = "";
-    items.forEach((u) => {
-      const name =
-        u?.line_user_name && String(u.line_user_name).trim() !== ""
-          ? String(u.line_user_name)
-          : `user#${u?.user_id}`;
-
-      const label = document.createElement("label");
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.className = "add-participant";
-      input.value = String(u.user_id);
-
-      label.appendChild(input);
-      label.appendChild(document.createTextNode(" " + name));
-      grid.appendChild(label);
-    });
+    renderParticipantPicker(grid, items);
 
     __participantsLoaded = true;
+  }
+
+  function participantProvinceId(u) {
+    return String(u?.province_id ?? u?.organization_province_id ?? u?.person_province_id ?? "").trim();
+  }
+
+  function participantProvinceName(u) {
+    return String(u?.province_name_th ?? u?.province_nameTH ?? u?.province_name ?? u?.province_name_en ?? "").trim();
+  }
+
+  function participantName(u) {
+    const display = String(u?.display_name || "").trim();
+    if (display) return display;
+    const line = String(u?.line_user_name || "").trim();
+    if (line) return line;
+    return "ไม่ระบุชื่อ";
+  }
+
+  function renderParticipantPicker(grid, items) {
+    const rows = Array.isArray(items) ? items : [];
+    grid.innerHTML = "";
+
+    const groups = new Map();
+    rows.forEach((u) => {
+      const pid = participantProvinceId(u) || "none";
+      if (!groups.has(pid)) {
+        groups.set(pid, {
+          provinceId: pid,
+          provinceName: participantProvinceName(u) || "ไม่ระบุจังหวัด",
+          users: [],
+        });
+      }
+      groups.get(pid).users.push(u);
+    });
+
+    Array.from(groups.values()).sort((a, b) => a.provinceName.localeCompare(b.provinceName, "th")).forEach((group) => {
+      const section = document.createElement("div");
+      section.className = "participant-province-group";
+
+      const header = document.createElement("label");
+      header.className = "participant-province-select";
+      const provinceCb = document.createElement("input");
+      provinceCb.type = "checkbox";
+      provinceCb.className = "participant-province-checkbox";
+      provinceCb.dataset.provinceId = group.provinceId;
+      header.appendChild(provinceCb);
+      header.appendChild(document.createTextNode(` ${group.provinceName} (เลือกทั้งจังหวัด)`));
+      section.appendChild(header);
+
+      const list = document.createElement("div");
+      list.className = "participant-province-users";
+
+      group.users.forEach((u) => {
+        const label = document.createElement("label");
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.className = "add-participant";
+        input.value = String(u.user_id);
+        input.dataset.provinceId = group.provinceId;
+
+        label.appendChild(input);
+        label.appendChild(document.createTextNode(" " + participantName(u)));
+        list.appendChild(label);
+      });
+
+      const syncProvince = () => {
+        const boxes = Array.from(list.querySelectorAll(".add-participant"));
+        const checked = boxes.filter((cb) => cb.checked).length;
+        provinceCb.checked = boxes.length > 0 && checked === boxes.length;
+        provinceCb.indeterminate = checked > 0 && checked < boxes.length;
+      };
+
+      provinceCb.addEventListener("change", () => {
+        list.querySelectorAll(".add-participant").forEach((cb) => {
+          cb.checked = provinceCb.checked;
+        });
+      });
+      list.addEventListener("change", syncProvince);
+
+      section.appendChild(list);
+      grid.appendChild(section);
+      syncProvince();
+    });
   }
 
   function resetAddTaskFormDefaults() {
@@ -351,7 +478,7 @@
       try {
         form.reset();
         overlay
-          .querySelectorAll('.add-participant')
+          .querySelectorAll(".add-participant,.participant-province-checkbox")
           .forEach((cb) => (cb.checked = false));
 
         await ensureProvincesLoaded();
@@ -457,12 +584,9 @@
     const searchInput = document.getElementById("schedule-search-input");
     const q = (searchInput ? searchInput.value : "").trim().toLowerCase();
 
-    if (!q) {
-      renderTable(allRows);
-      return;
-    }
-
-    const filtered = allRows.filter((r) => buildHaystack(r).includes(q));
+    let filtered = allRows.slice();
+    if (todayOnly) filtered = filtered.filter(isTodayRow);
+    if (q) filtered = filtered.filter((r) => buildHaystack(r).includes(q));
     renderTable(filtered);
   }
 
@@ -480,6 +604,16 @@
         applySearch();
       });
     }
+  }
+
+  function setupTodayFilter() {
+    const btn = document.getElementById("schedule-filter-today");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      todayOnly = !todayOnly;
+      btn.classList.toggle("is-active", todayOnly);
+      applySearch();
+    });
   }
 
   async function loadRows() {
@@ -522,6 +656,7 @@
     `;
 
     setupSearch();
+    setupTodayFilter();
     setupAddTaskModal();
 
     try {
@@ -532,6 +667,7 @@
         return;
       }
 
+      await applyStaffRoleUi();
       allRows = await loadRows();
       applySearch();
     } catch (err) {
