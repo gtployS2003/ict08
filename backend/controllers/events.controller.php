@@ -19,6 +19,7 @@ if (!function_exists('str_starts_with')) {
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/validator.php';
 require_once __DIR__ . '/../models/EventModel.php';
+require_once __DIR__ . '/../models/RequestModel.php';
 require_once __DIR__ . '/../models/EventParticipantModel.php';
 require_once __DIR__ . '/../models/EventMediaModel.php';
 require_once __DIR__ . '/../config/env.php';
@@ -635,10 +636,22 @@ final class EventsController
             $location = (string) ($body['location'] ?? '');
             $meetingLink = (string) ($body['meeting_link'] ?? '');
             $note = (string) ($body['note'] ?? '');
+            $requestTypeId = (int) ($body['request_type_id'] ?? $body['request_type'] ?? 0);
+            $requestSubTypeId = array_key_exists('request_sub_type_id', $body)
+                ? (int) ($body['request_sub_type_id'] ?? 0)
+                : (int) ($body['request_sub_type'] ?? 0);
+            $eventStatusId = (int) ($body['event_status_id'] ?? 0);
+
+            if ($requestTypeId <= 0) {
+                json_response(['error' => true, 'message' => 'request_type_id is required'], 422);
+                return;
+            }
 
             $provinceId = (int) ($body['province_id'] ?? 0);
-            if ($provinceId <= 0)
-                $provinceId = 0;
+            if ($provinceId <= 0) {
+                json_response(['error' => true, 'message' => 'province_id is required'], 422);
+                return;
+            }
 
             $startRaw = trim((string) ($body['start_datetime'] ?? $body['start_date'] ?? ''));
             $endRaw = trim((string) ($body['end_datetime'] ?? $body['end_date'] ?? ''));
@@ -668,6 +681,24 @@ final class EventsController
                     json_response(['error' => true, 'message' => 'Invalid province_id'], 422);
                     return;
                 }
+            }
+
+            if (!$this->requestTypeExists($requestTypeId)) {
+                json_response(['error' => true, 'message' => 'Invalid request_type_id'], 422);
+                return;
+            }
+
+            if ($requestSubTypeId > 0 && !$this->requestSubTypeBelongsToType($requestSubTypeId, $requestTypeId)) {
+                json_response(['error' => true, 'message' => 'Invalid request_sub_type_id for this request_type_id'], 422);
+                return;
+            }
+
+            if ($eventStatusId <= 0) {
+                $eventStatusId = $this->getDefaultEventStatusIdByRequestType($requestTypeId) ?? 0;
+            }
+            if ($eventStatusId <= 0 || !$this->eventStatusBelongsToType($eventStatusId, $requestTypeId)) {
+                json_response(['error' => true, 'message' => 'Invalid event_status_id for this request_type_id'], 422);
+                return;
             }
 
             // participants: array of existing user_id values from any role
@@ -718,6 +749,22 @@ final class EventsController
 
             $this->pdo->beginTransaction();
 
+            $requestModel = new RequestModel($this->pdo);
+            $requestId = $requestModel->create([
+                'request_type' => $requestTypeId,
+                'request_sub_type' => ($requestSubTypeId > 0 ? $requestSubTypeId : null),
+                'subject' => $title,
+                'detail' => $detail,
+                'requester_id' => $updatedBy,
+                'province_id' => $provinceId,
+                'location' => $location,
+                'hasAttachment' => 0,
+                'approve_by_id' => ($updatedBy > 0 ? $updatedBy : null),
+                'approve_at' => date('Y-m-d H:i:s'),
+                'start_date_time' => $startDt,
+                'end_date_time' => $endDt,
+            ]);
+
             $eventYearBE = $this->computeEventYearBE($startDt);
             // round_no will be assigned when event is finished (start from 1)
             $roundNo = 0;
@@ -728,7 +775,7 @@ final class EventsController
 
             $eventModel = new EventModel($this->pdo);
             $eventId = $eventModel->create([
-                'request_id' => null,
+                'request_id' => $requestId,
                 'title' => $title,
                 'detail' => $detail,
                 'location' => $location,
@@ -737,7 +784,7 @@ final class EventsController
                 'round_no' => $roundNo,
                 'event_year' => $eventYearBE,
                 'note' => $note,
-                'event_status_id' => null,
+                'event_status_id' => $eventStatusId,
                 'start_datetime' => $startDt,
                 'end_datetime' => $endDt,
                 'participant_user_ids' => $participantUserIdsStr,
@@ -1765,6 +1812,61 @@ final class EventsController
         }
 
         return $y + 543;
+    }
+
+    private function requestTypeExists(int $requestTypeId): bool
+    {
+        if ($requestTypeId <= 0)
+            return false;
+        $stmt = $this->pdo->prepare('SELECT 1 FROM request_type WHERE request_type_id = :id LIMIT 1');
+        $stmt->execute([':id' => $requestTypeId]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    private function requestSubTypeBelongsToType(int $requestSubTypeId, int $requestTypeId): bool
+    {
+        if ($requestSubTypeId <= 0 || $requestTypeId <= 0)
+            return false;
+        $stmt = $this->pdo->prepare('
+            SELECT 1
+            FROM request_sub_type
+            WHERE request_sub_type_id = :sid
+              AND subtype_of = :tid
+            LIMIT 1
+        ');
+        $stmt->execute([':sid' => $requestSubTypeId, ':tid' => $requestTypeId]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    private function getDefaultEventStatusIdByRequestType(int $requestTypeId): ?int
+    {
+        if ($requestTypeId <= 0)
+            return null;
+        $stmt = $this->pdo->prepare('
+            SELECT event_status_id
+            FROM event_status
+            WHERE request_type_id = :tid
+            ORDER BY sort_order ASC, event_status_id ASC
+            LIMIT 1
+        ');
+        $stmt->execute([':tid' => $requestTypeId]);
+        $id = $stmt->fetchColumn();
+        return (is_numeric($id) && (int) $id > 0) ? (int) $id : null;
+    }
+
+    private function eventStatusBelongsToType(int $eventStatusId, int $requestTypeId): bool
+    {
+        if ($eventStatusId <= 0 || $requestTypeId <= 0)
+            return false;
+        $stmt = $this->pdo->prepare('
+            SELECT 1
+            FROM event_status
+            WHERE event_status_id = :sid
+              AND request_type_id = :tid
+            LIMIT 1
+        ');
+        $stmt->execute([':sid' => $eventStatusId, ':tid' => $requestTypeId]);
+        return (bool) $stmt->fetchColumn();
     }
 
     /**

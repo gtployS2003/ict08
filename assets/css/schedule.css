@@ -980,6 +980,12 @@ body:not(.is-staff) .staff-only-action {
     gap: 10px 16px;
 }
 
+.task-add-row-3col {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 16px;
+}
+
 .participant-grid {
     display: flex;
     flex-direction: column;
@@ -1027,7 +1033,8 @@ body:not(.is-staff) .staff-only-action {
         max-height: calc(100vh - 200px);
     }
 
-    .task-add-row-2col {
+    .task-add-row-2col,
+    .task-add-row-3col {
         grid-template-columns: 1fr;
     }
 

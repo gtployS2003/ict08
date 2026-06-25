@@ -22,7 +22,7 @@
     <!-- Auth API (ใช้แลก token จาก LINE profile) -->
     <script src="/ict8/assets/js/api/auth.api.js" defer></script>
     <!-- event script-->
-    <script src="/ict8/assets/js/schedule-events-db.js?v=2026-03-04-1" defer></script>
+    <script src="/ict8/assets/js/schedule-events-db.js?v=2026-06-25-1" defer></script>
 
 
 </head>
@@ -114,6 +114,28 @@
                     <div class="task-add-row">
                         <label for="add-desc">รายละเอียดงาน</label>
                         <textarea id="add-desc" name="detail" rows="3"></textarea>
+                    </div>
+
+                    <!-- ประเภทงาน + สถานะ -->
+                    <div class="task-add-row task-add-row-3col">
+                        <div>
+                            <label for="add-request-type">ประเภทหลัก</label>
+                            <select id="add-request-type" name="request_type_id" required>
+                                <option value="">-- เลือกประเภทหลัก --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="add-request-sub-type">ประเภทย่อย</label>
+                            <select id="add-request-sub-type" name="request_sub_type_id" required>
+                                <option value="">-- เลือกประเภทย่อย --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="add-event-status">สถานะงาน</label>
+                            <select id="add-event-status" name="event_status_id" required>
+                                <option value="">-- เลือกสถานะ --</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- ตำแหน่งที่ตั้ง + จังหวัด -->

@@ -13,6 +13,7 @@ let currentTask = null;
 
 let __provincesLoaded = false;
 let __participantsLoaded = false;
+let __requestTypesLoaded = false;
 
 function getStoredToken() {
     return (
@@ -726,6 +727,104 @@ async function ensureParticipantsLoaded() {
     __participantsLoaded = true;
 }
 
+async function ensureRequestTypesLoaded() {
+    if (__requestTypesLoaded) return;
+
+    const select = document.getElementById('add-request-type');
+    if (!select) return;
+
+    const apiFetch = window.apiFetch;
+    if (typeof apiFetch !== 'function') throw new Error('missing apiFetch');
+
+    const res = await apiFetch('/request-types?page=1&limit=200', { method: 'GET' });
+    const items = Array.isArray(res?.data?.items) ? res.data.items : (Array.isArray(res?.data) ? res.data : []);
+
+    select.innerHTML = '<option value="">-- เลือกประเภทหลัก --</option>';
+    items.forEach(row => {
+        const id = row?.request_type_id ?? row?.id ?? '';
+        if (!id) return;
+        const opt = document.createElement('option');
+        opt.value = String(id);
+        opt.textContent = String(row?.type_name ?? id);
+        select.appendChild(opt);
+    });
+
+    __requestTypesLoaded = true;
+}
+
+function resetRequestDependentSelects() {
+    const subType = document.getElementById('add-request-sub-type');
+    const status = document.getElementById('add-event-status');
+    if (subType) {
+        subType.innerHTML = '<option value="">-- เลือกประเภทย่อย --</option>';
+        subType.disabled = false;
+        subType.required = true;
+    }
+    if (status) {
+        status.innerHTML = '<option value="">-- เลือกสถานะ --</option>';
+        status.disabled = false;
+    }
+}
+
+async function loadRequestMetaForType(requestTypeId) {
+    const typeId = Number(requestTypeId || 0);
+    const subType = document.getElementById('add-request-sub-type');
+    const status = document.getElementById('add-event-status');
+    if (!subType || !status) return;
+
+    resetRequestDependentSelects();
+    if (!typeId) return;
+
+    const apiFetch = window.apiFetch;
+    if (typeof apiFetch !== 'function') throw new Error('missing apiFetch');
+
+    const [subRes, statusRes] = await Promise.all([
+        apiFetch(`/request-sub-types?subtype_of=${encodeURIComponent(typeId)}&page=1&limit=200`, { method: 'GET' }),
+        apiFetch(`/event-status?request_type_id=${encodeURIComponent(typeId)}&page=1&limit=200`, { method: 'GET' }),
+    ]);
+
+    const subItems = Array.isArray(subRes?.data?.items) ? subRes.data.items : (Array.isArray(subRes?.data) ? subRes.data : []);
+    if (subItems.length) {
+        subItems.forEach(row => {
+            const id = row?.request_sub_type_id ?? row?.id ?? '';
+            if (!id) return;
+            const opt = document.createElement('option');
+            opt.value = String(id);
+            opt.textContent = String(row?.name ?? id);
+            subType.appendChild(opt);
+        });
+        subType.disabled = false;
+        subType.required = true;
+    } else {
+        subType.innerHTML = '<option value="">ไม่มีประเภทย่อย</option>';
+        subType.disabled = true;
+        subType.required = false;
+    }
+
+    const statusItems = Array.isArray(statusRes?.data?.items) ? statusRes.data.items : (Array.isArray(statusRes?.data) ? statusRes.data : []);
+    statusItems.forEach(row => {
+        const id = row?.event_status_id ?? row?.id ?? '';
+        if (!id) return;
+        const opt = document.createElement('option');
+        opt.value = String(id);
+        opt.textContent = String(row?.status_name ?? row?.status_code ?? id);
+        status.appendChild(opt);
+    });
+    if (status.options.length > 1) status.selectedIndex = 1;
+}
+
+function setupRequestMetaFields() {
+    const typeSelect = document.getElementById('add-request-type');
+    if (!typeSelect || typeSelect.dataset.bound === '1') return;
+    typeSelect.dataset.bound = '1';
+    typeSelect.addEventListener('change', () => {
+        loadRequestMetaForType(typeSelect.value).catch(err => {
+            console.error(err);
+            alert('โหลดประเภทงานหรือสถานะไม่สำเร็จ');
+        });
+    });
+}
+
 function participantProvinceId(u) {
     return String(u?.province_id ?? u?.organization_province_id ?? u?.person_province_id ?? '').trim();
 }
@@ -838,6 +937,9 @@ function setupAddTaskModal() {
 
             await ensureProvincesLoaded();
             await ensureParticipantsLoaded();
+            await ensureRequestTypesLoaded();
+            setupRequestMetaFields();
+            resetRequestDependentSelects();
 
             resetAddTaskFormDefaults();
 
@@ -871,6 +973,10 @@ function setupAddTaskModal() {
             const detail = String(document.getElementById('add-desc')?.value ?? '');
             const location = String(document.getElementById('add-location')?.value ?? '');
             const provinceId = String(document.getElementById('add-province')?.value ?? '').trim();
+            const requestTypeId = String(document.getElementById('add-request-type')?.value ?? '').trim();
+            const requestSubTypeEl = document.getElementById('add-request-sub-type');
+            const requestSubTypeId = String(requestSubTypeEl?.value ?? '').trim();
+            const eventStatusId = String(document.getElementById('add-event-status')?.value ?? '').trim();
             const meetingLink = String(document.getElementById('add-meeting-link')?.value ?? '').trim();
             const note = String(document.getElementById('add-note')?.value ?? '');
             const startDate = String(document.getElementById('add-start-date')?.value ?? '').trim();
@@ -886,6 +992,18 @@ function setupAddTaskModal() {
                 alert('กรุณาเลือกจังหวัด');
                 return;
             }
+            if (!requestTypeId) {
+                alert('กรุณาเลือกประเภทหลัก');
+                return;
+            }
+            if (requestSubTypeEl && !requestSubTypeEl.disabled && !requestSubTypeId) {
+                alert('กรุณาเลือกประเภทย่อย');
+                return;
+            }
+            if (!eventStatusId) {
+                alert('กรุณาเลือกสถานะงาน');
+                return;
+            }
             if (!startDate || !endDate) {
                 alert('กรุณาเลือกวันที่เริ่มต้นและวันที่สิ้นสุด');
                 return;
@@ -899,6 +1017,9 @@ function setupAddTaskModal() {
                 detail,
                 location,
                 province_id: Number(provinceId),
+                request_type_id: Number(requestTypeId),
+                request_sub_type_id: requestSubTypeId ? Number(requestSubTypeId) : null,
+                event_status_id: Number(eventStatusId),
                 meeting_link: meetingLink,
                 note,
                 start_date: startDate,
