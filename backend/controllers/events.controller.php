@@ -670,7 +670,7 @@ final class EventsController
                 }
             }
 
-            // participants: array of staff/admin user_id only (role_id = 2 or 3)
+            // participants: array of existing user_id values from any role
             $participantIds = $body['participant_user_ids'] ?? $body['participants'] ?? [];
             if (!is_array($participantIds)) {
                 json_response(['error' => true, 'message' => 'participant_user_ids must be an array'], 422);
@@ -680,10 +680,10 @@ final class EventsController
                 return $v > 0;
             })));
 
-            // Validate participant roles (if any)
+            // Validate participant users (if any)
             if (!empty($participantIds)) {
                 $in = implode(',', array_fill(0, count($participantIds), '?'));
-                $sql = "SELECT user_id FROM `user` WHERE user_id IN ($in) AND user_role_id IN (2, 3)";
+                $sql = "SELECT user_id FROM `user` WHERE user_id IN ($in)";
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->execute($participantIds);
                 $found = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
@@ -1282,16 +1282,11 @@ final class EventsController
             $notificationIds = [];
 
             if ($participantIds !== null) {
-                // Validate user ids (internal: role 2/3 staff/admin only; request-based: any existing user)
+                // Validate participant users from any role.
                 if (!empty($participantIds)) {
                     $in = implode(',', array_fill(0, count($participantIds), '?'));
 
-                    $reqId = (int) ($existing['request_id'] ?? 0);
-                    $isInternal = ($reqId <= 0);
-
-                    $sql = $isInternal
-                        ? ("SELECT user_id FROM `user` WHERE user_id IN ($in) AND user_role_id IN (2, 3)")
-                        : ("SELECT user_id FROM `user` WHERE user_id IN ($in)");
+                    $sql = "SELECT user_id FROM `user` WHERE user_id IN ($in)";
 
                     $stmt = $this->pdo->prepare($sql);
                     $stmt->execute($participantIds);

@@ -38,7 +38,7 @@ class UsersController
 
     /**
      * GET /users/participants
-     * Returns staff/admin users eligible as event participants.
+     * Returns all users eligible as event participants.
      * Province is resolved from person.organization_id -> organization.province_id -> province.
      */
     public function participants(): void
@@ -65,7 +65,6 @@ class UsersController
                     ON o.organization_id = p.organization_id
                 LEFT JOIN province prov
                     ON prov.province_id = o.province_id
-                WHERE u.user_role_id IN (2, 3)
                 ORDER BY
                     prov.nameTH ASC,
                     u.user_role_id DESC,

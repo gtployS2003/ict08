@@ -548,10 +548,7 @@
     const el = document.getElementById(containerId);
     if (!el) return;
 
-    const eligibleUsers = (Array.isArray(users) ? users : []).filter((u) => {
-      const roleId = Number(u?.user_role_id || 0);
-      return roleId === 2 || roleId === 3;
-    });
+    const eligibleUsers = Array.isArray(users) ? users : [];
 
     if (!eligibleUsers.length) {
       el.innerHTML = `<div class="ee-muted">ไม่พบรายชื่อผู้ใช้</div>`;
