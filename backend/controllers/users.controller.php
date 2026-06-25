@@ -38,7 +38,8 @@ class UsersController
 
     /**
      * GET /users/participants
-     * Returns list of users eligible as event participants (role_id 2,3).
+     * Returns staff users eligible as event participants.
+     * Province is resolved from person.organization_id -> organization.province_id -> province.
      */
     public function participants(): void
     {
@@ -52,6 +53,7 @@ class UsersController
                     u.line_user_name,
                     u.user_role_id,
                     p.display_name,
+                    p.organization_id AS person_organization_id,
                     p.organization_id,
                     o.province_id,
                     prov.nameTH AS province_name_th,

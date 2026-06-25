@@ -124,7 +124,8 @@
       if (typeof window.apiFetch !== "function") return false;
       const res = await window.apiFetch("/profile/me", { method: "GET" });
       const user = res?.data?.user || res?.user || {};
-      const isStaff = Number(user?.user_role_id || 0) === 2;
+      const roleId = Number(user?.user_role_id || 0);
+      const isStaff = roleId === 2 || roleId === 3;
       document.body.classList.toggle("is-staff", isStaff);
       return isStaff;
     } catch (err) {
