@@ -754,23 +754,17 @@ async function ensureRequestTypesLoaded() {
 
 function resetRequestDependentSelects() {
     const subType = document.getElementById('add-request-sub-type');
-    const status = document.getElementById('add-event-status');
     if (subType) {
         subType.innerHTML = '<option value="">-- เลือกประเภทย่อย --</option>';
         subType.disabled = false;
         subType.required = true;
-    }
-    if (status) {
-        status.innerHTML = '<option value="">-- เลือกสถานะ --</option>';
-        status.disabled = false;
     }
 }
 
 async function loadRequestMetaForType(requestTypeId) {
     const typeId = Number(requestTypeId || 0);
     const subType = document.getElementById('add-request-sub-type');
-    const status = document.getElementById('add-event-status');
-    if (!subType || !status) return;
+    if (!subType) return;
 
     resetRequestDependentSelects();
     if (!typeId) return;
@@ -778,10 +772,7 @@ async function loadRequestMetaForType(requestTypeId) {
     const apiFetch = window.apiFetch;
     if (typeof apiFetch !== 'function') throw new Error('missing apiFetch');
 
-    const [subRes, statusRes] = await Promise.all([
-        apiFetch(`/request-sub-types?subtype_of=${encodeURIComponent(typeId)}&page=1&limit=200`, { method: 'GET' }),
-        apiFetch(`/event-status?request_type_id=${encodeURIComponent(typeId)}&page=1&limit=200`, { method: 'GET' }),
-    ]);
+    const subRes = await apiFetch(`/request-sub-types?subtype_of=${encodeURIComponent(typeId)}&page=1&limit=200`, { method: 'GET' });
 
     const subItems = Array.isArray(subRes?.data?.items) ? subRes.data.items : (Array.isArray(subRes?.data) ? subRes.data : []);
     if (subItems.length) {
@@ -800,17 +791,6 @@ async function loadRequestMetaForType(requestTypeId) {
         subType.disabled = true;
         subType.required = false;
     }
-
-    const statusItems = Array.isArray(statusRes?.data?.items) ? statusRes.data.items : (Array.isArray(statusRes?.data) ? statusRes.data : []);
-    statusItems.forEach(row => {
-        const id = row?.event_status_id ?? row?.id ?? '';
-        if (!id) return;
-        const opt = document.createElement('option');
-        opt.value = String(id);
-        opt.textContent = String(row?.status_name ?? row?.status_code ?? id);
-        status.appendChild(opt);
-    });
-    if (status.options.length > 1) status.selectedIndex = 1;
 }
 
 function setupRequestMetaFields() {
@@ -976,7 +956,6 @@ function setupAddTaskModal() {
             const requestTypeId = String(document.getElementById('add-request-type')?.value ?? '').trim();
             const requestSubTypeEl = document.getElementById('add-request-sub-type');
             const requestSubTypeId = String(requestSubTypeEl?.value ?? '').trim();
-            const eventStatusId = String(document.getElementById('add-event-status')?.value ?? '').trim();
             const meetingLink = String(document.getElementById('add-meeting-link')?.value ?? '').trim();
             const note = String(document.getElementById('add-note')?.value ?? '');
             const startDate = String(document.getElementById('add-start-date')?.value ?? '').trim();
@@ -1000,10 +979,6 @@ function setupAddTaskModal() {
                 alert('กรุณาเลือกประเภทย่อย');
                 return;
             }
-            if (!eventStatusId) {
-                alert('กรุณาเลือกสถานะงาน');
-                return;
-            }
             if (!startDate || !endDate) {
                 alert('กรุณาเลือกวันที่เริ่มต้นและวันที่สิ้นสุด');
                 return;
@@ -1019,7 +994,6 @@ function setupAddTaskModal() {
                 province_id: Number(provinceId),
                 request_type_id: Number(requestTypeId),
                 request_sub_type_id: requestSubTypeId ? Number(requestSubTypeId) : null,
-                event_status_id: Number(eventStatusId),
                 meeting_link: meetingLink,
                 note,
                 start_date: startDate,

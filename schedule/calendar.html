@@ -26,7 +26,7 @@
     <!-- FullCalendar -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js" defer></script>
     <!-- JS สำหรับหน้าปฏิทิน -->
-    <script src="/ict8/assets/js/schedule-calendar.js?v=2026-06-25-1" defer></script>
+    <script src="/ict8/assets/js/schedule-calendar.js?v=2026-06-25-2" defer></script>
 
 </head>
 
@@ -113,8 +113,8 @@
                         <textarea id="add-desc" name="detail" rows="3"></textarea>
                     </div>
 
-                    <!-- ประเภทงาน + สถานะ -->
-                    <div class="task-add-row task-add-row-3col">
+                    <!-- ประเภทงาน -->
+                    <div class="task-add-row task-add-row-2col">
                         <div>
                             <label for="add-request-type">ประเภทหลัก</label>
                             <select id="add-request-type" name="request_type_id" required>
@@ -125,12 +125,6 @@
                             <label for="add-request-sub-type">ประเภทย่อย</label>
                             <select id="add-request-sub-type" name="request_sub_type_id" required>
                                 <option value="">-- เลือกประเภทย่อย --</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="add-event-status">สถานะงาน</label>
-                            <select id="add-event-status" name="event_status_id" required>
-                                <option value="">-- เลือกสถานะ --</option>
                             </select>
                         </div>
                     </div>
