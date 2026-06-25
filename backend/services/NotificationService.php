@@ -249,14 +249,24 @@ final class NotificationService
             }
 
             if ($sendEmail) {
-                $email = $this->getUserEmail($uid);
-                if ($email !== '') {
+                $emails = $this->getUserEmails($uid);
+                if (!empty($emails)) {
                     $subject = $emailSubject !== '' ? $emailSubject : 'แจ้งเตือนงาน';
-                    if ($this->sendEmail($email, $subject, $message . ($ackUrl !== '' ? "\n\nรับทราบงาน: {$ackUrl}" : ''))) {
-                        $sentEmail++;
-                    } else {
-                        $errors[] = ['user_id' => $uid, 'step' => 'email', 'error' => 'mail() failed'];
+                    foreach ($emails as $email) {
+                        $emailResp = $this->sendEmail($email, $subject, $message . ($ackUrl !== '' ? "\n\nรับทราบงาน: {$ackUrl}" : ''));
+                        if (($emailResp['ok'] ?? false) === true) {
+                            $sentEmail++;
+                        } else {
+                            $errors[] = [
+                                'user_id' => $uid,
+                                'email' => $email,
+                                'step' => 'email',
+                                'error' => (string) ($emailResp['error'] ?? 'send email failed'),
+                            ];
+                        }
                     }
+                } else {
+                    $errors[] = ['user_id' => $uid, 'step' => 'email', 'error' => 'Missing recipient email'];
                 }
             }
         }
@@ -290,26 +300,217 @@ final class NotificationService
         return trim((string) ($stmt->fetchColumn() ?? ''));
     }
 
-    private function getUserEmail(int $userId): string
+    /**
+     * @return array<int,string>
+     */
+    private function getUserEmails(int $userId): array
     {
-        $stmt = $this->pdo->prepare('SELECT email FROM person WHERE person_user_id = :uid LIMIT 1');
+        $stmt = $this->pdo->prepare('
+            SELECT
+                p.email AS person_email,
+                ci.email AS organization_email
+            FROM person p
+            LEFT JOIN contact_info ci
+                ON ci.organization_id = p.organization_id
+            WHERE p.person_user_id = :uid
+            LIMIT 1
+        ');
         $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
         $stmt->execute();
-        $email = trim((string) ($stmt->fetchColumn() ?? ''));
-        return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $emails = [];
+        foreach (['person_email', 'organization_email'] as $key) {
+            $raw = trim((string) ($row[$key] ?? ''));
+            if ($raw === '') {
+                continue;
+            }
+
+            $parts = preg_split('/[;,\\s]+/', $raw) ?: [];
+            foreach ($parts as $email) {
+                $email = trim($email);
+                if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $emails[] = strtolower($email);
+                }
+            }
+        }
+
+        return array_values(array_unique($emails));
     }
 
-    private function sendEmail(string $to, string $subject, string $body): bool
+    /**
+     * @return array{ok:bool,error?:string}
+     */
+    private function sendEmail(string $to, string $subject, string $body): array
     {
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            return false;
+            return ['ok' => false, 'error' => 'Invalid recipient email'];
         }
+
+        $host = trim((string) env('MAIL_HOST', ''));
+        if ($host !== '') {
+            return $this->sendEmailSmtp($to, $subject, $body);
+        }
+
         $headers = [
             'MIME-Version: 1.0',
             'Content-Type: text/plain; charset=UTF-8',
             'From: ' . (env('MAIL_FROM', 'no-reply@localhost') ?: 'no-reply@localhost'),
         ];
-        return @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, implode("\r\n", $headers));
+        $ok = @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, implode("\r\n", $headers));
+        return $ok ? ['ok' => true] : ['ok' => false, 'error' => 'mail() failed; configure MAIL_HOST SMTP in .env'];
+    }
+
+    /**
+     * @return array{ok:bool,error?:string}
+     */
+    private function sendEmailSmtp(string $to, string $subject, string $body): array
+    {
+        $host = trim((string) env('MAIL_HOST', ''));
+        $port = (int) (env('MAIL_PORT', '587') ?: '587');
+        $username = trim((string) env('MAIL_USERNAME', ''));
+        $password = (string) env('MAIL_PASSWORD', '');
+        $encryption = strtolower(trim((string) env('MAIL_ENCRYPTION', 'tls')));
+        $from = trim((string) (env('MAIL_FROM', '') ?: $username));
+        $fromName = trim((string) env('MAIL_FROM_NAME', 'ICT8'));
+
+        if ($host === '' || $from === '') {
+            return ['ok' => false, 'error' => 'Missing MAIL_HOST or MAIL_FROM'];
+        }
+
+        $remote = ($encryption === 'ssl' ? 'ssl://' : '') . $host . ':' . $port;
+        $errno = 0;
+        $errstr = '';
+        $fp = @stream_socket_client($remote, $errno, $errstr, 15, STREAM_CLIENT_CONNECT);
+        if (!$fp) {
+            return ['ok' => false, 'error' => "SMTP connect failed: {$errstr} ({$errno})"];
+        }
+
+        stream_set_timeout($fp, 20);
+
+        $read = function () use ($fp): string {
+            $data = '';
+            while (($line = fgets($fp, 515)) !== false) {
+                $data .= $line;
+                if (strlen($line) >= 4 && $line[3] === ' ') {
+                    break;
+                }
+            }
+            return $data;
+        };
+
+        $write = function (string $command) use ($fp): void {
+            fwrite($fp, $command . "\r\n");
+        };
+
+        $expect = function (array $codes, string $step) use ($read): ?string {
+            $resp = $read();
+            $code = (int) substr($resp, 0, 3);
+            if (!in_array($code, $codes, true)) {
+                return "{$step} failed: " . trim($resp);
+            }
+            return null;
+        };
+
+        $err = $expect([220], 'connect');
+        if ($err !== null) {
+            fclose($fp);
+            return ['ok' => false, 'error' => $err];
+        }
+
+        $serverName = $_SERVER['SERVER_NAME'] ?? 'localhost';
+        $write('EHLO ' . $serverName);
+        $err = $expect([250], 'EHLO');
+        if ($err !== null) {
+            fclose($fp);
+            return ['ok' => false, 'error' => $err];
+        }
+
+        if ($encryption === 'tls') {
+            $write('STARTTLS');
+            $err = $expect([220], 'STARTTLS');
+            if ($err !== null) {
+                fclose($fp);
+                return ['ok' => false, 'error' => $err];
+            }
+            if (!stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+                fclose($fp);
+                return ['ok' => false, 'error' => 'TLS negotiation failed'];
+            }
+            $write('EHLO ' . $serverName);
+            $err = $expect([250], 'EHLO after STARTTLS');
+            if ($err !== null) {
+                fclose($fp);
+                return ['ok' => false, 'error' => $err];
+            }
+        }
+
+        if ($username !== '') {
+            $write('AUTH LOGIN');
+            $err = $expect([334], 'AUTH LOGIN');
+            if ($err !== null) {
+                fclose($fp);
+                return ['ok' => false, 'error' => $err];
+            }
+            $write(base64_encode($username));
+            $err = $expect([334], 'AUTH username');
+            if ($err !== null) {
+                fclose($fp);
+                return ['ok' => false, 'error' => $err];
+            }
+            $write(base64_encode($password));
+            $err = $expect([235], 'AUTH password');
+            if ($err !== null) {
+                fclose($fp);
+                return ['ok' => false, 'error' => $err];
+            }
+        }
+
+        $write('MAIL FROM:<' . $from . '>');
+        $err = $expect([250], 'MAIL FROM');
+        if ($err !== null) {
+            fclose($fp);
+            return ['ok' => false, 'error' => $err];
+        }
+
+        $write('RCPT TO:<' . $to . '>');
+        $err = $expect([250, 251], 'RCPT TO');
+        if ($err !== null) {
+            fclose($fp);
+            return ['ok' => false, 'error' => $err];
+        }
+
+        $write('DATA');
+        $err = $expect([354], 'DATA');
+        if ($err !== null) {
+            fclose($fp);
+            return ['ok' => false, 'error' => $err];
+        }
+
+        $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+        $encodedFromName = '=?UTF-8?B?' . base64_encode($fromName) . '?=';
+        $headers = [
+            'Date: ' . date('r'),
+            'From: ' . $encodedFromName . ' <' . $from . '>',
+            'To: <' . $to . '>',
+            'Subject: ' . $encodedSubject,
+            'MIME-Version: 1.0',
+            'Content-Type: text/plain; charset=UTF-8',
+            'Content-Transfer-Encoding: 8bit',
+        ];
+        $message = implode("\r\n", $headers) . "\r\n\r\n" . str_replace(["\r\n", "\r"], "\n", $body);
+        $message = str_replace("\n.", "\n..", $message);
+        fwrite($fp, str_replace("\n", "\r\n", $message) . "\r\n.\r\n");
+
+        $err = $expect([250], 'message body');
+        if ($err !== null) {
+            fclose($fp);
+            return ['ok' => false, 'error' => $err];
+        }
+
+        $write('QUIT');
+        fclose($fp);
+        return ['ok' => true];
     }
 
     private function buildLineAckTemplate(string $message, string $ackUrl): array

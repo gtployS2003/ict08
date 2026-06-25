@@ -770,7 +770,7 @@ function renderParticipantPicker(grid, items) {
         provinceCb.className = 'participant-province-checkbox';
         provinceCb.dataset.provinceId = group.provinceId;
         header.appendChild(provinceCb);
-        header.appendChild(document.createTextNode(` ${group.provinceName} (เลือกทั้งจังหวัด)`));
+        header.appendChild(document.createTextNode(` ${group.provinceName}`));
         section.appendChild(header);
 
         const list = document.createElement('div');

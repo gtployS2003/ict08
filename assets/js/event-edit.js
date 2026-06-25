@@ -548,9 +548,12 @@
     const el = document.getElementById(containerId);
     if (!el) return;
 
-    const staffUsers = (Array.isArray(users) ? users : []).filter((u) => Number(u?.user_role_id || 0) === 2);
+    const eligibleUsers = (Array.isArray(users) ? users : []).filter((u) => {
+      const roleId = Number(u?.user_role_id || 0);
+      return roleId === 2 || roleId === 3;
+    });
 
-    if (!staffUsers.length) {
+    if (!eligibleUsers.length) {
       el.innerHTML = `<div class="ee-muted">ไม่พบรายชื่อผู้ใช้</div>`;
       return;
     }
@@ -561,7 +564,7 @@
     grid.className = "ee-checklist-provinces";
 
     const groups = new Map();
-    staffUsers.forEach((u) => {
+    eligibleUsers.forEach((u) => {
       const pid = userProvinceId(u) || "none";
       if (!groups.has(pid)) {
         groups.set(pid, {
@@ -583,7 +586,7 @@
       provinceCb.type = "checkbox";
       provinceCb.setAttribute("data-ee-province", "1");
       head.appendChild(provinceCb);
-      head.appendChild(document.createTextNode(` ${group.provinceName} (เลือกทุกคนในจังหวัด)`));
+      head.appendChild(document.createTextNode(` ${group.provinceName}`));
       section.appendChild(head);
 
       const userGrid = document.createElement("div");

@@ -670,7 +670,7 @@ final class EventsController
                 }
             }
 
-            // participants: array of staff user_id only (role_id = 2)
+            // participants: array of staff/admin user_id only (role_id = 2 or 3)
             $participantIds = $body['participant_user_ids'] ?? $body['participants'] ?? [];
             if (!is_array($participantIds)) {
                 json_response(['error' => true, 'message' => 'participant_user_ids must be an array'], 422);
@@ -683,7 +683,7 @@ final class EventsController
             // Validate participant roles (if any)
             if (!empty($participantIds)) {
                 $in = implode(',', array_fill(0, count($participantIds), '?'));
-                $sql = "SELECT user_id FROM `user` WHERE user_id IN ($in) AND user_role_id = 2";
+                $sql = "SELECT user_id FROM `user` WHERE user_id IN ($in) AND user_role_id IN (2, 3)";
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->execute($participantIds);
                 $found = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
@@ -1282,7 +1282,7 @@ final class EventsController
             $notificationIds = [];
 
             if ($participantIds !== null) {
-                // Validate user ids (internal: role 2 staff only; request-based: any existing user)
+                // Validate user ids (internal: role 2/3 staff/admin only; request-based: any existing user)
                 if (!empty($participantIds)) {
                     $in = implode(',', array_fill(0, count($participantIds), '?'));
 
@@ -1290,7 +1290,7 @@ final class EventsController
                     $isInternal = ($reqId <= 0);
 
                     $sql = $isInternal
-                        ? ("SELECT user_id FROM `user` WHERE user_id IN ($in) AND user_role_id = 2")
+                        ? ("SELECT user_id FROM `user` WHERE user_id IN ($in) AND user_role_id IN (2, 3)")
                         : ("SELECT user_id FROM `user` WHERE user_id IN ($in)");
 
                     $stmt = $this->pdo->prepare($sql);

@@ -292,8 +292,8 @@
           fmt(row?.end_datetime)
         )}</span></td>
         <td class="evnt-cell evnt-cell-status" data-label="สถานะ">
-          <span class="legend-status legend-status-${kind}">
-            <span class="legend-icon" aria-hidden="true"></span>${escapeHtml(statusLabel(row))}
+          <span class="legend-status legend-status-${kind}" title="${escapeHtml(statusLabel(row))}" aria-label="${escapeHtml(statusLabel(row))}">
+            <span class="legend-icon" aria-hidden="true"></span>
           </span>
         </td>
       `;
@@ -417,7 +417,7 @@
       provinceCb.className = "participant-province-checkbox";
       provinceCb.dataset.provinceId = group.provinceId;
       header.appendChild(provinceCb);
-      header.appendChild(document.createTextNode(` ${group.provinceName} (เลือกทั้งจังหวัด)`));
+      header.appendChild(document.createTextNode(` ${group.provinceName}`));
       section.appendChild(header);
 
       const list = document.createElement("div");
